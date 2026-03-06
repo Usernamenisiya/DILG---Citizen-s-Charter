@@ -2,12 +2,20 @@ import { useState } from "react";
 import ServiceFormEditor from "./ServiceFormEditor";
 
 export default function AdminDashboard({ appData, onDataChange, onClose, defaultData }) {
+  const defaultFeedback = appData.feedbackAndComplaints || defaultData.feedbackAndComplaints || {
+    title: "Feedback and Complaints Mechanism",
+    contact: { email: "", telephone: "" },
+    sections: [],
+  };
+
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
+  const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [settingsStatus, setSettingsStatus] = useState(null);
+  const [feedbackStatus, setFeedbackStatus] = useState(null);
   const [updateUrl, setUpdateUrl] = useState(appData.settings.updateUrl || "");
   const [autoCheck, setAutoCheck] = useState(appData.settings.autoCheckUpdates || false);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -45,6 +53,50 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     setOldPin("");
     setNewPin("");
     showStatus(setSettingsStatus, "success", "✓ PIN changed successfully.");
+  };
+
+  const saveFeedback = () => {
+    const normalizeLines = txt =>
+      String(txt || "")
+        .split("\n")
+        .map(v => v.trim())
+        .filter(Boolean);
+
+    const sections = (feedbackForm.sections || []).map((section, idx) => {
+      const paragraphSource = section.paragraphsText ?? (section.paragraphs || []).join("\n");
+      const itemSource = section.itemsText ?? (section.items || []).join("\n");
+
+      if (idx === 2) {
+        return {
+          heading: section.heading || "",
+          paragraphs: normalizeLines(paragraphSource),
+          items: normalizeLines(itemSource),
+        };
+      }
+
+      return {
+        heading: section.heading || "",
+        paragraphs: normalizeLines(paragraphSource),
+      };
+    });
+
+    const updatedFeedback = {
+      title: feedbackForm.title || "Feedback and Complaints Mechanism",
+      contact: {
+        email: feedbackForm.contact?.email || "",
+        telephone: feedbackForm.contact?.telephone || "",
+      },
+      sections,
+    };
+
+    onDataChange({
+      ...appData,
+      feedbackAndComplaints: updatedFeedback,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    setFeedbackForm(JSON.parse(JSON.stringify(updatedFeedback)));
+    showStatus(setFeedbackStatus, "success", "✓ Feedback and complaints content saved.");
   };
 
   const checkUpdates = async () => {
@@ -122,6 +174,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
   const navItems = [
     { id: "services", label: "Services" },
+    { id: "feedback", label: "Feedback" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
     { id: "backup", label: "Backup" },
@@ -271,6 +324,105 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             <div style={{ display: "flex", gap: 10 }}>
               <button className="a-btn a-btn-primary" onClick={saveSettings}>💾 Save Settings</button>
               <button className="a-btn a-btn-ghost" onClick={changePin}>🔒 Change PIN</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "feedback" && (
+          <div>
+            <div className="admin-tab-title">Feedback and Complaints</div>
+            <div className="admin-tab-sub">Edit the kiosk's feedback and complaints mechanism section shown on the main services screen.</div>
+            <StatusMsg status={feedbackStatus} />
+
+            <div className="a-field">
+              <label className="a-label">Section Title</label>
+              <input
+                className="a-input"
+                value={feedbackForm.title || ""}
+                onChange={e => setFeedbackForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-row">
+              <div className="a-field">
+                <label className="a-label">Contact Email</label>
+                <input
+                  className="a-input"
+                  value={feedbackForm.contact?.email || ""}
+                  onChange={e =>
+                    setFeedbackForm(f => ({
+                      ...f,
+                      contact: { ...(f.contact || {}), email: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+              <div className="a-field">
+                <label className="a-label">Telephone</label>
+                <input
+                  className="a-input"
+                  value={feedbackForm.contact?.telephone || ""}
+                  onChange={e =>
+                    setFeedbackForm(f => ({
+                      ...f,
+                      contact: { ...(f.contact || {}), telephone: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            {(feedbackForm.sections || []).map((section, idx) => (
+              <div key={idx}>
+                <div className="a-divider" />
+                <div className="a-field">
+                  <label className="a-label">Section {idx + 1} Heading</label>
+                  <input
+                    className="a-input"
+                    value={section.heading || ""}
+                    onChange={e =>
+                      setFeedbackForm(f => ({
+                        ...f,
+                        sections: (f.sections || []).map((s, i) => (i === idx ? { ...s, heading: e.target.value } : s)),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Paragraphs (one per line)</label>
+                  <textarea
+                    className="a-textarea"
+                    style={{ minHeight: 90 }}
+                    value={section.paragraphsText ?? (section.paragraphs || []).join("\n")}
+                    onChange={e =>
+                      setFeedbackForm(f => ({
+                        ...f,
+                        sections: (f.sections || []).map((s, i) => (i === idx ? { ...s, paragraphsText: e.target.value } : s)),
+                      }))
+                    }
+                  />
+                </div>
+                {idx === 2 && (
+                  <div className="a-field">
+                    <label className="a-label">Complaint Required Details (one per line)</label>
+                    <textarea
+                      className="a-textarea"
+                      style={{ minHeight: 80 }}
+                      value={section.itemsText ?? (section.items || []).join("\n")}
+                      onChange={e =>
+                        setFeedbackForm(f => ({
+                          ...f,
+                          sections: (f.sections || []).map((s, i) => (i === idx ? { ...s, itemsText: e.target.value } : s)),
+                        }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button className="a-btn a-btn-primary" onClick={saveFeedback}>💾 Save Feedback Content</button>
             </div>
           </div>
         )}

@@ -86,6 +86,8 @@ export default function KioskApp() {
 
   const SERVICES_PER_PAGE = s.perPage || 6;
   const services = appData.services;
+  const feedbackAndComplaints = appData.feedbackAndComplaints || KIOSK_DEFAULT_DATA.feedbackAndComplaints;
+  const officeDirectory = appData.officeDirectory || KIOSK_DEFAULT_DATA.officeDirectory;
   const totalPages = Math.ceil(services.length / SERVICES_PER_PAGE);
   const pageServices = services.slice(currentPage * SERVICES_PER_PAGE, (currentPage + 1) * SERVICES_PER_PAGE);
 
@@ -116,6 +118,8 @@ export default function KioskApp() {
       <KioskMainScreen
         visible={screen === "main"}
         settings={s}
+        feedbackAndComplaints={feedbackAndComplaints}
+        officeDirectory={officeDirectory}
         currentService={currentService}
         setCurrentService={setCurrentService}
         pageServices={pageServices}

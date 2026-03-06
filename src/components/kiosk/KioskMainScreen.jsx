@@ -4,6 +4,8 @@ import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 export default function KioskMainScreen({
   visible,
   settings,
+  feedbackAndComplaints,
+  officeDirectory,
   currentService,
   setCurrentService,
   pageServices,
@@ -72,11 +74,57 @@ export default function KioskMainScreen({
                   <div className="card-meta">
                     <div className="card-time">Time: {svc.processingTime}</div>
                     <div className="card-fee">{svc.fees && svc.fees !== "None" ? "Fee: " + svc.fees : "Free"}</div>
-                    <div className="card-arr">&gt;</div>
+                    <div className="card-arr">›</div>
                   </div>
                 </div>
               ))}
             </div>
+            {!!feedbackAndComplaints && (
+              <div className="feedback-panel">
+                <div className="feedback-panel-head">
+                  <h3>{feedbackAndComplaints.title || "Feedback and Complaints Mechanism"}</h3>
+                  <div className="feedback-contact">
+                    <span>Email: {feedbackAndComplaints.contact?.email || "N/A"}</span>
+                    <span>Tel: {feedbackAndComplaints.contact?.telephone || "N/A"}</span>
+                  </div>
+                </div>
+                <div className="feedback-grid">
+                  {(feedbackAndComplaints.sections || []).map((section, idx) => (
+                    <div key={idx} className="feedback-item">
+                      <h4>{section.heading}</h4>
+                      {(section.paragraphs || []).map((paragraph, pIdx) => (
+                        <p key={pIdx}>{paragraph}</p>
+                      ))}
+                      {!!section.items?.length && (
+                        <ul>
+                          {section.items.map((item, iIdx) => (
+                            <li key={iIdx}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!!officeDirectory && (
+              <div className="office-panel">
+                <div className="office-panel-head">
+                  <h3>{officeDirectory.title || "List of Offices"}</h3>
+                  <span>{officeDirectory.region || ""}</span>
+                </div>
+                <div className="office-grid">
+                  {(officeDirectory.entries || []).map((entry, idx) => (
+                    <div key={idx} className="office-item">
+                      <h4>{entry.office}</h4>
+                      {!!entry.address && <p>{entry.address}</p>}
+                      {!!entry.contact && <div className="office-contact">{entry.contact}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div>
