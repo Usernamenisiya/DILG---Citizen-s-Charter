@@ -716,27 +716,32 @@ body {
 .card-fee  { font-size: 20px; font-weight: bold; color: var(--clr-s); margin-left: auto; margin-right: 6px; }
 
 .card-arr {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   border: 1px solid rgba(0, 56, 168, .15);
   background: rgba(0, 56, 168, .05);
   color: var(--blue);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1;
-  padding-left: 1px;
+  padding-left: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   opacity: .45;
-  transform: translateX(-2px);
+  transform: translateX(-1px);
   transition: opacity .2s, transform .2s, background .2s, border-color .2s;
+}
+
+.card-arr-glyph {
+  display: block;
+  transform: translateY(-1px);
 }
 
 .service-card:hover .card-arr {
   opacity: 1;
-  transform: translateX(2px);
+  transform: translateX(1px);
   background: rgba(0, 56, 168, .12);
   border-color: rgba(0, 56, 168, .28);
 }

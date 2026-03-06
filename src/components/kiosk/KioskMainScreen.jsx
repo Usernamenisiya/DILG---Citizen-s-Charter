@@ -74,7 +74,7 @@ export default function KioskMainScreen({
                   <div className="card-meta">
                     <div className="card-time">Time: {svc.processingTime}</div>
                     <div className="card-fee">{svc.fees && svc.fees !== "None" ? "Fee: " + svc.fees : "Free"}</div>
-                    <div className="card-arr">›</div>
+                    <div className="card-arr"><span className="card-arr-glyph">›</span></div>
                   </div>
                 </div>
               ))}
