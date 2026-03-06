@@ -1,0 +1,255 @@
+import leaveIcon from "../assets/icons/leave.png";
+import travelIcon from "../assets/icons/travel.png";
+import certIcon from "../assets/icons/certification.png";
+import equipmentIcon from "../assets/icons/equipment.png";
+import vehicleIcon from "../assets/icons/vehicle.png";
+import procurementIcon from "../assets/icons/procurement.png";
+import claimsRoIcon from "../assets/icons/claims-regional.png";
+import claimsPoIcon from "../assets/icons/claims-provincial.png";
+import ictIcon from "../assets/icons/ict.png";
+import legalIcon from "../assets/icons/legal.png";
+
+export const KIOSK_DEFAULT_DATA = {
+  version: 1,
+  lastUpdated: new Date().toISOString(),
+  settings: {
+    kioskTitle: "Citizen's Charter Information Kiosk",
+    office: "DILG Region XIII (Caraga)",
+    address: "Purok 1-A, Doongan, Butuan City",
+    tagline: "Serbisyong Maaasahan, Madali at Mabilis",
+    hours: "Monday to Friday, 8:00 AM - 5:00 PM",
+    perPage: 6,
+    resetTimer: 60,
+    adminPin: "0000",
+    updateUrl: "",
+    autoCheckUpdates: false,
+  },
+  services: [
+    {
+      id: "s1",
+      icon: leaveIcon,
+      label: "Leave Application",
+      classification: "Simple",
+      processingTime: "1 WD, 4 hrs, 40 min",
+      fees: "None",
+      desc: "Processing of leave applications based on CSC rules and regulations and DILG policies.",
+      who: "All DILG Officials and Employees",
+      office: "FAD - Personnel Section (FAD-PS)",
+      requirements: [
+        {
+          text: "Fully accomplished CSC Form No. 6 (Application for Leave) with signature of immediate supervisor and appropriate attachments",
+          where: "DILG Intranet / CSC website",
+        },
+      ],
+      steps: [
+        "Submit accomplished leave application form with complete attachments via physical submission or Document Management System (DMS).",
+        "Agency verifies correctness of form, reviews leave balance, evaluates, and endorses to the approving authority.",
+        "Approving authority (Regional Director / Provincial Director) approves or disapproves the leave.",
+        "Receive notification on status and a copy of the approved or disapproved leave application.",
+      ],
+    },
+    {
+      id: "s2",
+      icon: travelIcon,
+      label: "Request for Authority to Travel Abroad",
+      classification: "Complex",
+      processingTime: "6 WDs, 2 hrs, 10 min",
+      fees: "None",
+      desc: "Facilitates requests for authorization for personal travel abroad based on DILG policies.",
+      who: "DILG Regional and Field Office Personnel",
+      office: "FAD - Personnel Section (FAD-PS)",
+      requirements: [
+        { text: "Letter request indicating date and place of travel", where: "Client" },
+        { text: "CSC Form No. 6 (Application for Leave)", where: "DILG Intranet / CSC website" },
+        { text: "CSC Form No. 7 (Clearance Form)", where: "DILG Intranet / CSC website" },
+      ],
+      steps: [
+        "Submit letter request with leave and clearance forms to the Field or Regional Office.",
+        "Agency facilitates approval of CSC Forms and processes leave application.",
+        "Regional Office drafts endorsement and forwards to Central Office for Travel Authority preparation.",
+        "USLG/SILG signs the Travel Authority. Receive approved Travel Authority or disapproval letter.",
+      ],
+    },
+    {
+      id: "s3",
+      icon: certIcon,
+      label: "Request for Certification and Records on Personnel Matters",
+      classification: "Simple",
+      processingTime: "2 WDs, 7 hrs, 20 min",
+      fees: "None",
+      desc: "Facilitates requests for certificates on employment and other personnel records of active and inactive employees.",
+      who: "Former and Present DILG Employees",
+      office: "FAD - Personnel Section (FAD-PS)",
+      requirements: [
+        { text: "Properly filled-out Personnel Records Requisition Form (1 original copy)", where: "DILG Regional Office website" },
+      ],
+      steps: [
+        "Submit the requisition form personally, through e-mail, or via Document Management System (DMS).",
+        "Agency checks appropriateness of request, gathers records, and prepares the requested document/s.",
+        "Claim the requested document/s and accomplish the Client Satisfaction Measurement (CSM) form.",
+      ],
+    },
+    {
+      id: "s4",
+      icon: equipmentIcon,
+      label: "Request for Release of Equipment",
+      classification: "Simple",
+      processingTime: "35 minutes",
+      fees: "None",
+      desc: "Monitors the release and return of office equipment within DILG offices.",
+      who: "DILG Central, Regional, and Field Offices",
+      office: "FAD - General Support Section (FAD-GSS)",
+      requirements: [
+        {
+          text: "Request for Equipment Release Form (1 original or electronic copy), signed by immediate supervisor",
+          where: "FAD-GSS",
+        },
+      ],
+      steps: [
+        "Submit signed request form personally, via e-mail, or through Document Management System (DMS).",
+        "Agency receives, checks, reviews, and approves the request form; details are logged.",
+        "Receive the approved form and obtain the equipment. Upon return, submit the form again for recording.",
+      ],
+    },
+    {
+      id: "s5",
+      icon: vehicleIcon,
+      label: "Provision of Vehicular Support Service",
+      classification: "Simple",
+      processingTime: "32 minutes",
+      fees: "None",
+      desc: "Administrative process of providing transport assistance to all DILG Central, Regional, and Field Office employees.",
+      who: "DILG Central, Regional, and Field Offices",
+      office: "FAD - General Support Section (FAD-GSS)",
+      requirements: [
+        { text: "Request for Vehicular Support Service Form (1 original or electronic copy)", where: "AS-GSD Motorpool / FAD-GSS" },
+        { text: "Supporting documents (e.g., approved travel order, itinerary)", where: "Client" },
+      ],
+      steps: [
+        "Submit request form with supporting documents at least 24 hours before the travel date.",
+        "Agency evaluates the request for official nature and vehicle availability; assigns driver and vehicle.",
+        "Receive approval or disapproval notice with details of the assigned driver and vehicle.",
+      ],
+    },
+    {
+      id: "s6",
+      icon: procurementIcon,
+      label: "Procurement, Inspection, Acceptance, and Issuance of Goods and Services",
+      classification: "Highly Technical",
+      processingTime: "Varies per mode",
+      fees: "None",
+      desc: "Procurement per RA No. 9184 (Government Procurement Reform Act) and inspection/acceptance per COA rules.",
+      who: "End-users, Suppliers, and Service Providers",
+      office: "FAD-GSS / BAC Secretariat",
+      requirements: [
+        { text: "Approved and funded Purchase Request (PR) - 1 original + 1 photocopy", where: "End-user Office" },
+        { text: "Project Procurement Management Plan (PPMP) - 1 photocopy", where: "AS-PMD / BAC Secretariat" },
+        { text: "Terms of Reference (TOR) - 1 original", where: "End-user Office" },
+        { text: "Market Analysis with quotations - 1 original", where: "End-user Office" },
+        { text: "Certificate of Availability of Funds - 1 original", where: "FMS - Budget and Accounting Divisions" },
+      ],
+      steps: [
+        "End-user submits approved and funded PR with PPMP and supporting documents to the BAC Secretariat.",
+        "BAC determines procurement method and posts the invitation to bid on PhilGEPS and the DILG website.",
+        "Pre-bidding conference, opening of bids, and detailed evaluation are conducted by the BAC.",
+        "Post-qualification; resolution recommending award; Notice of Award (NOA) is issued.",
+        "Supplier submits performance security; PO/Contract and Notice to Proceed (NTP) are issued.",
+      ],
+    },
+    {
+      id: "s7",
+      icon: claimsRoIcon,
+      label: "Processing and Payment of Claims (Regional Offices)",
+      classification: "Complex",
+      processingTime: "5 WDs and 7 hrs",
+      fees: "None",
+      desc: "Processing and payment of various claims through LDDAP-ADA or issuance of check per accounting rules.",
+      who: "DILG Officials & Employees, Financial Institutions (GSIS, HDMF, EMPC, PHIC, etc.)",
+      office: "FAD - Accounting Section / Cashier Section",
+      requirements: [
+        {
+          text: "Obligation Request and Status (ORS) - 1 original + 3 photocopies",
+          where: "COA website / Government Accounting Manual Vol. 2",
+        },
+        { text: "Authority of accountable officer from Head of Agency (for cash advances)", where: "Office of the Regional Director" },
+        { text: "Approved Fidelity Bond for cash accountability of P5,001 and above", where: "Bureau of Treasury / FMS" },
+      ],
+      steps: [
+        "Submit complete claim documents to the FAD - Accounting Section.",
+        "Agency reviews and processes the claim; prepares Disbursement Voucher (DV).",
+        "Approved DV forwarded to the Cashier for payment via LDDAP-ADA or check issuance.",
+        "Receive payment and sign payroll/voucher as acknowledgment.",
+      ],
+    },
+    {
+      id: "s8",
+      icon: claimsPoIcon,
+      label: "Processing and Payment of Claims (Provincial Offices)",
+      classification: "Complex",
+      processingTime: "3 WDs and 7 hrs",
+      fees: "None",
+      desc: "Processing and payment of claims for Provincial Offices through LDDAP-ADA or check per COA and accounting rules.",
+      who: "DILG Officials & Employees, Financial Institutions (GSIS, HDMF, EMPC, PHIC, etc.)",
+      office: "FAD - Accounting Section / Cashier Section",
+      requirements: [
+        {
+          text: "Obligation Request and Status (ORS) - 1 original + 3 photocopies",
+          where: "COA website / Government Accounting Manual Vol. 2",
+        },
+        { text: "Authority of accountable officer from Head of Agency (for cash advances)", where: "Office of the Provincial Director" },
+        { text: "Approved Fidelity Bond for cash accountability of P5,001 and above", where: "Bureau of Treasury / FMS" },
+      ],
+      steps: [
+        "Submit complete claim documents to the Provincial Office - Accounting Section.",
+        "Agency reviews the claim and prepares the Disbursement Voucher (DV).",
+        "Approved DV forwarded to the Cashier; payment released via LDDAP-ADA or check.",
+        "Receive payment and sign payroll/voucher as acknowledgment.",
+      ],
+    },
+    {
+      id: "s9",
+      icon: ictIcon,
+      label: "Provision of Preventive Maintenance and Technical Assistance on ICT Resources",
+      classification: "Simple",
+      processingTime: "2 WDs, 4 hrs, 15 min",
+      fees: "None",
+      desc: "Provides appropriate action on ICT-related complaints and requests for preventive maintenance and technical assistance.",
+      who: "DILG Regional and Field Office Personnel",
+      office: "Regional ICT Unit (RICTU)",
+      requirements: [
+        { text: "Accomplished Technical Assistance Request Form (TARF) - 1 copy", where: "RICTU / DILG Office Website" },
+      ],
+      steps: [
+        "Submit duly accomplished Technical Assistance Request Form (TARF) to RICTU personnel.",
+        "RICTU receives, records, and conducts initial assessment of the ICT concern.",
+        "RICTU performs preventive maintenance or technical assistance, or escalates as needed.",
+        "Receive resolution confirmation and accomplish the Client Satisfaction Measurement (CSM) form.",
+      ],
+    },
+    {
+      id: "s10",
+      icon: legalIcon,
+      label: "Review of MOAs/MOUs/Contracts/Department & Presidential Issuances",
+      classification: "Highly Technical",
+      processingTime: "25 WDs and 4 hrs",
+      fees: "None",
+      desc: "Evaluation and preparation of comments and recommendations on draft policies, MOAs, MOUs, and contracts involving the Department.",
+      who: "DILG Officials/Employees/Field Personnel, LGU Officials, and the General Public",
+      office: "DILG Regional Office - Legal Division",
+      requirements: [
+        {
+          text: "Letter request addressed to SILG/other Department Officials/Head of LLLS (1 original or electronic copy)",
+          where: "Client",
+        },
+        { text: "Draft MOA/MOU/Contract/Department or Presidential Issuance for review", where: "Client" },
+      ],
+      steps: [
+        "Submit the request with the draft document to the concerned DILG Regional Office.",
+        "Agency receives, records, routes the document, and conducts legal research on applicable laws.",
+        "Evaluates document and prepares review comments and recommendations.",
+        "Regional Director approves comments; endorses to Central Office for complex matters.",
+        "Receive the reviewed document with official comments and recommendations.",
+      ],
+    },
+  ],
+};
