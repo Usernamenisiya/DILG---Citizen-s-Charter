@@ -4,11 +4,13 @@ import { KIOSK_DEFAULT_DATA } from "./data/kioskDefaultData";
 import { loadData, saveData } from "./utils/kioskStorage";
 import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
+import KioskMenuScreen from "./components/kiosk/KioskMenuScreen";
 import KioskMainScreen from "./components/kiosk/KioskMainScreen";
 
 export default function KioskApp() {
   const [appData, setAppData] = useState(() => loadData(KIOSK_DEFAULT_DATA));
   const [screen, setScreen] = useState("idle");
+  const [activeSection, setActiveSection] = useState(null);
   const [idleHiding, setIdleHiding] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [currentService, setCurrentService] = useState(null);
@@ -68,20 +70,41 @@ export default function KioskApp() {
   }, []);
 
   useEffect(() => {
-    if (screen === "main") startInactivity();
+    if (screen === "main" || screen === "menu") startInactivity();
     else clearInactivity();
   }, [screen, startInactivity, clearInactivity]);
 
   const handleUserAction = useCallback(() => {
-    if (screen === "main") startInactivity();
+    if (screen === "main" || screen === "menu") startInactivity();
   }, [screen, startInactivity]);
 
   const showMain = () => {
     setIdleHiding(true);
     setTimeout(() => {
-      setScreen("main");
+      setScreen("menu");
       setIdleHiding(false);
     }, 600);
+  };
+
+  const selectSection = (sectionId) => {
+    setActiveSection(sectionId);
+    setScreen("main");
+    setCurrentPage(0);
+    setCurrentService(null);
+  };
+
+  const returnToMenu = () => {
+    setScreen("menu");
+    setActiveSection(null);
+    setCurrentPage(0);
+    setCurrentService(null);
+  };
+
+  const returnToIdle = () => {
+    setScreen("idle");
+    setActiveSection(null);
+    setCurrentPage(0);
+    setCurrentService(null);
   };
 
   const SERVICES_PER_PAGE = s.perPage || 6;
@@ -116,30 +139,43 @@ export default function KioskApp() {
         <KioskIdleScreen hiding={idleHiding} settings={s} onShowMain={showMain} />
       )}
 
-      <KioskMainScreen
-        visible={screen === "main"}
-        settings={s}
-        feedbackAndComplaints={feedbackAndComplaints}
-        officeDirectory={officeDirectory}
-        policiesAndIssuances={policiesAndIssuances}
-        currentService={currentService}
-        setCurrentService={setCurrentService}
-        pageServices={pageServices}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        servicesLength={services.length}
-        perPage={SERVICES_PER_PAGE}
-        onPrevPage={() => setCurrentPage(p => p - 1)}
-        onNextPage={() => setCurrentPage(p => p + 1)}
-        clockTime={clockTime}
-        clockDate={clockDate}
-        onLogoClick={handleLogoClick}
-        onOpenQueueModal={openQueueModal}
-        queueOpen={queueOpen}
-        queueNum={queueNum}
-        onCloseQueueModal={() => setQueueOpen(false)}
-        inactBarRef={inactBarRef}
-      />
+      {screen === "menu" && (
+        <KioskMenuScreen
+          visible={screen === "menu"}
+          settings={s}
+          onSelectSection={selectSection}
+          inactBarRef={inactBarRef}
+        />
+      )}
+
+      {screen === "main" && (
+        <KioskMainScreen
+          visible={screen === "main"}
+          settings={s}
+          feedbackAndComplaints={feedbackAndComplaints}
+          officeDirectory={officeDirectory}
+          policiesAndIssuances={policiesAndIssuances}
+          currentService={currentService}
+          setCurrentService={setCurrentService}
+          pageServices={pageServices}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          servicesLength={services.length}
+          perPage={SERVICES_PER_PAGE}
+          onPrevPage={() => setCurrentPage(p => p - 1)}
+          onNextPage={() => setCurrentPage(p => p + 1)}
+          clockTime={clockTime}
+          clockDate={clockDate}
+          onLogoClick={handleLogoClick}
+          onOpenQueueModal={openQueueModal}
+          queueOpen={queueOpen}
+          queueNum={queueNum}
+          onCloseQueueModal={() => setQueueOpen(false)}
+          inactBarRef={inactBarRef}
+          activeSection={activeSection}
+          onReturnToMenu={returnToMenu}
+        />
+      )}
 
       {showAdmin && (
         <AdminAccessOverlay

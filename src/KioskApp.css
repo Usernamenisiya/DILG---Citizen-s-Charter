@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap');
 
 :root {
-  --blue: #0038A8;
-  --blue-dk: #002580;
-  --blue-lt: #1a55cc;
-  --red: #CE1126;
-  --gold: #FCD116;
+  --blue: #002C76;
+  --blue-dk: #001a47;
+  --blue-lt: #0047b2;
+  --red: #C9282D;
+  --gold: #FFDE15;
   --white: #FFFFFF;
   --off: #F0F4FF;
   --text: #0d1f4a;
@@ -230,6 +230,175 @@ body {
 .main-screen.visible {
   opacity: 1;
   pointer-events: all;
+}
+
+/* ── MENU SCREEN ── */
+.menu-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--off);
+  opacity: 0;
+  transition: opacity .5s;
+  pointer-events: none;
+  z-index: 90;
+}
+
+.menu-screen.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.menu-header {
+  background: var(--blue);
+  padding: 15px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, .2);
+  position: relative;
+  overflow: visible;
+}
+
+.menu-header-left {
+  position: absolute;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-header-logo {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-header-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.menu-header-right {
+  position: absolute;
+  right: 15px;
+}
+
+
+
+.menu-title {
+  font-family: var(--fd);
+  font-weight: 800;
+  font-size: 28px;
+  color: #fff;
+  letter-spacing: .06em;
+}
+
+.menu-office {
+  font-family: var(--fd);
+  font-weight: 600;
+  font-size: 13px;
+  color: rgba(255, 255, 255, .85);
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+
+.inact-bar-menu {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--red);
+  transform-origin: left;
+  width: 100%;
+}
+
+.menu-grid {
+  flex: 1;
+  padding: 40px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.menu-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  border-top: 5px solid var(--blue);
+  box-shadow: 0 3px 12px rgba(0, 56, 168, .08);
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all .22s cubic-bezier(.34, 1.56, .64, 1);
+  position: relative;
+  overflow: hidden;
+  animation: cin .4s ease both;
+}
+
+.menu-card:hover {
+  border-color: rgba(0, 56, 168, .25);
+  box-shadow: 0 10px 28px rgba(0, 56, 168, .15);
+  transform: translateY(-4px) scale(1.02);
+}
+
+.menu-card:active {
+  transform: scale(.98);
+}
+
+.menu-icon {
+  display: none;
+}
+
+.menu-label {
+  font-family: var(--fd);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.menu-desc {
+  font-size: 18px;
+  color: var(--muted);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.menu-arrow {
+  display: none;
+}
+
+.menu-card:hover .menu-arrow {
+  opacity: 1;
+  background: rgba(0, 56, 168, .12);
+  border-color: rgba(0, 56, 168, .28);
+}
+
+.menu-footer {
+  background: #fff;
+  border-top: 1px solid rgba(0, 56, 168, .08);
+  padding: 12px 40px;
+  text-align: center;
+}
+
+.menu-footer-text {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: .05em;
+  font-weight: 600;
 }
 
 /* --- 1. Fix the Header Logo Overflow --- */

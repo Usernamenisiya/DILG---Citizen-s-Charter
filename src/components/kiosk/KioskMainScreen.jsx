@@ -24,6 +24,8 @@ export default function KioskMainScreen({
   queueNum,
   onCloseQueueModal,
   inactBarRef,
+  activeSection,
+  onReturnToMenu,
 }) {
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
@@ -48,40 +50,56 @@ export default function KioskMainScreen({
       <div className="screen-bar">
         {currentService ? (
           <>
-            <button className="back-btn" onClick={() => setCurrentService(null)}>Back to Services</button>
+            <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {activeSection === "internal" ? "Services" : activeSection === "external" ? "External" : "Menu"}</button>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-              <div className="sc-label">Internal Services</div>
+              <div className="sc-label">{activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : "Menu"}</div>
               <div className="sc-sep">&gt;</div>
               <div className="sc-label sub">{currentService.label}</div>
             </div>
           </>
         ) : (
-          <div className="sc-label">Internal Services</div>
+          <>
+            <button className="back-btn" onClick={onReturnToMenu}>Back to Menu</button>
+            <div className="sc-label" style={{ marginLeft: "auto" }}>
+              {activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
+            </div>
+          </>
         )}
       </div>
 
       <div className="content">
         {!currentService ? (
           <div>
-            <div className="greeting">Magandang araw! Pumili ng serbisyo - <strong>{settings.hours}</strong></div>
-            <div className="service-grid">
-              {pageServices.map((svc, i) => (
-                <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
-                  <div className="card-top">
-                    <div className="card-icon"><img src={svc.icon} alt={svc.label} /></div>
-                    <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>{svc.classification}</span>
-                  </div>
-                  <div className="card-label">{svc.label}</div>
-                  <div className="card-meta">
-                    <div className="card-time">Time: {svc.processingTime}</div>
-                    <div className="card-fee">{svc.fees && svc.fees !== "None" ? "Fee: " + svc.fees : "Free"}</div>
-                    <div className="card-arr"><span className="card-arr-glyph">›</span></div>
-                  </div>
+            {activeSection === "internal" && (
+              <>
+                <div className="greeting">Magandang araw! Pumili ng serbisyo - <strong>{settings.hours}</strong></div>
+                <div className="service-grid">
+                  {pageServices.map((svc, i) => (
+                    <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
+                      <div className="card-top">
+                        <div className="card-icon"><img src={svc.icon} alt={svc.label} /></div>
+                        <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>{svc.classification}</span>
+                      </div>
+                      <div className="card-label">{svc.label}</div>
+                      <div className="card-meta">
+                        <div className="card-time">Time: {svc.processingTime}</div>
+                        <div className="card-fee">{svc.fees && svc.fees !== "None" ? "Fee: " + svc.fees : "Free"}</div>
+                        <div className="card-arr"><span className="card-arr-glyph">›</span></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {!!feedbackAndComplaints && (
-              <div className="feedback-panel">
+              </>
+            )}
+
+            {activeSection === "external" && (
+              <div className="greeting" style={{ textAlign: "center", marginTop: "40px", color: "#999" }}>
+                External Services section coming soon.
+              </div>
+            )}
+
+            {activeSection === "feedback" && !!feedbackAndComplaints && (
+              <div className="feedback-panel" style={{ marginTop: 0 }}>
                 <div className="feedback-panel-head">
                   <h3>{feedbackAndComplaints.title || "Feedback and Complaints Mechanism"}</h3>
                   <div className="feedback-contact">
@@ -109,8 +127,8 @@ export default function KioskMainScreen({
               </div>
             )}
 
-            {!!officeDirectory && (
-              <div className="office-panel">
+            {activeSection === "offices" && !!officeDirectory && (
+              <div className="office-panel" style={{ marginTop: 0 }}>
                 <div className="office-panel-head">
                   <h3>{officeDirectory.title || "List of Offices"}</h3>
                   <span>{officeDirectory.region || ""}</span>
@@ -127,8 +145,8 @@ export default function KioskMainScreen({
               </div>
             )}
 
-            {!!policiesAndIssuances && (
-              <div className="issuance-panel">
+            {activeSection === "issuances" && !!policiesAndIssuances && (
+              <div className="issuance-panel" style={{ marginTop: 0 }}>
                 <div className="issuance-panel-head">
                   <h3>{policiesAndIssuances.title || "Policies and Issuances"}</h3>
                   <span>{policiesAndIssuances.subtitle || "Compliance references and deadlines"}</span>
@@ -219,7 +237,7 @@ export default function KioskMainScreen({
         )}
       </div>
 
-      {!currentService && (
+      {!currentService && (activeSection === "internal" || activeSection === "external") && (
         <div className="pagination">
           <button className="nav-btn" disabled={currentPage === 0} onClick={onPrevPage}>Previous</button>
           <div className="page-info">Page <span>{currentPage + 1}</span> of <span>{totalPages}</span></div>
