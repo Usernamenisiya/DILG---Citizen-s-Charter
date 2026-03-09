@@ -10,7 +10,7 @@ import ictIcon from "../assets/icons/ict.png";
 import legalIcon from "../assets/icons/legal.png";
 
 export const KIOSK_DEFAULT_DATA = {
-  version: 2,
+  version: 3,
   lastUpdated: new Date().toISOString(),
   settings: {
     kioskTitle: "Citizen's Charter Information Kiosk",
@@ -112,6 +112,37 @@ export const KIOSK_DEFAULT_DATA = {
         office: "Surigao del Sur",
         address: "Lianga, Surigao del Sur",
         contact: "8876-3454 loc. 8351",
+      },
+    ],
+  },
+  policiesAndIssuances: {
+    title: "Policies and Issuances",
+    subtitle: "Compliance references and deadlines under RA 11032",
+    items: [
+      {
+        id: "iss-2024-001",
+        circularNo: "DILG Circular No. 2024-001",
+        date: "January 15, 2024",
+        subject: "Updated Roles and Responsibilities of the DILG-LG Sector Committee on Anti-Red Tape (CART) and Additional Guidelines in the Implementation of the Ease of Doing Business and Efficient Government Service Delivery (EODB-EGSD) Act of 2018 in the Department",
+        coverage: "All offices in the DILG-LG Sector providing internal and external services included in the Citizen's Charter",
+        effectivity: "Immediately effective",
+        supersedes: "DILG Circular No. 2022-027 and prior inconsistent issuances",
+        approvingAuthority: "ATTY. BENJAMIN C. ABALOS, JR., Secretary",
+        highlights: [
+          "Updates the composition and functions of the DILG-CART and requires Regional Office CART Sub-Committees.",
+          "Requires compliance with RA 11032, its IRR, and ARTA issuances including process reengineering, ARP/RNF submissions, and regulatory impact requirements.",
+          "Mandates yearly Citizen's Charter updates, posting of information billboards, and online publication of the Citizen's Charter Handbook.",
+          "Implements harmonized CSM through e-CSM and requires annual Client Satisfaction reporting.",
+          "Requires ARTA helpdesk mechanisms and prompt handling of complaints from PCC, CCB, and ARTA Legal Office.",
+          "Requires support for e-BOSS implementation, Report Card Survey coordination, and communication/dissemination activities.",
+        ],
+        deadlines: [
+          { dueDate: "March 07", label: "Submit Annual Regulatory Plan (ARP)" },
+          { dueDate: "March 07", label: "Submit Zero Backlog Report" },
+          { dueDate: "March 31", label: "Regional Offices submit signed Certificate of Compliance (CoC)" },
+          { dueDate: "Last working day of April", label: "Submit Client Satisfaction Reports to ARTA" },
+          { dueDate: "Within 15 days from issuance", label: "Register and publish regulations through ONAR and newspaper of general circulation" },
+        ],
       },
     ],
   },

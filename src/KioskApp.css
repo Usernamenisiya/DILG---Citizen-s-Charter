@@ -586,6 +586,136 @@ body {
   padding: 4px 8px;
 }
 
+.issuance-panel {
+  background: linear-gradient(135deg, #ffffff 0%, #f7faff 100%);
+  border: 1px solid rgba(0, 56, 168, .16);
+  box-shadow: 0 6px 20px rgba(0, 56, 168, .08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+.issuance-panel-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.issuance-panel-head h3 {
+  font-family: var(--fd);
+  font-size: 20px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.issuance-panel-head span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.issuance-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.issuance-item {
+  border: 1px solid rgba(0, 56, 168, .12);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+}
+
+.issuance-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.issuance-item-head h4 {
+  font-family: var(--fd);
+  font-size: 17px;
+  letter-spacing: .03em;
+  color: var(--text);
+}
+
+.issuance-item-head span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.issuance-subject {
+  font-size: 13px;
+  color: #334b84;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.issuance-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.issuance-meta div {
+  font-size: 12px;
+  color: #334b84;
+  line-height: 1.35;
+}
+
+.issuance-meta strong {
+  color: var(--text);
+}
+
+.issuance-highlights {
+  margin: 0;
+  padding-left: 18px;
+  margin-bottom: 8px;
+}
+
+.issuance-highlights li {
+  font-size: 13px;
+  line-height: 1.35;
+  color: #334b84;
+  margin-bottom: 4px;
+}
+
+.issuance-deadlines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.issuance-deadline-chip {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(0, 56, 168, .08);
+  border: 1px solid rgba(0, 56, 168, .15);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.issuance-deadline-chip span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.issuance-deadline-chip strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334b84;
+}
+
 .service-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -612,6 +742,15 @@ body {
   .office-panel-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .issuance-panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .issuance-meta {
+    grid-template-columns: 1fr;
   }
 }
 

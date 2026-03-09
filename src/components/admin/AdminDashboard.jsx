@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ServiceFormEditor from "./ServiceFormEditor";
+import IssuanceFormEditor from "./IssuanceFormEditor";
 
 export default function AdminDashboard({ appData, onDataChange, onClose, defaultData }) {
   const defaultFeedback = appData.feedbackAndComplaints || defaultData.feedbackAndComplaints || {
@@ -7,15 +8,27 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     contact: { email: "", telephone: "" },
     sections: [],
   };
+  const defaultIssuances = appData.policiesAndIssuances || defaultData.policiesAndIssuances || {
+    title: "Policies and Issuances",
+    subtitle: "Compliance references and deadlines",
+    items: [],
+  };
+  const currentIssuances = appData.policiesAndIssuances || defaultIssuances;
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
+  const [issuanceEditingIdx, setIssuanceEditingIdx] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
+  const [issuanceMetaForm, setIssuanceMetaForm] = useState({
+    title: defaultIssuances.title || "Policies and Issuances",
+    subtitle: defaultIssuances.subtitle || "Compliance references and deadlines",
+  });
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [settingsStatus, setSettingsStatus] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
+  const [issuanceStatus, setIssuanceStatus] = useState(null);
   const [updateUrl, setUpdateUrl] = useState(appData.settings.updateUrl || "");
   const [autoCheck, setAutoCheck] = useState(appData.settings.autoCheckUpdates || false);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -99,6 +112,24 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     showStatus(setFeedbackStatus, "success", "✓ Feedback and complaints content saved.");
   };
 
+  const saveIssuanceMeta = () => {
+    const current = appData.policiesAndIssuances || defaultIssuances;
+    const updated = {
+      ...current,
+      title: issuanceMetaForm.title || "Policies and Issuances",
+      subtitle: issuanceMetaForm.subtitle || "Compliance references and deadlines",
+      items: current.items || [],
+    };
+
+    onDataChange({
+      ...appData,
+      policiesAndIssuances: updated,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    showStatus(setIssuanceStatus, "success", "✓ Issuance panel heading saved.");
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -128,6 +159,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     const newData = {
       ...appData,
       services: pendingUpdate.services || appData.services,
+      policiesAndIssuances: pendingUpdate.policiesAndIssuances || appData.policiesAndIssuances,
       version: pendingUpdate.version,
       lastUpdated: new Date().toISOString(),
     };
@@ -174,6 +206,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
   const navItems = [
     { id: "services", label: "Services" },
+    { id: "issuances", label: "Issuances" },
     { id: "feedback", label: "Feedback" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
@@ -197,6 +230,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               onClick={() => {
                 setActiveTab(n.id);
                 setEditingIdx(null);
+                setIssuanceEditingIdx(null);
               }}
             >
               {n.label}
@@ -255,6 +289,96 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 else services.push(svc);
                 onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
                 setEditingIdx(null);
+              }}
+            />
+          )
+        )}
+
+        {activeTab === "issuances" && (
+          issuanceEditingIdx === null ? (
+            <div>
+              <div className="admin-tab-title">Policies and Issuances</div>
+              <div className="admin-tab-sub">Manage circular summaries, compliance highlights, and deadlines displayed on the kiosk.</div>
+              <StatusMsg status={issuanceStatus} />
+
+              <div className="a-row">
+                <div className="a-field">
+                  <label className="a-label">Panel Title</label>
+                  <input
+                    className="a-input"
+                    value={issuanceMetaForm.title}
+                    onChange={e => setIssuanceMetaForm(f => ({ ...f, title: e.target.value }))}
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Panel Subtitle</label>
+                  <input
+                    className="a-input"
+                    value={issuanceMetaForm.subtitle}
+                    onChange={e => setIssuanceMetaForm(f => ({ ...f, subtitle: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+                <button className="a-btn a-btn-primary" onClick={saveIssuanceMeta}>Save Issuance Panel</button>
+                <button className="a-btn a-btn-success" onClick={() => setIssuanceEditingIdx(-1)}>+ Add New Issuance</button>
+              </div>
+
+              <div className="svc-list">
+                {(currentIssuances.items || []).map((item, idx) => (
+                  <div key={item.id} className="svc-row">
+                    <div className="svc-row-info">
+                      <div className="svc-row-name">{item.circularNo || item.title || "Untitled Issuance"}</div>
+                      <div className="svc-row-meta">{item.date || "No date"} · {item.subject || "No subject"}</div>
+                    </div>
+                    <div className="svc-row-actions">
+                      <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setIssuanceEditingIdx(idx)}>Edit</button>
+                      <button
+                        className="a-btn a-btn-danger a-btn-sm"
+                        onClick={() => {
+                          if (!window.confirm(`Delete "${item.circularNo || item.title || "issuance"}"?`)) return;
+                          const current = appData.policiesAndIssuances || defaultIssuances;
+                          const items = (current.items || []).filter((_, i) => i !== idx);
+                          onDataChange({
+                            ...appData,
+                            policiesAndIssuances: { ...current, items },
+                            version: appData.version + 1,
+                            lastUpdated: new Date().toISOString(),
+                          });
+                          showStatus(setIssuanceStatus, "success", "✓ Issuance deleted.");
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <IssuanceFormEditor
+              issuance={issuanceEditingIdx >= 0 ? currentIssuances.items?.[issuanceEditingIdx] : null}
+              onBack={() => setIssuanceEditingIdx(null)}
+              onSave={issuance => {
+                const current = appData.policiesAndIssuances || defaultIssuances;
+                const items = [...(current.items || [])];
+                if (issuanceEditingIdx >= 0) items[issuanceEditingIdx] = issuance;
+                else items.push(issuance);
+
+                onDataChange({
+                  ...appData,
+                  policiesAndIssuances: {
+                    ...current,
+                    title: issuanceMetaForm.title || current.title,
+                    subtitle: issuanceMetaForm.subtitle || current.subtitle,
+                    items,
+                  },
+                  version: appData.version + 1,
+                  lastUpdated: new Date().toISOString(),
+                });
+                setIssuanceEditingIdx(null);
+                showStatus(setIssuanceStatus, "success", "✓ Issuance saved.");
               }}
             />
           )
@@ -458,6 +582,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 </div>
                 <div className="update-diff">
                   <div className="update-diff-item">{pendingUpdate.services?.length} services in update</div>
+                  {pendingUpdate.policiesAndIssuances && <div className="update-diff-item">Policies and issuances data included</div>}
                   {pendingUpdate.settings && <div className="update-diff-item" style={{ color: "#a0b4ff" }}>⚙️ Settings updated</div>}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 12 }}>

@@ -6,6 +6,7 @@ export default function KioskMainScreen({
   settings,
   feedbackAndComplaints,
   officeDirectory,
+  policiesAndIssuances,
   currentService,
   setCurrentService,
   pageServices,
@@ -120,6 +121,49 @@ export default function KioskMainScreen({
                       <h4>{entry.office}</h4>
                       {!!entry.address && <p>{entry.address}</p>}
                       {!!entry.contact && <div className="office-contact">{entry.contact}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!!policiesAndIssuances && (
+              <div className="issuance-panel">
+                <div className="issuance-panel-head">
+                  <h3>{policiesAndIssuances.title || "Policies and Issuances"}</h3>
+                  <span>{policiesAndIssuances.subtitle || "Compliance references and deadlines"}</span>
+                </div>
+                <div className="issuance-list">
+                  {(policiesAndIssuances.items || []).map(item => (
+                    <div key={item.id} className="issuance-item">
+                      <div className="issuance-item-head">
+                        <h4>{item.circularNo || item.title || "Issuance"}</h4>
+                        {!!item.date && <span>{item.date}</span>}
+                      </div>
+                      {!!item.subject && <p className="issuance-subject">{item.subject}</p>}
+                      <div className="issuance-meta">
+                        {!!item.coverage && <div><strong>Coverage:</strong> {item.coverage}</div>}
+                        {!!item.effectivity && <div><strong>Effectivity:</strong> {item.effectivity}</div>}
+                        {!!item.supersedes && <div><strong>Supersedes:</strong> {item.supersedes}</div>}
+                        {!!item.approvingAuthority && <div><strong>Approving Authority:</strong> {item.approvingAuthority}</div>}
+                      </div>
+                      {!!item.highlights?.length && (
+                        <ul className="issuance-highlights">
+                          {item.highlights.map((highlight, index) => (
+                            <li key={index}>{highlight}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {!!item.deadlines?.length && (
+                        <div className="issuance-deadlines">
+                          {item.deadlines.map((deadline, index) => (
+                            <div key={index} className="issuance-deadline-chip">
+                              <span>{deadline.dueDate}</span>
+                              <strong>{deadline.label}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
