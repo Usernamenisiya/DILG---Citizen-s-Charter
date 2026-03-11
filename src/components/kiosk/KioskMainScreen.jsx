@@ -6,6 +6,7 @@ export default function KioskMainScreen({
   settings,
   feedbackAndComplaints,
   officeDirectory,
+  organizationalProfile,
   policiesAndIssuances,
   currentService,
   setCurrentService,
@@ -61,7 +62,7 @@ export default function KioskMainScreen({
           <>
             <button className="back-btn" onClick={onReturnToMenu}>Back to Menu</button>
             <div className="sc-label" style={{ marginLeft: "auto" }}>
-              {activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
+              {activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
             </div>
           </>
         )}
@@ -70,9 +71,11 @@ export default function KioskMainScreen({
       <div className="content">
         {!currentService ? (
           <div>
-            {activeSection === "internal" && (
+            {(activeSection === "internal" || activeSection === "external") && (
               <>
-                <div className="greeting">Magandang araw! Pumili ng serbisyo - <strong>{settings.hours}</strong></div>
+                <div className="greeting">
+                  {activeSection === "external" ? "Magandang araw! Pumili ng external service" : "Magandang araw! Pumili ng serbisyo"} - <strong>{settings.hours}</strong>
+                </div>
                 <div className="service-grid">
                   {pageServices.map((svc, i) => (
                     <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
@@ -90,12 +93,6 @@ export default function KioskMainScreen({
                   ))}
                 </div>
               </>
-            )}
-
-            {activeSection === "external" && (
-              <div className="greeting" style={{ textAlign: "center", marginTop: "40px", color: "#999" }}>
-                External Services section coming soon.
-              </div>
             )}
 
             {activeSection === "feedback" && !!feedbackAndComplaints && (
@@ -141,6 +138,46 @@ export default function KioskMainScreen({
                       {!!entry.contact && <div className="office-contact">{entry.contact}</div>}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeSection === "profile" && !!organizationalProfile && (
+              <div className="profile-panel" style={{ marginTop: 0 }}>
+                <div className="profile-panel-head">
+                  <h3>{organizationalProfile.title || "Mandate, Mission, Vision and Service Pledge"}</h3>
+                </div>
+
+                <div className="profile-grid">
+                  <div className="profile-item">
+                    <h4>I. Mandate</h4>
+                    <p>{organizationalProfile.mandate}</p>
+                  </div>
+
+                  <div className="profile-item">
+                    <h4>II. Mission</h4>
+                    <p>{organizationalProfile.mission}</p>
+                  </div>
+
+                  <div className="profile-item">
+                    <h4>III. Vision</h4>
+                    <p>{organizationalProfile.vision}</p>
+                  </div>
+
+                  <div className="profile-item profile-item-wide">
+                    <h4>IV. Service Pledge</h4>
+                    <p>{organizationalProfile.servicePledge?.intro}</p>
+                    <p>{organizationalProfile.servicePledge?.serviceCommitment}</p>
+                    {!!organizationalProfile.servicePledge?.pbest?.length && (
+                      <ul>
+                        {organizationalProfile.servicePledge.pbest.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <p>{organizationalProfile.servicePledge?.officeHoursCommitment}</p>
+                    <p>{organizationalProfile.servicePledge?.closing}</p>
+                  </div>
                 </div>
               </div>
             )}

@@ -13,10 +13,26 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     subtitle: "Compliance references and deadlines",
     items: [],
   };
+  const defaultExternalServices = appData.externalServices || defaultData.externalServices || [];
+  const defaultProfile = appData.organizationalProfile || defaultData.organizationalProfile || {
+    title: "Mandate, Mission, Vision and Service Pledge",
+    mandate: "",
+    mission: "",
+    vision: "",
+    servicePledge: {
+      intro: "",
+      serviceCommitment: "",
+      pbest: [],
+      officeHoursCommitment: "",
+      closing: "",
+    },
+  };
   const currentIssuances = appData.policiesAndIssuances || defaultIssuances;
+  const currentExternalServices = appData.externalServices || defaultExternalServices;
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
+  const [externalEditingIdx, setExternalEditingIdx] = useState(null);
   const [issuanceEditingIdx, setIssuanceEditingIdx] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
@@ -24,11 +40,23 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     title: defaultIssuances.title || "Policies and Issuances",
     subtitle: defaultIssuances.subtitle || "Compliance references and deadlines",
   });
+  const [profileForm, setProfileForm] = useState({
+    title: defaultProfile.title || "Mandate, Mission, Vision and Service Pledge",
+    mandate: defaultProfile.mandate || "",
+    mission: defaultProfile.mission || "",
+    vision: defaultProfile.vision || "",
+    pledgeIntro: defaultProfile.servicePledge?.intro || "",
+    pledgeServiceCommitment: defaultProfile.servicePledge?.serviceCommitment || "",
+    pbestText: (defaultProfile.servicePledge?.pbest || []).join("\n"),
+    pledgeOfficeHours: defaultProfile.servicePledge?.officeHoursCommitment || "",
+    pledgeClosing: defaultProfile.servicePledge?.closing || "",
+  });
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [settingsStatus, setSettingsStatus] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
   const [issuanceStatus, setIssuanceStatus] = useState(null);
+  const [profileStatus, setProfileStatus] = useState(null);
   const [updateUrl, setUpdateUrl] = useState(appData.settings.updateUrl || "");
   const [autoCheck, setAutoCheck] = useState(appData.settings.autoCheckUpdates || false);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -130,6 +158,35 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     showStatus(setIssuanceStatus, "success", "✓ Issuance panel heading saved.");
   };
 
+  const saveProfile = () => {
+    const pbest = String(profileForm.pbestText || "")
+      .split("\n")
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    const updatedProfile = {
+      title: profileForm.title || "Mandate, Mission, Vision and Service Pledge",
+      mandate: profileForm.mandate || "",
+      mission: profileForm.mission || "",
+      vision: profileForm.vision || "",
+      servicePledge: {
+        intro: profileForm.pledgeIntro || "",
+        serviceCommitment: profileForm.pledgeServiceCommitment || "",
+        pbest,
+        officeHoursCommitment: profileForm.pledgeOfficeHours || "",
+        closing: profileForm.pledgeClosing || "",
+      },
+    };
+
+    onDataChange({
+      ...appData,
+      organizationalProfile: updatedProfile,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    showStatus(setProfileStatus, "success", "✓ Mandate, Mission, Vision and Service Pledge saved.");
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -159,6 +216,8 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     const newData = {
       ...appData,
       services: pendingUpdate.services || appData.services,
+      externalServices: pendingUpdate.externalServices || appData.externalServices,
+      organizationalProfile: pendingUpdate.organizationalProfile || appData.organizationalProfile,
       policiesAndIssuances: pendingUpdate.policiesAndIssuances || appData.policiesAndIssuances,
       version: pendingUpdate.version,
       lastUpdated: new Date().toISOString(),
@@ -206,7 +265,9 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
   const navItems = [
     { id: "services", label: "Services" },
+    { id: "external-services", label: "External Services" },
     { id: "issuances", label: "Issuances" },
+    { id: "profile", label: "Profile" },
     { id: "feedback", label: "Feedback" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
@@ -230,6 +291,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               onClick={() => {
                 setActiveTab(n.id);
                 setEditingIdx(null);
+                setExternalEditingIdx(null);
                 setIssuanceEditingIdx(null);
               }}
             >
@@ -289,6 +351,73 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 else services.push(svc);
                 onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
                 setEditingIdx(null);
+              }}
+            />
+          )
+        )}
+
+        {activeTab === "external-services" && (
+          externalEditingIdx === null ? (
+            <div>
+              <div className="admin-tab-title">External Services</div>
+              <div className="admin-tab-sub">Add, edit, or remove external services shown on the kiosk.</div>
+              <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={() => setExternalEditingIdx(-1)}>
+                + Add New External Service
+              </button>
+              <div className="svc-list">
+                {currentExternalServices.map((s, idx) => (
+                  <div key={s.id || idx} className="svc-row">
+                    <div className="svc-row-icon">
+                      {s.icon && <img src={s.icon} alt={s.label} />}
+                    </div>
+                    <div className="svc-row-info">
+                      <div className="svc-row-name">{s.label}</div>
+                      <div className="svc-row-meta">{s.classification} · {s.processingTime} · Fees: {s.fees || "None"}</div>
+                    </div>
+                    <div className="svc-row-actions">
+                      <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setExternalEditingIdx(idx)}>✏️ Edit</button>
+                      <button
+                        className="a-btn a-btn-danger a-btn-sm"
+                        onClick={() => {
+                          if (!window.confirm(`Delete "${s.label}"?`)) return;
+                          const externalServices = currentExternalServices.filter((_, i) => i !== idx);
+                          onDataChange({
+                            ...appData,
+                            externalServices,
+                            version: appData.version + 1,
+                            lastUpdated: new Date().toISOString(),
+                          });
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ServiceFormEditor
+              service={externalEditingIdx >= 0 ? currentExternalServices[externalEditingIdx] : null}
+              onBack={() => setExternalEditingIdx(null)}
+              onSave={svc => {
+                const externalServices = [...currentExternalServices];
+                if (externalEditingIdx >= 0) {
+                  externalServices[externalEditingIdx] = svc;
+                } else {
+                  externalServices.push({
+                    ...svc,
+                    id: svc.id || "ext_" + Date.now(),
+                    icon: svc.icon || currentExternalServices[0]?.icon || appData.services[0]?.icon || "",
+                  });
+                }
+                onDataChange({
+                  ...appData,
+                  externalServices,
+                  version: appData.version + 1,
+                  lastUpdated: new Date().toISOString(),
+                });
+                setExternalEditingIdx(null);
               }}
             />
           )
@@ -547,6 +676,101 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button className="a-btn a-btn-primary" onClick={saveFeedback}>💾 Save Feedback Content</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "profile" && (
+          <div>
+            <div className="admin-tab-title">Mandate, Mission, Vision and Service Pledge</div>
+            <div className="admin-tab-sub">Edit the institutional profile section shown on the kiosk menu.</div>
+            <StatusMsg status={profileStatus} />
+
+            <div className="a-field">
+              <label className="a-label">Section Title</label>
+              <input
+                className="a-input"
+                value={profileForm.title}
+                onChange={e => setProfileForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">I. Mandate</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.mandate}
+                onChange={e => setProfileForm(f => ({ ...f, mandate: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">II. Mission</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.mission}
+                onChange={e => setProfileForm(f => ({ ...f, mission: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">III. Vision</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.vision}
+                onChange={e => setProfileForm(f => ({ ...f, vision: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-divider" />
+
+            <div className="a-field">
+              <label className="a-label">IV. Service Pledge - Intro</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.pledgeIntro}
+                onChange={e => setProfileForm(f => ({ ...f, pledgeIntro: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">IV. Service Pledge - Service Commitment</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.pledgeServiceCommitment}
+                onChange={e => setProfileForm(f => ({ ...f, pledgeServiceCommitment: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">PBEST Items (one per line)</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.pbestText}
+                onChange={e => setProfileForm(f => ({ ...f, pbestText: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">Office Hours Commitment</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.pledgeOfficeHours}
+                onChange={e => setProfileForm(f => ({ ...f, pledgeOfficeHours: e.target.value }))}
+              />
+            </div>
+
+            <div className="a-field">
+              <label className="a-label">Closing Statement</label>
+              <textarea
+                className="a-textarea"
+                value={profileForm.pledgeClosing}
+                onChange={e => setProfileForm(f => ({ ...f, pledgeClosing: e.target.value }))}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button className="a-btn a-btn-primary" onClick={saveProfile}>Save Profile Content</button>
             </div>
           </div>
         )}

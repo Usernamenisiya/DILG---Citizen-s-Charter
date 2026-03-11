@@ -27,6 +27,12 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
       color: "#0a7c4b",
     },
     {
+      id: "profile",
+      label: "Mandate, Mission, Vision",
+      desc: "DILG Service Pledge and institutional profile",
+      color: "#1f6f8b",
+    },
+    {
       id: "issuances",
       label: "Policies & Issuances",
       desc: "Compliance references and deadlines",

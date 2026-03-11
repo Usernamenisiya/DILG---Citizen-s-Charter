@@ -109,11 +109,14 @@ export default function KioskApp() {
 
   const SERVICES_PER_PAGE = s.perPage || 6;
   const services = appData.services;
+  const externalServices = appData.externalServices || KIOSK_DEFAULT_DATA.externalServices || [];
   const feedbackAndComplaints = appData.feedbackAndComplaints || KIOSK_DEFAULT_DATA.feedbackAndComplaints;
   const officeDirectory = appData.officeDirectory || KIOSK_DEFAULT_DATA.officeDirectory;
+  const organizationalProfile = appData.organizationalProfile || KIOSK_DEFAULT_DATA.organizationalProfile;
   const policiesAndIssuances = appData.policiesAndIssuances || KIOSK_DEFAULT_DATA.policiesAndIssuances;
-  const totalPages = Math.ceil(services.length / SERVICES_PER_PAGE);
-  const pageServices = services.slice(currentPage * SERVICES_PER_PAGE, (currentPage + 1) * SERVICES_PER_PAGE);
+  const servicesForSection = activeSection === "external" ? externalServices : services;
+  const totalPages = Math.max(1, Math.ceil(servicesForSection.length / SERVICES_PER_PAGE));
+  const pageServices = servicesForSection.slice(currentPage * SERVICES_PER_PAGE, (currentPage + 1) * SERVICES_PER_PAGE);
 
   const openQueueModal = () => {
     setQueueNum(String(Math.floor(Math.random() * 900) + 100));
@@ -154,13 +157,14 @@ export default function KioskApp() {
           settings={s}
           feedbackAndComplaints={feedbackAndComplaints}
           officeDirectory={officeDirectory}
+          organizationalProfile={organizationalProfile}
           policiesAndIssuances={policiesAndIssuances}
           currentService={currentService}
           setCurrentService={setCurrentService}
           pageServices={pageServices}
           currentPage={currentPage}
           totalPages={totalPages}
-          servicesLength={services.length}
+          servicesLength={servicesForSection.length}
           perPage={SERVICES_PER_PAGE}
           onPrevPage={() => setCurrentPage(p => p - 1)}
           onNextPage={() => setCurrentPage(p => p + 1)}
