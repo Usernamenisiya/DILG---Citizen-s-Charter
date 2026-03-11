@@ -15,8 +15,6 @@ export default function KioskApp() {
   const [currentPage, setCurrentPage] = useState(0);
   const [currentService, setCurrentService] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [queueOpen, setQueueOpen] = useState(false);
-  const [queueNum, setQueueNum] = useState("---");
   const [clockTime, setClockTime] = useState("");
   const [clockDate, setClockDate] = useState("");
   const [logoTaps, setLogoTaps] = useState(0);
@@ -118,12 +116,6 @@ export default function KioskApp() {
   const totalPages = Math.max(1, Math.ceil(servicesForSection.length / SERVICES_PER_PAGE));
   const pageServices = servicesForSection.slice(currentPage * SERVICES_PER_PAGE, (currentPage + 1) * SERVICES_PER_PAGE);
 
-  const openQueueModal = () => {
-    setQueueNum(String(Math.floor(Math.random() * 900) + 100));
-    setQueueOpen(true);
-    setTimeout(() => setQueueOpen(false), 10000);
-  };
-
   const handleLogoClick = () => {
     const next = logoTaps + 1;
     setLogoTaps(next);
@@ -171,10 +163,6 @@ export default function KioskApp() {
           clockTime={clockTime}
           clockDate={clockDate}
           onLogoClick={handleLogoClick}
-          onOpenQueueModal={openQueueModal}
-          queueOpen={queueOpen}
-          queueNum={queueNum}
-          onCloseQueueModal={() => setQueueOpen(false)}
           inactBarRef={inactBarRef}
           activeSection={activeSection}
           onReturnToMenu={returnToMenu}

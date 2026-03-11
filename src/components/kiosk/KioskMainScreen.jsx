@@ -20,10 +20,6 @@ export default function KioskMainScreen({
   clockTime,
   clockDate,
   onLogoClick,
-  onOpenQueueModal,
-  queueOpen,
-  queueNum,
-  onCloseQueueModal,
   inactBarRef,
   activeSection,
   onReturnToMenu,
@@ -68,15 +64,23 @@ export default function KioskMainScreen({
             <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {activeSection === "internal" ? "Services" : activeSection === "external" ? "External" : "Menu"}</button>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
               <div className="sc-label">{activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : "Menu"}</div>
-              <div className="sc-sep">&gt;</div>
+              <div className="sc-sep"><img src="/src/assets/icons/rightarrow.png" alt=">" className="sc-sep-glyph" /></div>
               <div className="sc-label sub">{currentService.label}</div>
             </div>
           </>
         ) : (
           <>
             <button className="back-btn" onClick={onReturnToMenu}>Back to Menu</button>
-            <div className="sc-label" style={{ marginLeft: "auto" }}>
-              {activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+              {(activeSection === "internal" || activeSection === "external") ? (
+                <div className="greeting sc-greeting">
+                  {activeSection === "external" ? "Magandang araw! Pumili ng external service" : "Magandang araw! Pumili ng serbisyo"} — <strong>{settings.hours}</strong>
+                </div>
+              ) : (
+                <div className="sc-label">
+                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -88,9 +92,6 @@ export default function KioskMainScreen({
           <div>
             {(activeSection === "internal" || activeSection === "external") && (
               <>
-                <div className="greeting">
-                  {activeSection === "external" ? "Magandang araw! Pumili ng external service" : "Magandang araw! Pumili ng serbisyo"} - <strong>{settings.hours}</strong>
-                </div>
                 <div className="service-grid">
                   {pageServices.map((svc, i) => (
                     <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
@@ -318,12 +319,6 @@ export default function KioskMainScreen({
                     <div>{step}</div>
                   </div>
                 ))}
-                <div className="queue-area">
-                  <div className="no-fee-lbl">
-                    {currentService.fees && currentService.fees !== "None" ? "Fees: " + currentService.fees : "No Fees Charged | Zero Contact Policy"}
-                  </div>
-                  <button className="get-q-btn" onClick={onOpenQueueModal}>Get Queue Number</button>
-                </div>
               </div>
             </div>
           </div>
@@ -340,16 +335,6 @@ export default function KioskMainScreen({
       )}
 
       <div className="inact-bar" ref={inactBarRef} />
-
-      <div className={`modal-ov${queueOpen ? " open" : ""}`}>
-        <div className="modal">
-          <div className="q-label">Your Queue Number</div>
-          <div className="q-num">{queueNum}</div>
-          <div className="q-svc">{currentService?.label}</div>
-          <div className="q-note">Please wait for your number to be called at the service window.</div>
-          <button className="btn-done" onClick={onCloseQueueModal}>Done</button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -62,7 +62,7 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
               key={item.id}
               className="menu-card"
               onClick={() => onSelectSection(item.id)}
-              style={{ borderTopColor: item.color }}
+              style={{ borderTopColor: item.color, "--menu-accent": item.color }}
             >
               <div className="menu-card-main">
                 <div className="menu-label">{item.label}</div>
@@ -70,7 +70,6 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
               <div className="menu-card-sub">
                 <div className={`menu-desc${isLongSubtitle ? " compact" : ""}`}>{item.desc}</div>
               </div>
-              <div className="menu-arrow"><img src="/src/assets/icons/rightarrow.png" alt="view" className="menu-arrow-glyph" /></div>
             </div>
           );
         })}
