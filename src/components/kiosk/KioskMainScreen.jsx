@@ -28,6 +28,20 @@ export default function KioskMainScreen({
   activeSection,
   onReturnToMenu,
 }) {
+  const parseOfficeContact = rawContact => {
+    const text = String(rawContact || "").trim();
+    if (!text) return { mainLine: "", extension: "", raw: "" };
+
+    const match = text.match(/^(.*?)(?:\s*(?:,|-)?\s*loc\.?\s*[:.]?\s*([A-Za-z0-9-]+))$/i);
+    if (!match) return { mainLine: text, extension: "", raw: text };
+
+    return {
+      mainLine: String(match[1] || "").trim().replace(/[\s,.-]+$/, ""),
+      extension: String(match[2] || "").trim(),
+      raw: text,
+    };
+  };
+
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
       <header className="header">
@@ -69,6 +83,7 @@ export default function KioskMainScreen({
       </div>
 
       <div className="content">
+        <div className="content-shell">
         {!currentService ? (
           <div>
             {(activeSection === "internal" || activeSection === "external") && (
@@ -85,9 +100,13 @@ export default function KioskMainScreen({
                       </div>
                       <div className="card-label">{svc.label}</div>
                       <div className="card-meta">
-                        <div className="card-time">Time: {svc.processingTime}</div>
-                        <div className="card-fee">{svc.fees && svc.fees !== "None" ? "Fee: " + svc.fees : "Free"}</div>
-                        <div className="card-arr"><span className="card-arr-glyph">›</span></div>
+                        <div className="card-time">
+                          {activeSection === "external"
+                            ? `Inquire At: ${svc.office || "DILG Office"}`
+                            : `Estimated Time: ${svc.processingTime}`}
+                        </div>
+                        {!!svc.fees && svc.fees !== "None" && <div className="card-fee">Fee: {svc.fees}</div>}
+                        <div className="card-arr"><img src="/src/assets/icons/rightarrow.png" alt="view" className="card-arr-glyph" /></div>
                       </div>
                     </div>
                   ))}
@@ -133,9 +152,46 @@ export default function KioskMainScreen({
                 <div className="office-grid">
                   {(officeDirectory.entries || []).map((entry, idx) => (
                     <div key={idx} className="office-item">
-                      <h4>{entry.office}</h4>
-                      {!!entry.address && <p>{entry.address}</p>}
-                      {!!entry.contact && <div className="office-contact">{entry.contact}</div>}
+                      {(() => {
+                        const contactInfo = parseOfficeContact(entry.contact);
+                        return (
+                          <div className="office-item-inner">
+                            <div className="office-section">
+                              <div className="office-section-label">Office</div>
+                              <h4>{entry.office}</h4>
+                            </div>
+
+                            <div className="office-section">
+                              <div className="office-section-label">Address</div>
+                              <p>{entry.address || "Not provided"}</p>
+                            </div>
+
+                            {!!contactInfo.mainLine && (
+                              <div className="office-section office-section-contact">
+                                <div className="office-section-label">Contact</div>
+                                <div className="office-contact-line">
+                                  <span className="office-contact-label">Main Line:</span>
+                                  <strong>{contactInfo.mainLine}</strong>
+                                </div>
+                                {!!contactInfo.extension && (
+                                  <div className="office-contact-line">
+                                    <span className="office-contact-label">Extension:</span>
+                                    <strong>{contactInfo.extension}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {!contactInfo.mainLine && (
+                              <div className="office-section office-section-contact">
+                                <div className="office-section-label">Contact</div>
+                                <div className="office-contact-line">
+                                  <strong>Not provided</strong>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -234,7 +290,7 @@ export default function KioskMainScreen({
                 <p>{currentService.desc}</p>
                 <div className="d-chips">
                   <span className="chip cls">Class: {currentService.classification}</span>
-                  <span className="chip">Time: {currentService.processingTime}</span>
+                  <span className="chip">Estimated Time: {currentService.processingTime}</span>
                   <span className="chip">{currentService.fees && currentService.fees !== "None" ? "Fee: " + currentService.fees : "No Fees"}</span>
                   <span className="chip">Who: {currentService.who}</span>
                   <span className="chip">Office: {currentService.office}</span>
@@ -272,6 +328,7 @@ export default function KioskMainScreen({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {!currentService && (activeSection === "internal" || activeSection === "external") && (

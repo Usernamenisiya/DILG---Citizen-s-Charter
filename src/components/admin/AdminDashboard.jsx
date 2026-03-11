@@ -13,6 +13,11 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     subtitle: "Compliance references and deadlines",
     items: [],
   };
+  const defaultOfficeDirectory = appData.officeDirectory || defaultData.officeDirectory || {
+    title: "List of Offices",
+    region: "",
+    entries: [],
+  };
   const defaultExternalServices = appData.externalServices || defaultData.externalServices || [];
   const defaultProfile = appData.organizationalProfile || defaultData.organizationalProfile || {
     title: "Mandate, Mission, Vision and Service Pledge",
@@ -29,11 +34,13 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   };
   const currentIssuances = appData.policiesAndIssuances || defaultIssuances;
   const currentExternalServices = appData.externalServices || defaultExternalServices;
+  const currentOfficeDirectory = appData.officeDirectory || defaultOfficeDirectory;
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
   const [externalEditingIdx, setExternalEditingIdx] = useState(null);
   const [issuanceEditingIdx, setIssuanceEditingIdx] = useState(null);
+  const [officeEditingIdx, setOfficeEditingIdx] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -53,9 +60,15 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   });
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
+  const [officeMetaForm, setOfficeMetaForm] = useState({
+    title: defaultOfficeDirectory.title || "List of Offices",
+    region: defaultOfficeDirectory.region || "",
+  });
+  const [officeForm, setOfficeForm] = useState({ office: "", address: "", contact: "" });
   const [settingsStatus, setSettingsStatus] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
   const [issuanceStatus, setIssuanceStatus] = useState(null);
+  const [officeStatus, setOfficeStatus] = useState(null);
   const [profileStatus, setProfileStatus] = useState(null);
   const [updateUrl, setUpdateUrl] = useState(appData.settings.updateUrl || "");
   const [autoCheck, setAutoCheck] = useState(appData.settings.autoCheckUpdates || false);
@@ -187,6 +200,71 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     showStatus(setProfileStatus, "success", "✓ Mandate, Mission, Vision and Service Pledge saved.");
   };
 
+  const saveOfficeMeta = () => {
+    const updated = {
+      ...currentOfficeDirectory,
+      title: officeMetaForm.title || "List of Offices",
+      region: officeMetaForm.region || "",
+      entries: currentOfficeDirectory.entries || [],
+    };
+
+    onDataChange({
+      ...appData,
+      officeDirectory: updated,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    showStatus(setOfficeStatus, "success", "✓ Office directory heading saved.");
+  };
+
+  const startEditOffice = idx => {
+    const entry = (currentOfficeDirectory.entries || [])[idx] || { office: "", address: "", contact: "" };
+    setOfficeForm({
+      office: entry.office || "",
+      address: entry.address || "",
+      contact: entry.contact || "",
+    });
+    setOfficeEditingIdx(idx);
+  };
+
+  const startAddOffice = () => {
+    setOfficeForm({ office: "", address: "", contact: "" });
+    setOfficeEditingIdx(-1);
+  };
+
+  const saveOfficeEntry = () => {
+    const officeName = String(officeForm.office || "").trim();
+    if (!officeName) {
+      showStatus(setOfficeStatus, "error", "✗ Office name is required.");
+      return;
+    }
+
+    const nextEntry = {
+      office: officeName,
+      address: String(officeForm.address || "").trim(),
+      contact: String(officeForm.contact || "").trim(),
+    };
+
+    const entries = [...(currentOfficeDirectory.entries || [])];
+    if (officeEditingIdx >= 0) entries[officeEditingIdx] = nextEntry;
+    else entries.push(nextEntry);
+
+    onDataChange({
+      ...appData,
+      officeDirectory: {
+        ...currentOfficeDirectory,
+        title: officeMetaForm.title || currentOfficeDirectory.title || "List of Offices",
+        region: officeMetaForm.region || currentOfficeDirectory.region || "",
+        entries,
+      },
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    setOfficeEditingIdx(null);
+    setOfficeForm({ office: "", address: "", contact: "" });
+    showStatus(setOfficeStatus, "success", "✓ Office entry saved.");
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -218,6 +296,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       services: pendingUpdate.services || appData.services,
       externalServices: pendingUpdate.externalServices || appData.externalServices,
       organizationalProfile: pendingUpdate.organizationalProfile || appData.organizationalProfile,
+      officeDirectory: pendingUpdate.officeDirectory || appData.officeDirectory,
       policiesAndIssuances: pendingUpdate.policiesAndIssuances || appData.policiesAndIssuances,
       version: pendingUpdate.version,
       lastUpdated: new Date().toISOString(),
@@ -269,6 +348,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     { id: "issuances", label: "Issuances" },
     { id: "profile", label: "Profile" },
     { id: "feedback", label: "Feedback" },
+    { id: "offices", label: "Offices" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
     { id: "backup", label: "Backup" },
@@ -293,6 +373,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 setEditingIdx(null);
                 setExternalEditingIdx(null);
                 setIssuanceEditingIdx(null);
+                setOfficeEditingIdx(null);
               }}
             >
               {n.label}
@@ -680,6 +761,108 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
           </div>
         )}
 
+        {activeTab === "offices" && (
+          <div>
+            <div className="admin-tab-title">List of Offices</div>
+            <div className="admin-tab-sub">Manage office directory title, region, and office contact entries shown in the kiosk.</div>
+            <StatusMsg status={officeStatus} />
+
+            <div className="a-row">
+              <div className="a-field">
+                <label className="a-label">Panel Title</label>
+                <input
+                  className="a-input"
+                  value={officeMetaForm.title}
+                  onChange={e => setOfficeMetaForm(f => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div className="a-field">
+                <label className="a-label">Region Label</label>
+                <input
+                  className="a-input"
+                  value={officeMetaForm.region}
+                  onChange={e => setOfficeMetaForm(f => ({ ...f, region: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+              <button className="a-btn a-btn-primary" onClick={saveOfficeMeta}>Save Office Directory Header</button>
+              <button className="a-btn a-btn-success" onClick={startAddOffice}>+ Add Office Entry</button>
+            </div>
+
+            {officeEditingIdx !== null && (
+              <div>
+                <div className="a-divider" />
+                <div className="a-field">
+                  <label className="a-label">Office Name</label>
+                  <input
+                    className="a-input"
+                    value={officeForm.office}
+                    onChange={e => setOfficeForm(f => ({ ...f, office: e.target.value }))}
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Address</label>
+                  <textarea
+                    className="a-textarea"
+                    value={officeForm.address}
+                    onChange={e => setOfficeForm(f => ({ ...f, address: e.target.value }))}
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Contact</label>
+                  <input
+                    className="a-input"
+                    value={officeForm.contact}
+                    onChange={e => setOfficeForm(f => ({ ...f, contact: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+                  <button className="a-btn a-btn-primary" onClick={saveOfficeEntry}>Save Office Entry</button>
+                  <button className="a-btn a-btn-ghost" onClick={() => setOfficeEditingIdx(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            <div className="svc-list">
+              {(currentOfficeDirectory.entries || []).map((entry, idx) => (
+                <div key={`${entry.office}-${idx}`} className="svc-row">
+                  <div className="svc-row-info">
+                    <div className="svc-row-name">{entry.office || "Untitled Office"}</div>
+                    <div className="svc-row-meta">{entry.contact || "No contact"}</div>
+                    {!!entry.address && <div className="svc-row-meta">{entry.address}</div>}
+                  </div>
+                  <div className="svc-row-actions">
+                    <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditOffice(idx)}>Edit</button>
+                    <button
+                      className="a-btn a-btn-danger a-btn-sm"
+                      onClick={() => {
+                        if (!window.confirm(`Delete "${entry.office || "office entry"}"?`)) return;
+                        const entries = (currentOfficeDirectory.entries || []).filter((_, i) => i !== idx);
+                        onDataChange({
+                          ...appData,
+                          officeDirectory: {
+                            ...currentOfficeDirectory,
+                            title: officeMetaForm.title || currentOfficeDirectory.title || "List of Offices",
+                            region: officeMetaForm.region || currentOfficeDirectory.region || "",
+                            entries,
+                          },
+                          version: appData.version + 1,
+                          lastUpdated: new Date().toISOString(),
+                        });
+                        showStatus(setOfficeStatus, "success", "✓ Office entry deleted.");
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {activeTab === "profile" && (
           <div>
             <div className="admin-tab-title">Mandate, Mission, Vision and Service Pledge</div>
@@ -806,6 +989,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 </div>
                 <div className="update-diff">
                   <div className="update-diff-item">{pendingUpdate.services?.length} services in update</div>
+                  {pendingUpdate.officeDirectory && <div className="update-diff-item">Office directory data included</div>}
                   {pendingUpdate.policiesAndIssuances && <div className="update-diff-item">Policies and issuances data included</div>}
                   {pendingUpdate.settings && <div className="update-diff-item" style={{ color: "#a0b4ff" }}>⚙️ Settings updated</div>}
                 </div>
