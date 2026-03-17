@@ -105,7 +105,7 @@ export default function KioskApp() {
     setCurrentService(null);
   };
 
-  const SERVICES_PER_PAGE = s.perPage || 6;
+  const SERVICES_PER_PAGE = s.perPage || 8;
   const services = appData.services;
   const externalServices = appData.externalServices || KIOSK_DEFAULT_DATA.externalServices || [];
   const feedbackAndComplaints = appData.feedbackAndComplaints || KIOSK_DEFAULT_DATA.feedbackAndComplaints;

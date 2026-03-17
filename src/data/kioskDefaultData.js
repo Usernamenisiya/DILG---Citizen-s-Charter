@@ -18,7 +18,7 @@ export const KIOSK_DEFAULT_DATA = {
     address: "Purok 1-A, Doongan, Butuan City",
     tagline: "Serbisyong Maaasahan, Madali at Mabilis",
     hours: "Monday to Friday, 8:00 AM - 5:00 PM",
-    perPage: 6,
+    perPage: 9,
     resetTimer: 60,
     adminPin: "0000",
     updateUrl: "",

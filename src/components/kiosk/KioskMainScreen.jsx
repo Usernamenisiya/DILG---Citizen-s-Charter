@@ -89,7 +89,7 @@ export default function KioskMainScreen({
       <div className="content">
         <div className="content-shell">
         {!currentService ? (
-          <div>
+          <div className="card-menu">
             {(activeSection === "internal" || activeSection === "external") && (
               <>
                 <div className="service-grid">
