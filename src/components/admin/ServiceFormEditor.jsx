@@ -57,7 +57,7 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
   };
 
   return (
-    <div style={{ color: "#fff" }}>
+    <div style={{ color: "#fff" }} className="admin-sub-content">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
         <button className="a-btn a-btn-ghost a-btn-sm" onClick={onBack}>← Back</button>
         <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: ".04em", flex: 1 }}>

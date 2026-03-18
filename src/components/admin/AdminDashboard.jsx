@@ -343,7 +343,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   };
 
   const navItems = [
-    { id: "services", label: "Services" },
+    { id: "services", label: "Internal Services" },
     { id: "external-services", label: "External Services" },
     { id: "issuances", label: "Issuances" },
     { id: "profile", label: "Profile" },
@@ -389,7 +389,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       <div className="admin-content">
         {activeTab === "services" && (
           editingIdx === null ? (
-            <div>
+            <div className="admin-sub-content">
               <div className="admin-tab-title">Services</div>
               <div className="admin-tab-sub">Add, edit, or remove services shown on the kiosk.</div>
               <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={() => setEditingIdx(-1)}>
@@ -439,7 +439,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
         {activeTab === "external-services" && (
           externalEditingIdx === null ? (
-            <div>
+            <div className="admin-sub-content">
               <div className="admin-tab-title">External Services</div>
               <div className="admin-tab-sub">Add, edit, or remove external services shown on the kiosk.</div>
               <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={() => setExternalEditingIdx(-1)}>
@@ -506,7 +506,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
         {activeTab === "issuances" && (
           issuanceEditingIdx === null ? (
-            <div>
+            <div className="admin-sub-content">
               <div className="admin-tab-title">Policies and Issuances</div>
               <div className="admin-tab-sub">Manage circular summaries, compliance highlights, and deadlines displayed on the kiosk.</div>
               <StatusMsg status={issuanceStatus} />
@@ -595,7 +595,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "settings" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">Settings</div>
             <div className="admin-tab-sub">Configure kiosk display text, timers, and admin PIN.</div>
             <StatusMsg status={settingsStatus} />
@@ -663,7 +663,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "feedback" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">Feedback and Complaints</div>
             <div className="admin-tab-sub">Edit the kiosk's feedback and complaints mechanism section shown on the main services screen.</div>
             <StatusMsg status={feedbackStatus} />
@@ -762,7 +762,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "offices" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">List of Offices</div>
             <div className="admin-tab-sub">Manage office directory title, region, and office contact entries shown in the kiosk.</div>
             <StatusMsg status={officeStatus} />
@@ -864,7 +864,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "profile" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">Mandate, Mission, Vision and Service Pledge</div>
             <div className="admin-tab-sub">Edit the institutional profile section shown on the kiosk menu.</div>
             <StatusMsg status={profileStatus} />
@@ -959,7 +959,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "updates" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">Online Updates</div>
             <div className="admin-tab-sub">Fetch the latest service data from a remote JSON file.</div>
             <StatusMsg status={updateStatus} />
@@ -1009,7 +1009,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
         )}
 
         {activeTab === "backup" && (
-          <div>
+          <div className="admin-sub-content">
             <div className="admin-tab-title">Backup & Restore</div>
             <div className="admin-tab-sub">Export all data or restore from a previous backup. PIN is never exported.</div>
             <StatusMsg status={backupStatus} />
