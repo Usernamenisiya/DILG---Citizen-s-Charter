@@ -16,7 +16,7 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.circularNo.trim() && !form.title.trim()) {
       alert("Circular number or title is required.");
       return;
@@ -39,7 +39,7 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
         return { dueDate: parts[0].trim(), label: parts.slice(1).join("|").trim() };
       });
 
-    onSave({
+    const issuanceData = {
       id: issuance?.id || "iss_" + Date.now(),
       title: form.title.trim(),
       circularNo: form.circularNo.trim(),
@@ -51,7 +51,27 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
       approvingAuthority: form.approvingAuthority.trim(),
       highlights,
       deadlines,
-    });
+    };
+
+    // --- FETCH CALL TO SAVE TO DATABASE ---
+    try {
+      const response = await fetch('http://localhost:3000/api/issuances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(issuanceData),
+      });
+
+      if (response.ok) {
+        alert("Issuance saved to database!");
+        if (onSave) onSave(issuanceData);
+        if (onBack) onBack();
+      } else {
+        alert("Failed to save issuance.");
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      alert("Server is offline.");
+    }
   };
 
   return (

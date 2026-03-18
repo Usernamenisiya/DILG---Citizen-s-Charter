@@ -42,6 +42,25 @@ export default function KioskApp() {
     return () => clearInterval(id);
   }, []);
 
+  // ... your existing clock useEffect ...
+
+  useEffect(() => {
+    // Fetch Services
+    fetch('http://localhost:3000/api/services')
+      .then(res => res.json())
+      .then(data => setAppData(p => ({ ...p, services: data })));
+
+    // Fetch Issuances
+    fetch('http://localhost:3000/api/issuances')
+      .then(res => res.json())
+      .then(data => setAppData(p => ({ 
+        ...p, 
+        policiesAndIssuances: { ...p.policiesAndIssuances, items: data } 
+      })));
+  }, []);
+
+
+
   const startInactivity = useCallback(() => {
     clearTimeout(inactTimerRef.current);
     const bar = inactBarRef.current;

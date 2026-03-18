@@ -43,17 +43,48 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
     });
   const addStep = () => setForm(f => ({ ...f, steps: [...f.steps, ""] }));
 
-  const handleSave = () => {
+  // --- UPDATED SAVE FUNCTION ---
+  const handleSave = async () => {
+    // 1. Validate the form
     if (!form.label.trim()) {
       alert("Service name is required.");
       return;
     }
-    onSave({
+
+    // 2. Package the data exactly how the backend expects it
+    const serviceData = {
       ...form,
       id: service?.id || "svc_" + Date.now(),
       requirements: form.requirements.filter(r => r.text.trim()),
       steps: form.steps.filter(s => s.trim()),
-    });
+    };
+
+    // 3. Send to Node.js backend
+    try {
+      const response = await fetch('http://localhost:3000/api/services', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(serviceData), 
+      });
+
+      if (response.ok) {
+        alert("Service saved to database!");
+        
+        // If a parent component still needs to know it saved, trigger onSave
+        if (onSave) onSave(serviceData);
+        
+        // Automatically click the "Back" button for the user to return to the list
+        if (onBack) onBack(); 
+        
+      } else {
+        alert("Failed to save. Please check the server.");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Cannot connect to server. Is Node.js running?");
+    }
   };
 
   return (
