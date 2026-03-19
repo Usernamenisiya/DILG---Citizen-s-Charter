@@ -1,6 +1,6 @@
 import dilgIcon from "../../Dilg.svg";
 import touchIcon from "../../assets/icons/touch.svg";
-import idleVideo from "../../assets/video/videoplayback.mp4";
+import idleVideo from "../../assets/video/samplevid.mp4";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
