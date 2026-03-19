@@ -153,7 +153,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   line-height: 1.4;
 }
 .idle-header-logo {
-  width: 64px; height: 64px; flex-shrink: 0;
+  width: 100px; height: 100px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
 .idle-header-logo img {
@@ -201,7 +201,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   display: flex; align-items: center; gap: 10px;
   padding: 0 36px 0 20px;
   background: var(--red); flex-shrink: 0;
-  font-family: var(--fd); font-size: 20px; font-weight: 800;
+  font-family: var(--fd); font-size: 50px; font-weight: 800;
   letter-spacing: 0.13em; color: #fff;
   text-transform: uppercase; white-space: nowrap;
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
@@ -216,7 +216,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   display: flex; align-items: center; gap: 40px;
   white-space: nowrap;
   animation: idle-ticker-scroll 38s linear infinite;
-  font-family: var(--fd); font-size: 32px; font-weight: 700;
+  font-family: var(--fd); font-size: 80px; font-weight: 700;
   color: #fff; letter-spacing: 0.02em;
 }
 .idle-ticker-sep { color: var(--gold); font-size: 14px; opacity: 0.9; }
