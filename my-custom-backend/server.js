@@ -34,6 +34,33 @@ if (checkUsers.count === 0) {
 
 // --- API ROUTES (The Bridge to your Front-End) ---
 
+// Route: Get all users
+app.get('/api/users', (req, res) => {
+  try {
+    const users = db.prepare('SELECT * FROM users').all();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users.' });
+  }
+});
+
+// Route: Get all services (from main services table)
+app.get('/api/services', (req, res) => {
+  try {
+    const services = db.prepare('SELECT * FROM services').all();
+    const formattedServices = services.map(svc => ({
+      ...svc,
+      requirements: JSON.parse(svc.requirements || '[]'),
+      steps: JSON.parse(svc.steps || '[]')
+    }));
+    res.json(formattedServices);
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ error: 'Failed to fetch services.' });
+  }
+});
+
 // Route: Add a new Service (POST request)
 // --- GET ROUTE: Fetch services by type ---
 app.get('/api/services/:type', (req, res) => {

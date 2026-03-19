@@ -125,7 +125,7 @@ export default function KioskApp() {
   };
 
   const SERVICES_PER_PAGE = s.perPage || 8;
-  const services = appData.services;
+  const services = appData.services || [];
   const externalServices = appData.externalServices || KIOSK_DEFAULT_DATA.externalServices || [];
   const feedbackAndComplaints = appData.feedbackAndComplaints || KIOSK_DEFAULT_DATA.feedbackAndComplaints;
   const officeDirectory = appData.officeDirectory || KIOSK_DEFAULT_DATA.officeDirectory;
