@@ -102,7 +102,7 @@ export default function KioskApp() {
       setIdleHiding(false);
     }, 600);
   };
-
+//comment
   const selectSection = (sectionId) => {
     setActiveSection(sectionId);
     setScreen("main");
