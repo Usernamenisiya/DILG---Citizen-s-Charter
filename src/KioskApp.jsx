@@ -45,13 +45,21 @@ export default function KioskApp() {
   // ... your existing clock useEffect ...
 
   useEffect(() => {
-    // Fetch Services
-    fetch('/api/services')
+    // Fetch Internal Services
+    fetch('/api/services/internal')
       .then(res => {
-        if (!res.ok) throw new Error(`Failed to load services (${res.status})`);
+        if (!res.ok) throw new Error(`Failed to load internal services (${res.status})`);
         return res.json();
       })
       .then(data => setAppData(p => ({ ...p, services: data })));
+
+    // Fetch External Services
+    fetch('/api/services/external')
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load external services (${res.status})`);
+        return res.json();
+      })
+      .then(data => setAppData(p => ({ ...p, externalServices: data })));
 
     // Fetch Issuances
     fetch('/api/issuances')

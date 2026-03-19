@@ -424,6 +424,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             </div>
           ) : (
             <ServiceFormEditor
+              serviceType="internal"
               service={editingIdx >= 0 ? appData.services[editingIdx] : null}
               onBack={() => setEditingIdx(null)}
               onSave={svc => {
@@ -479,6 +480,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             </div>
           ) : (
             <ServiceFormEditor
+              serviceType="external"
               service={externalEditingIdx >= 0 ? currentExternalServices[externalEditingIdx] : null}
               onBack={() => setExternalEditingIdx(null)}
               onSave={svc => {

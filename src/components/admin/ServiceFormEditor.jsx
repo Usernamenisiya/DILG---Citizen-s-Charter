@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function ServiceFormEditor({ service, onSave, onBack }) {
+export default function ServiceFormEditor({ serviceType = "internal", service, onSave, onBack }) {
   const [form, setForm] = useState({
     icon: service?.icon || "",
     classification: service?.classification || "Simple",
@@ -61,14 +61,12 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
 
  
     const isEditing = !!service;
-    
-  
-    const type = 'internal'; 
+    const type = serviceType;
 
     // Construct the correct URL and Method
-    const url = isEditing 
-      ? `http://localhost:3000/api/services/${type}/${service.id}` 
-      : `http://localhost:3000/api/services/${type}`;
+    const url = isEditing
+      ? `/api/services/${type}/${service.id}`
+      : `/api/services/${type}`;
       
     const httpMethod = isEditing ? 'PUT' : 'POST';
 
@@ -110,7 +108,7 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
 
     try {
       // 2. Send the DELETE request to your backend
-      const response = await fetch(`http://localhost:3000/api/services/${type}/${serviceId}`, {
+      const response = await fetch(`/api/services/${type}/${serviceId}`, {
         method: 'DELETE',
       });
 

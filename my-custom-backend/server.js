@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
+const path = require('path');
 
 // 1. Initialize the Express App
 const app = express();
@@ -11,8 +12,9 @@ app.use(cors()); // Allows your front-end to request data without security error
 app.use(express.json()); // Allows your server to understand JSON data
 
 // 3. Connect to the SQLite Database
-// This creates 'app-data.db' in your folder automatically
-const db = new Database('app-data.db', { verbose: console.log });
+// Use an absolute path so the same DB is used regardless of where npm start is executed.
+const dbPath = path.join(__dirname, 'app-data.db');
+const db = new Database(dbPath, { verbose: console.log });
 
 // 4. Create your Table
 db.exec(`
@@ -51,6 +53,8 @@ app.get('/api/services', (req, res) => {
     const services = db.prepare('SELECT * FROM services').all();
     const formattedServices = services.map(svc => ({
       ...svc,
+      desc: svc.description || '',
+      who: svc.whoMayAvail || '',
       requirements: JSON.parse(svc.requirements || '[]'),
       steps: JSON.parse(svc.steps || '[]')
     }));
@@ -110,6 +114,8 @@ app.get('/api/services/:type', (req, res) => {
     
     const formattedServices = services.map(svc => ({
       ...svc,
+      desc: svc.description || '',
+      who: svc.whoMayAvail || '',
       requirements: JSON.parse(svc.requirements || '[]'),
       steps: JSON.parse(svc.steps || '[]')
     }));
