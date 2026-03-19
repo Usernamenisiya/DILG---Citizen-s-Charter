@@ -75,14 +75,14 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .idle-header {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 96px;
+  height: 120px;
   display: flex;
   align-items: stretch;
   background: rgba(0, 26, 71, 0.88);
   border-bottom: 4px solid var(--gold);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  z-index: 11;
+  z-index: 12;
   overflow: hidden;
 }
 
@@ -94,6 +94,63 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   padding: 0 24px 0 28px;
   flex-shrink: 0;
   border-right: 1px solid rgba(255,222,21,0.18);
+}
+
+/* Right side: ticker fills remaining space */
+.idle-header .idle-ticker {
+  flex: 1;
+  position: static;
+  top: auto; left: auto; right: auto;
+  height: 100%;
+  border-bottom: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Internal separator */
+.idle-header-sep {
+  width: 1px;
+  background: rgba(255,222,21,0.25);
+  margin: 16px 0;
+  flex-shrink: 0;
+}
+
+/* Address block — far right */
+.idle-header-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  flex-shrink: 0;
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  opacity: 0.85;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  max-width: 280px;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* Menu screen address block — far right */
+.mnav-topbar-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 22px;
+  flex-shrink: 0;
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  opacity: 0.85;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  max-width: 260px;
+  line-height: 1.4;
 }
 .idle-header-logo {
   width: 64px; height: 64px; flex-shrink: 0;
@@ -141,13 +198,13 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   display: flex; align-items: stretch; overflow: hidden;
 }
 .idle-ticker-badge {
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 40px 0 22px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 36px 0 20px;
   background: var(--red); flex-shrink: 0;
-  font-family: var(--fd); font-size: 18px; font-weight: 800;
+  font-family: var(--fd); font-size: 20px; font-weight: 800;
   letter-spacing: 0.13em; color: #fff;
   text-transform: uppercase; white-space: nowrap;
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
 }
 .idle-ticker-track {
   flex: 1; overflow: hidden;
@@ -159,36 +216,38 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   display: flex; align-items: center; gap: 40px;
   white-space: nowrap;
   animation: idle-ticker-scroll 38s linear infinite;
-  font-family: var(--fb); font-size: 22px; font-weight: 400;
-  color: rgba(255,255,255,0.92); letter-spacing: 0.025em;
+  font-family: var(--fd); font-size: 32px; font-weight: 700;
+  color: #fff; letter-spacing: 0.02em;
 }
-.idle-ticker-sep { color: var(--gold); font-size: 14px; opacity: 0.7; }
+.idle-ticker-sep { color: var(--gold); font-size: 14px; opacity: 0.9; }
 @keyframes idle-ticker-scroll {
   0% { transform: translateX(0); } 100% { transform: translateX(-50%); }
 }
 
-/* ── TAP PROMPT — fixed at bottom center, faded ── */
+/* ── TAP PROMPT — bottom center, fully visible ── */
 .idle-tap {
   position: absolute;
-  bottom: 56px;
+  bottom: 110px;
   left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column;
-  align-items: center; gap: 14px;
-  opacity: 0.45;
+  align-items: center; gap: 18px;
 }
 .tap-ring {
-  width: 90px; height: 90px; border-radius: 50%;
-  border: 3px solid rgba(252,209,22,.5);
+  width: 130px; height: 130px; border-radius: 50%;
+  border: 4px solid var(--gold);
   display: flex; align-items: center; justify-content: center;
   animation: pulse-ring 2s ease-in-out infinite;
-  color: var(--gold);
+  background: rgba(255, 222, 21, 0.10);
+  box-shadow: 0 0 32px rgba(255, 222, 21, 0.35), 0 0 64px rgba(255, 222, 21, 0.15);
 }
-.touchIcon { color: var(--gold); width: 72px; height: 72px; }
+.touchIcon { color: var(--gold); width: 100px; height: 100px; }
 .tap-label {
   font-family: var(--fd);
-  font-size: clamp(16px, 1.9vw, 26px);
-  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--gold); animation: blink 2.5s ease-in-out infinite;
+  font-size: 36px;
+  font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 24px rgba(255, 222, 21, 0.8), 0 2px 8px rgba(0,0,0,0.8);
+  animation: blink 2.5s ease-in-out infinite;
 }
 
 /* Idle seal — no longer needed as center element, hide it */
@@ -196,35 +255,37 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .idle-title { display: none; }
 .idle-sub   { display: none; }
 .idle-office { display: none; }
-.idle-ticker-badge {
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 40px 0 22px;
-  background: var(--red);
-  flex-shrink: 0;
-  font-family: var(--fd); font-size: 18px; font-weight: 800;
-  letter-spacing: 0.13em; color: #fff;
-  text-transform: uppercase; white-space: nowrap;
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
-}
-.idle-ticker-track {
-  flex: 1; overflow: hidden;
-  display: flex; align-items: center; padding: 0 16px;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
-}
-.idle-ticker-inner {
-  display: flex; align-items: center; gap: 40px;
-  white-space: nowrap;
-  animation: idle-ticker-scroll 38s linear infinite;
-  font-family: var(--fb); font-size: 22px; font-weight: 400;
-  color: rgba(255,255,255,0.92); letter-spacing: 0.025em;
-}
-.idle-ticker-sep { color: var(--gold); font-size: 14px; opacity: 0.7; }
-@keyframes idle-ticker-scroll {
-  0% { transform: translateX(0); } 100% { transform: translateX(-50%); }
-}
 
 /* idle-seal hidden — layout handled by idle-header */
+
+/* ── YOUTUBE VIDEO BACKGROUND ── */
+/* Wrapper clips the oversized iframe to screen bounds */
+.idle-video-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none; /* clicks pass through to idle-screen */
+}
+/* iframe is scaled up and centered to fill like object-fit: cover */
+.idle-video-bg {
+  position: absolute;
+  top: 50%; left: 50%;
+  /* YouTube iframes need to be larger than viewport to cover it fully */
+  width: 177.78vh;  /* 16:9 ratio based on height */
+  height: 56.25vw;  /* 16:9 ratio based on width */
+  min-width: 100%;
+  min-height: 100%;
+  transform: translate(-50%, -50%);
+  border: none;
+  pointer-events: none;
+}
+.idle-video-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 10, 40, 0.58);
+  z-index: 1;
+}
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
@@ -256,9 +317,21 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 @keyframes blink { 0%, 100% { opacity:1; } 50% { opacity:.4; } }
 
 .idle-footer {
-  position: absolute; bottom: 18px;
-  font-size: 11px; color: rgba(255,255,255,.3);
-  letter-spacing: .04em; text-align: center;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 14px 40px;
+  font-family: var(--fd);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: .06em;
+  text-align: center;
+  background: rgba(0, 26, 71, 0.75);
+  border-top: 2px solid var(--gold);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  z-index: 12;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -327,6 +400,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .mnav-topbar-clock {
   display: flex; flex-direction: column; justify-content: center;
   padding: 0 32px 0 26px; flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,0.10);
 }
 .mnav-clock-time {
   font-family: var(--fd); font-size: 52px;
@@ -344,10 +418,10 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   overflow: hidden; min-width: 0;
 }
 .mnav-ticker-badge {
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 42px 0 24px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 50px 0 26px;
   background: var(--red); flex-shrink: 0;
-  font-family: var(--fd); font-size: 18px; font-weight: 800;
+  font-family: var(--fd); font-size: 30px; font-weight: 800;
   letter-spacing: .13em; color: #fff;
   text-transform: uppercase; white-space: nowrap;
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
@@ -358,12 +432,12 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 .mnav-ticker-inner {
-  display: flex; align-items: center; gap: 40px;
+  display: flex; align-items: center; gap: 48px;
   white-space: nowrap; animation: ticker-scroll 30s linear infinite;
-  font-family: var(--fb); font-size: 22px;
-  color: rgba(255,255,255,0.92); letter-spacing: .025em;
+  font-family: var(--fd); font-size: 50px; font-weight: 700;
+  color: #fff; letter-spacing: .02em;
 }
-.mnav-ticker-sep { color: var(--gold); font-size: 14px; opacity: .7; }
+.mnav-ticker-sep { color: var(--gold); font-size: 22px; opacity: .9; }
 @keyframes ticker-scroll {
   0% { transform: translateX(0); } 100% { transform: translateX(-50%); }
 }
@@ -377,13 +451,21 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   flex: 1; min-width: 0; display: flex; flex-direction: column;
   transition: flex 0.32s cubic-bezier(0.4,0,0.2,1);
 }
-/* 2×3 grid for 6 cards */
+/* Grid layout matching sketch:
+   Internal  (full width)
+   External  (full width)
+   Feedback | Policies  (50/50)
+*/
 .mnav-grid {
   flex: 1; display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   padding: 24px 36px;
   align-content: center;
+}
+/* Full-width card spans both columns */
+.mnav-card--full {
+  grid-column: 1 / -1;
 }
 
 /* Card */

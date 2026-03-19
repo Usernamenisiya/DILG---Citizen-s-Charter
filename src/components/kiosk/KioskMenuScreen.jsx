@@ -86,10 +86,10 @@ const NAV_STANDALONE = [
 ];
 
 const GRID_CARDS = [
-  { id: "internal",  label: "Internal Services",     desc: "Services for DILG staff and employees",     color: "#002C76" },
-  { id: "external",  label: "External Services",     desc: "Services for the public",                   color: "#C9282D" },
-  { id: "feedback",  label: "Feedback & Complaints", desc: "How to provide feedback or file complaints", color: "#FFDE15" },
-  { id: "issuances", label: "Policies & Issuances",  desc: "Compliance references and deadlines",       color: "#b45309" },
+  { id: "internal",  label: "Internal Services",     desc: "Services for DILG staff and employees",     color: "#002C76", span: "full" },
+  { id: "external",  label: "External Services",     desc: "Services for the public",                   color: "#C9282D", span: "full" },
+  { id: "feedback",  label: "Feedback & Complaints", desc: "How to provide feedback or file complaints", color: "#FFDE15", span: "half" },
+  { id: "issuances", label: "Policies & Issuances",  desc: "Compliance references and deadlines",       color: "#b45309", span: "half" },
 ];
 
 function NavItem({ id, label, color, onClick }) {
@@ -160,14 +160,11 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
       {/* ══ FULL-WIDTH LAYOUT: topbar + content ══ */}
       <div className={`mnav-layout${drawerOpen ? " drawer-open" : ""}`}>
 
-        {/* ── TOPBAR ──────────────────────────────────────────
-            [ hamburger ] [ clock ] [ ▶ ANNOUNCEMENT ticker  ]
-            ─────────────────────────────────────────────────── */}
+        {/* ── TOPBAR: ☰ | Clock | ANNOUNCEMENT ticker ── */}
         <div className="mnav-topbar">
-          {/* Inactivity shrink bar — top edge */}
           <div ref={inactBarRef} className="inact-bar-menu" />
 
-          {/* Hamburger toggle — stopPropagation prevents conflict with outside-click handler */}
+          {/* Hamburger */}
           <button
             ref={hamburgerRef}
             className={`mnav-hamburger${drawerOpen ? " open" : ""}`}
@@ -182,7 +179,6 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
             </svg>
           </button>
 
-          {/* Vertical separator */}
           <div className="mnav-topbar-sep" />
 
           {/* Clock */}
@@ -270,12 +266,11 @@ export default function KioskMenuScreen({ visible, settings, onSelectSection, in
 
           {/* Cards area */}
           <div className="mnav-cards-area">
-          {/* 2×3 card grid */}
           <div className="mnav-grid">
             {GRID_CARDS.map((card, i) => (
               <div
                 key={card.id}
-                className="mnav-card"
+                className={`mnav-card${card.span === "full" ? " mnav-card--full" : ""}`}
                 style={{ "--card-color": card.color, animationDelay: `${i * 0.08}s` }}
                 onClick={() => onSelectSection(card.id)}
               >

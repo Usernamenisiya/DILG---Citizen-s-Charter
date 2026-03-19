@@ -1,5 +1,6 @@
 import dilgIcon from "../../Dilg.svg";
 import touchIcon from "../../assets/icons/touch.svg";
+import idleVideo from "../../assets/video/videoplayback.mp4";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
@@ -9,12 +10,23 @@ export default function KioskIdleScreen({ hiding, settings, onShowMain }) {
 
   return (
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>
-      <div className="idle-bg" />
+
+      {/* ── VIDEO BACKGROUND ── */}
+      <video
+        className="idle-video-bg"
+        src={idleVideo}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
+
+      {/* Dark overlay so content stays readable */}
+      <div className="idle-video-overlay" />
       <div className="idle-pat" />
 
-      {/* ── HEADER: logo + title + announcement all in one bar ── */}
+      {/* ── HEADER: logo + title LEFT · announcement ticker RIGHT ── */}
       <div className="idle-header">
-        {/* Left: logo + title */}
         <div className="idle-header-left">
           <div className="idle-header-logo">
             <img src={dilgIcon} alt="DILG Seal" />
@@ -26,7 +38,7 @@ export default function KioskIdleScreen({ hiding, settings, onShowMain }) {
           </div>
         </div>
 
-        {/* Right: announcement ticker fills remaining space */}
+        {/* Announcement ticker */}
         <div className="idle-ticker">
           <div className="idle-ticker-badge">
             <svg viewBox="0 0 24 24" fill="white" width="22" height="22">
@@ -48,7 +60,7 @@ export default function KioskIdleScreen({ hiding, settings, onShowMain }) {
         </div>
       </div>
 
-      {/* ── TAP PROMPT — fixed to bottom center, faded ── */}
+      {/* ── TAP PROMPT — bottom center, faded ── */}
       <div className="idle-tap">
         <div className="tap-ring">
           <img className="touchIcon" src={touchIcon} alt="Touch icon" />
