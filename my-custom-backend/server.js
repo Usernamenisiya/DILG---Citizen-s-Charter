@@ -151,47 +151,7 @@ app.listen(port, () => {
 
 
 // Route: Edit/Update an existing Issuance (PUT request)
-app.put('/api/issuances/:id', (req, res) => {
-  const id = req.params.id; // Grab the ID from the URL
-  const iss = req.body;     // Grab the updated data from React /////
 
-  try {
-    // We use the SQL "UPDATE" command instead of "INSERT INTO"
-    const updateIssuance = db.prepare(`
-      UPDATE issuances 
-      SET title = ?, circularNo = ?, subject = ?, date = ?, coverage = ?, 
-          effectivity = ?, supersedes = ?, approvingAuthority = ?, 
-          highlights = ?, deadlines = ?
-      WHERE id = ?
-    `);
-
-    // Run the update, making sure the 'id' is the very last variable!
-    const info = updateIssuance.run(
-      iss.title || "",
-      iss.circularNo || "",
-      iss.subject || "",
-      iss.date || "",
-      iss.coverage || "",
-      iss.effectivity || "",
-      iss.supersedes || "",
-      iss.approvingAuthority || "",
-      JSON.stringify(iss.highlights || []),
-      JSON.stringify(iss.deadlines || []),
-      id
-    );
-
-    // info.changes tells us how many rows were updated. 
-    // If it's 0, the ID didn't exist in the database.
-    if (info.changes === 0) {
-      return res.status(404).json({ error: "Issuance not found." });
-    }
-
-    res.json({ message: "Issuance updated successfully!" });
-  } catch (error) {
-    console.error("Error updating issuance:", error);
-    res.status(500).json({ error: "Failed to update issuance in the database." });
-  }
-});
 
 // 4b. Create the Services Table
 db.exec(`
