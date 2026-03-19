@@ -61,6 +61,43 @@ app.get('/api/services', (req, res) => {
   }
 });
 
+// Route: Add a new service to main services table
+app.post('/api/services', (req, res) => {
+  const svc = req.body;
+
+  if (!svc.label) {
+    return res.status(400).json({ error: 'Service name is required.' });
+  }
+
+  try {
+    const insertService = db.prepare(`
+      INSERT INTO services (
+        id, icon, classification, label, description,
+        processingTime, fees, whoMayAvail, office, requirements, steps
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertService.run(
+      svc.id || `svc_${Date.now()}`,
+      svc.icon || '',
+      svc.classification || 'Simple',
+      svc.label,
+      svc.desc || '',
+      svc.processingTime || '',
+      svc.fees || 'None',
+      svc.who || '',
+      svc.office || '',
+      JSON.stringify(svc.requirements || []),
+      JSON.stringify(svc.steps || [])
+    );
+
+    res.status(201).json({ message: 'Service saved successfully!' });
+  } catch (error) {
+    console.error('Error saving service:', error);
+    res.status(500).json({ error: 'Failed to save service to the database.' });
+  }
+});
+
 // Route: Add a new Service (POST request)
 // --- GET ROUTE: Fetch services by type ---
 app.get('/api/services/:type', (req, res) => {

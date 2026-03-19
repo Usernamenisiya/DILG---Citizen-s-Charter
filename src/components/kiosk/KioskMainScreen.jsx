@@ -38,6 +38,11 @@ export default function KioskMainScreen({
     };
   };
 
+  const serviceIconSrc = svc => {
+    const icon = String(svc?.icon || "").trim();
+    return icon || null;
+  };
+
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
       <header className="header">
@@ -96,7 +101,9 @@ export default function KioskMainScreen({
                   {pageServices.map((svc, i) => (
                     <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
                       <div className="card-top">
-                        <div className="card-icon"><img src={svc.icon} alt={svc.label} /></div>
+                        <div className="card-icon">
+                          {serviceIconSrc(svc) ? <img src={serviceIconSrc(svc)} alt={svc.label} /> : null}
+                        </div>
                         <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>{svc.classification}</span>
                       </div>
                       <div className="card-label">{svc.label}</div>
@@ -285,7 +292,9 @@ export default function KioskMainScreen({
         ) : (
           <div>
             <div className="detail-banner">
-              <div className="detail-icon"><img src={currentService.icon} alt={currentService.label} /></div>
+              <div className="detail-icon">
+                {serviceIconSrc(currentService) ? <img src={serviceIconSrc(currentService)} alt={currentService.label} /> : null}
+              </div>
               <div className="detail-meta">
                 <h2>{currentService.label}</h2>
                 <p>{currentService.desc}</p>

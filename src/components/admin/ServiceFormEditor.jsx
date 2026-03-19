@@ -59,9 +59,9 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
       steps: form.steps.filter(s => s.trim()),
     };
 
-    // 3. Send to Node.js backend
+    // 3. Send to backend
     try {
-      const response = await fetch('http://localhost:3000/api/services', {
+      const response = await fetch('/api/services', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +79,8 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
         if (onBack) onBack(); 
         
       } else {
-        alert("Failed to save. Please check the server.");
+        const errText = await response.text();
+        alert("Failed to save. Server says: " + (errText || response.status));
       }
     } catch (error) {
       console.error("Network error:", error);

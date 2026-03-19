@@ -46,17 +46,26 @@ export default function KioskApp() {
 
   useEffect(() => {
     // Fetch Services
-    fetch('http://localhost:3000/api/services')
-      .then(res => res.json())
+    fetch('/api/services')
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load services (${res.status})`);
+        return res.json();
+      })
       .then(data => setAppData(p => ({ ...p, services: data })));
 
     // Fetch Issuances
-    fetch('http://localhost:3000/api/issuances')
-      .then(res => res.json())
+    fetch('/api/issuances')
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load issuances (${res.status})`);
+        return res.json();
+      })
       .then(data => setAppData(p => ({ 
         ...p, 
         policiesAndIssuances: { ...p.policiesAndIssuances, items: data } 
-      })));
+      })))
+      .catch(err => {
+        console.error("API load failed:", err);
+      });
   }, []);
 
 
