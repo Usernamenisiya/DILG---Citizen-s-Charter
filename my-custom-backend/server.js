@@ -189,3 +189,4 @@ db.exec(`
 `);
 console.log("Issuances table ready!");
 
+//hatdog
