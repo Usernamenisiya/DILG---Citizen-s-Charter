@@ -1335,6 +1335,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .pv2-text--preview {
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
