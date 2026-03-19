@@ -409,10 +409,16 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setEditingIdx(idx)}>✏️ Edit</button>
                       <button
                         className="a-btn a-btn-danger a-btn-sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!window.confirm(`Delete "${s.label}"?`)) return;
+                          const response = await fetch(`/api/services/internal/${s.id}`, { method: "DELETE" });
+                          if (!response.ok) {
+                            const errText = await response.text();
+                            alert("Failed to delete service from database: " + (errText || response.status));
+                            return;
+                          }
                           const services = appData.services.filter((_, i) => i !== idx);
-                          onDataChange({ ...appData, services, version: appData.version + 1 });
+                          onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
                         }}
                       >
                         🗑
@@ -460,8 +466,14 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setExternalEditingIdx(idx)}>✏️ Edit</button>
                       <button
                         className="a-btn a-btn-danger a-btn-sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!window.confirm(`Delete "${s.label}"?`)) return;
+                          const response = await fetch(`/api/services/external/${s.id}`, { method: "DELETE" });
+                          if (!response.ok) {
+                            const errText = await response.text();
+                            alert("Failed to delete service from database: " + (errText || response.status));
+                            return;
+                          }
                           const externalServices = currentExternalServices.filter((_, i) => i !== idx);
                           onDataChange({
                             ...appData,
