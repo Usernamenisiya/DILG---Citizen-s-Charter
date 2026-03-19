@@ -43,7 +43,7 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
     });
   const addStep = () => setForm(f => ({ ...f, steps: [...f.steps, ""] }));
 
-  // --- UPDATED SAVE FUNCTION ---
+ 
   const handleSave = async () => {
     // 1. Validate the form
     if (!form.label.trim()) {
@@ -59,10 +59,23 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
       steps: form.steps.filter(s => s.trim()),
     };
 
-    // 3. Send to backend
+ 
+    const isEditing = !!service;
+    
+  
+    const type = 'internal'; 
+
+    // Construct the correct URL and Method
+    const url = isEditing 
+      ? `http://localhost:3000/api/services/${type}/${service.id}` 
+      : `http://localhost:3000/api/services/${type}`;
+      
+    const httpMethod = isEditing ? 'PUT' : 'POST';
+
+    // 4. Send to backend
     try {
-      const response = await fetch('/api/services', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: httpMethod,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -70,9 +83,9 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
       });
 
       if (response.ok) {
-        alert("Service saved to database!");
+        alert(isEditing ? "Service updated!" : "Service saved to database!");
         
-        // If a parent component still needs to know it saved, trigger onSave
+        // Pass the FULL serviceData object back to the list so it updates visually
         if (onSave) onSave(serviceData);
         
         // Automatically click the "Back" button for the user to return to the list
@@ -85,6 +98,37 @@ export default function ServiceFormEditor({ service, onSave, onBack }) {
     } catch (error) {
       console.error("Network error:", error);
       alert("Cannot connect to server. Is Node.js running?");
+    }
+  };
+
+  const handleDelete = async (serviceId) => {
+    // 1. Always ask for confirmation first! Accidental clicks happen.
+    const isConfirmed = window.confirm("Are you sure you want to delete this service? This cannot be undone.");
+    if (!isConfirmed) return;
+
+    const type = 'internal'; // Change to 'external' if you are on the external list
+
+    try {
+      // 2. Send the DELETE request to your backend
+      const response = await fetch(`http://localhost:3000/api/services/${type}/${serviceId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert("Service successfully deleted!");
+        
+        // 3. REMOVE IT FROM THE SCREEN
+        // Assuming your list of services is stored in a state variable called 'services'
+        // and you update it using 'setServices' or similar:
+        //
+        // setServices(prevServices => prevServices.filter(svc => svc.id !== serviceId));
+        
+      } else {
+        alert("Failed to delete service from the database.");
+      }
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      alert("Server is offline.");
     }
   };
 

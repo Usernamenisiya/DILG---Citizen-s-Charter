@@ -122,6 +122,7 @@ app.get('/api/services/:type', (req, res) => {
 });
 
 // --- POST ROUTE: Save a new service ---
+// --- POST ROUTE: Save a new service ---
 app.post('/api/services/:type', (req, res) => {
   const type = req.params.type; 
   const tableName = type === 'external' ? 'external_services' : 'internal_services';
@@ -139,27 +140,29 @@ app.post('/api/services/:type', (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    // Safely check for both variable name types to prevent blank data
     insertService.run(
       svc.id,
       svc.icon || "",
       svc.classification || "Simple",
-      svc.label,
-      svc.desc || "",
+      svc.label || "Unnamed Service",
+      svc.description || svc.desc || "", 
       svc.processingTime || "",
       svc.fees || "None",
-      svc.who || "",
+      svc.whoMayAvail || svc.who || "", 
       svc.office || "",
       JSON.stringify(svc.requirements || []), 
       JSON.stringify(svc.steps || [])
     );
     
     res.status(201).json({ message: 'Service saved successfully!', id: svc.id });
+    
   } catch (error) {
-    console.error(`Error saving ${type} service:`, error);
-    res.status(500).json({ error: 'Failed to save service to the database.' });
+    // This logs the EXACT reason to your terminal!
+    console.error(`\n❌ SQLITE ERROR saving ${type} service:`, error.message, "\n");
+    res.status(500).json({ error: 'Failed to save service.' });
   }
 });
-
 
 // Route: Save a new Issuance
 app.post('/api/issuances', (req, res) => {
@@ -207,6 +210,74 @@ app.get('/api/issuances', (req, res) => {
     res.status(500).json({ error: "Failed to fetch issuances." });
   }
 });
+
+// --- PUT ROUTE: Edit an existing service ---
+app.put('/api/services/:type/:id', (req, res) => {
+  const type = req.params.type;
+  const id = req.params.id;
+  const tableName = type === 'external' ? 'external_services' : 'internal_services';
+  const svc = req.body;
+
+  try {
+    const updateService = db.prepare(`
+      UPDATE ${tableName} 
+      SET icon = ?, classification = ?, label = ?, description = ?, 
+          processingTime = ?, fees = ?, whoMayAvail = ?, office = ?, 
+          requirements = ?, steps = ?
+      WHERE id = ?
+    `);
+
+    // We use "||" to safely catch the data whether your frontend 
+    // named it 'desc' OR 'description'.
+    const info = updateService.run(
+      svc.icon || "",
+      svc.classification || "Simple",
+      svc.label || "Unnamed Service", 
+      svc.description || svc.desc || "", 
+      svc.processingTime || "",
+      svc.fees || "None",
+      svc.whoMayAvail || svc.who || "", 
+      svc.office || "",
+      JSON.stringify(svc.requirements || []),
+      JSON.stringify(svc.steps || []),
+      id
+    );
+
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Service not found in database." });
+    }
+    res.json({ message: "Service updated successfully!" });
+    
+  } catch (error) {
+    // This logs the EXACT reason to your terminal!
+    console.error(`\n❌ SQLITE ERROR updating ${type} service:`, error.message, "\n");
+    res.status(500).json({ error: 'Failed to update service.' });
+  }
+});
+
+// --- DELETE ROUTE: Remove a service ---
+app.delete('/api/services/:type/:id', (req, res) => {
+  const type = req.params.type;
+  const id = req.params.id;
+  const tableName = type === 'external' ? 'external_services' : 'internal_services';
+
+  try {
+    // The SQL command to delete a specific row by its ID
+    const deleteService = db.prepare(`DELETE FROM ${tableName} WHERE id = ?`);
+    
+    const info = deleteService.run(id);
+
+    // If changes === 0, it means the ID wasn't found in the database
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Service not found." });
+    }
+    
+    res.json({ message: "Service deleted successfully!" });
+  } catch (error) {
+    console.error(`Error deleting ${type} service:`, error);
+    res.status(500).json({ error: 'Failed to delete service.' });
+  }
+});
 // --- START THE SERVER ---
 app.listen(port, () => {
   console.log(`\n🚀 Server is running and listening on http://localhost:${port}`);
@@ -252,5 +323,41 @@ db.exec(`
   )
 `);
 console.log("Issuances table ready!");
+
+// --- CREATE INTERNAL SERVICES TABLE ---
+db.exec(`
+  CREATE TABLE IF NOT EXISTS internal_services (
+    id TEXT PRIMARY KEY,
+    icon TEXT,
+    classification TEXT,
+    label TEXT NOT NULL,
+    description TEXT,
+    processingTime TEXT,
+    fees TEXT,
+    whoMayAvail TEXT,
+    office TEXT,
+    requirements TEXT,
+    steps TEXT
+  )
+`);
+console.log("Internal services table ready!");
+
+// --- CREATE EXTERNAL SERVICES TABLE ---
+db.exec(`
+  CREATE TABLE IF NOT EXISTS external_services (
+    id TEXT PRIMARY KEY,
+    icon TEXT,
+    classification TEXT,
+    label TEXT NOT NULL,
+    description TEXT,
+    processingTime TEXT,
+    fees TEXT,
+    whoMayAvail TEXT,
+    office TEXT,
+    requirements TEXT,
+    steps TEXT
+  )
+`);
+console.log("External services table ready!");
 
 //hatdog

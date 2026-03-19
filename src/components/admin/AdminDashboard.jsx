@@ -837,23 +837,8 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditOffice(idx)}>Edit</button>
                     <button
                       className="a-btn a-btn-danger a-btn-sm"
-                      onClick={() => {
-                        if (!window.confirm(`Delete "${entry.office || "office entry"}"?`)) return;
-                        const entries = (currentOfficeDirectory.entries || []).filter((_, i) => i !== idx);
-                        onDataChange({
-                          ...appData,
-                          officeDirectory: {
-                            ...currentOfficeDirectory,
-                            title: officeMetaForm.title || currentOfficeDirectory.title || "List of Offices",
-                            region: officeMetaForm.region || currentOfficeDirectory.region || "",
-                            entries,
-                          },
-                          version: appData.version + 1,
-                          lastUpdated: new Date().toISOString(),
-                        });
-                        showStatus(setOfficeStatus, "success", "✓ Office entry deleted.");
-                      }}
-                    >
+                      onClick={() => handleDelete(svc.id)}
+                      >
                       Delete
                     </button>
                   </div>
