@@ -1,4 +1,6 @@
 import { useState } from "react";
+import IconPickerModal from "./IconPickerModal";
+import { ServiceIcon, normalizeLucideIconName } from "../ServiceIcon";
 
 export default function ServiceFormEditor({ serviceType = "internal", service, onSave, onBack }) {
   const [form, setForm] = useState({
@@ -13,6 +15,7 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
     requirements: service?.requirements ? [...service.requirements] : [],
     steps: service?.steps ? [...service.steps] : [],
   });
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setReq = (i, key, val) =>
@@ -99,37 +102,6 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
     }
   };
 
-  const handleDelete = async (serviceId) => {
-    // 1. Always ask for confirmation first! Accidental clicks happen.
-    const isConfirmed = window.confirm("Are you sure you want to delete this service? This cannot be undone.");
-    if (!isConfirmed) return;
-
-    const type = 'internal'; // Change to 'external' if you are on the external list
-
-    try {
-      // 2. Send the DELETE request to your backend
-      const response = await fetch(`/api/services/${type}/${serviceId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        alert("Service successfully deleted!");
-        
-        // 3. REMOVE IT FROM THE SCREEN
-        // Assuming your list of services is stored in a state variable called 'services'
-        // and you update it using 'setServices' or similar:
-        //
-        // setServices(prevServices => prevServices.filter(svc => svc.id !== serviceId));
-        
-      } else {
-        alert("Failed to delete service from the database.");
-      }
-    } catch (error) {
-      console.error("Error deleting service:", error);
-      alert("Server is offline.");
-    }
-  };
-
   return (
     <div style={{ color: "#fff" }} className="admin-sub-content">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
@@ -153,6 +125,20 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
         <label className="a-label">Service Name</label>
         <input className="a-input" value={form.label} onChange={e => set("label", e.target.value)} />
       </div>
+
+      <div className="a-field">
+        <label className="a-label">Service Icon</label>
+        <div className="service-icon-field">
+          <div className="service-icon-preview">
+            <ServiceIcon icon={form.icon} label={form.label} size={22} className="service-icon-preview-glyph" />
+            <span>{normalizeLucideIconName(form.icon) || (form.icon ? "Image icon" : "No icon selected")}</span>
+          </div>
+          <button type="button" className="a-btn a-btn-ghost a-btn-sm" onClick={() => setShowIconPicker(true)}>
+            Choose Icon
+          </button>
+        </div>
+      </div>
+
       <div className="a-field">
         <label className="a-label">Short Description</label>
         <textarea className="a-textarea" rows={2} value={form.desc} onChange={e => set("desc", e.target.value)} />
@@ -212,6 +198,16 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
         </div>
         <button className="dyn-add-btn" onClick={addStep}>+ Add Step</button>
       </div>
+
+      <IconPickerModal
+        open={showIconPicker}
+        initialValue={form.icon}
+        onClose={() => setShowIconPicker(false)}
+        onSelect={icon => {
+          set("icon", icon);
+          setShowIconPicker(false);
+        }}
+      />
     </div>
   );
 }

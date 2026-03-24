@@ -1,6 +1,7 @@
 import dilgIcon from "../../Dilg.svg";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 import { useEffect, useRef, useState } from "react";
+import { ServiceIcon } from "../ServiceIcon";
 
 export default function KioskMainScreen({
   visible,
@@ -37,11 +38,6 @@ export default function KioskMainScreen({
       extension: String(match[2] || "").trim(),
       raw: text,
     };
-  };
-
-  const serviceIconSrc = svc => {
-    const icon = String(svc?.icon || "").trim();
-    return icon || null;
   };
 
   /* ── Modal state ── */
@@ -124,7 +120,7 @@ export default function KioskMainScreen({
                     <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
                       <div className="card-top">
                         <div className="card-icon">
-                          {serviceIconSrc(svc) ? <img src={serviceIconSrc(svc)} alt={svc.label} /> : null}
+                          <ServiceIcon icon={svc.icon} label={svc.label} size={30} className="card-icon-glyph" />
                         </div>
                         <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>{svc.classification}</span>
                       </div>
@@ -396,7 +392,7 @@ export default function KioskMainScreen({
           <div>
             <div className="detail-banner">
               <div className="detail-icon">
-                {serviceIconSrc(currentService) ? <img src={serviceIconSrc(currentService)} alt={currentService.label} /> : null}
+                <ServiceIcon icon={currentService.icon} label={currentService.label} size={36} className="detail-icon-glyph" color="#fff" />
               </div>
               <div className="detail-meta">
                 <h2>{currentService.label}</h2>

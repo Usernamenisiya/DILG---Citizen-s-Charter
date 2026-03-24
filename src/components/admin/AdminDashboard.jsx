@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ServiceFormEditor from "./ServiceFormEditor";
 import IssuanceFormEditor from "./IssuanceFormEditor";
+import { ServiceIcon } from "../ServiceIcon";
 
 export default function AdminDashboard({ appData, onDataChange, onClose, defaultData }) {
   const defaultFeedback = appData.feedbackAndComplaints || defaultData.feedbackAndComplaints || {
@@ -538,7 +539,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 {appData.services.map((s, idx) => (
                   <div key={s.id} className="svc-row">
                     <div className="svc-row-icon">
-                      {s.icon && <img src={s.icon} alt={s.label} />}
+                      <ServiceIcon icon={s.icon} label={s.label} size={22} className="svc-row-icon-glyph" />
                     </div>
                     <div className="svc-row-info">
                       <div className="svc-row-name">{s.label}</div>
@@ -595,7 +596,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 {currentExternalServices.map((s, idx) => (
                   <div key={s.id || idx} className="svc-row">
                     <div className="svc-row-icon">
-                      {s.icon && <img src={s.icon} alt={s.label} />}
+                      <ServiceIcon icon={s.icon} label={s.label} size={22} className="svc-row-icon-glyph" />
                     </div>
                     <div className="svc-row-info">
                       <div className="svc-row-name">{s.label}</div>
