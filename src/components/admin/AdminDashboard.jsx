@@ -77,12 +77,37 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   const [backupStatus, setBackupStatus] = useState(null);
   const [pasteJson, setPasteJson] = useState("");
 
+  const callApi = async (url, options = {}) => {
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options,
+    });
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const data = await response.json();
+        if (data?.error) message = data.error;
+      } catch {
+        // Ignore invalid JSON responses.
+      }
+      throw new Error(message);
+    }
+
+    if (response.status === 204) return null;
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  };
+
   const showStatus = (setter, type, msg) => {
     setter({ type, msg });
     setTimeout(() => setter(null), 5000);
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     const s = {
       ...settingsForm,
       perPage: parseInt(settingsForm.perPage) || 6,
@@ -90,11 +115,22 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       updateUrl,
       autoCheckUpdates: autoCheck,
     };
-    onDataChange({ ...appData, settings: { ...appData.settings, ...s, adminPin: appData.settings.adminPin } });
-    showStatus(setSettingsStatus, "success", "✓ Settings saved successfully.");
+
+    const nextSettings = { ...appData.settings, ...s, adminPin: appData.settings.adminPin };
+
+    try {
+      await callApi("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify(nextSettings),
+      });
+      onDataChange({ ...appData, settings: nextSettings });
+      showStatus(setSettingsStatus, "success", "✓ Settings saved successfully.");
+    } catch (e) {
+      showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const changePin = () => {
+  const changePin = async () => {
     if (oldPin !== appData.settings.adminPin) {
       showStatus(setSettingsStatus, "error", "✗ Current PIN is incorrect.");
       return;
@@ -103,13 +139,22 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       showStatus(setSettingsStatus, "error", "✗ New PIN must be exactly 4 digits.");
       return;
     }
-    onDataChange({ ...appData, settings: { ...appData.settings, adminPin: newPin } });
-    setOldPin("");
-    setNewPin("");
-    showStatus(setSettingsStatus, "success", "✓ PIN changed successfully.");
+    const nextSettings = { ...appData.settings, adminPin: newPin };
+    try {
+      await callApi("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify(nextSettings),
+      });
+      onDataChange({ ...appData, settings: nextSettings });
+      setOldPin("");
+      setNewPin("");
+      showStatus(setSettingsStatus, "success", "✓ PIN changed successfully.");
+    } catch (e) {
+      showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const saveFeedback = () => {
+  const saveFeedback = async () => {
     const normalizeLines = txt =>
       String(txt || "")
         .split("\n")
@@ -143,17 +188,39 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       sections,
     };
 
-    onDataChange({
-      ...appData,
-      feedbackAndComplaints: updatedFeedback,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    setFeedbackForm(JSON.parse(JSON.stringify(updatedFeedback)));
-    showStatus(setFeedbackStatus, "success", "✓ Feedback and complaints content saved.");
+    try {
+      await callApi("/api/feedback", {
+        method: "PUT",
+        body: JSON.stringify(updatedFeedback),
+      });
+      onDataChange({
+        ...appData,
+        feedbackAndComplaints: updatedFeedback,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      setFeedbackForm(JSON.parse(JSON.stringify(updatedFeedback)));
+      showStatus(setFeedbackStatus, "success", "✓ Feedback and complaints content saved.");
+    } catch (e) {
+      showStatus(setFeedbackStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const saveIssuanceMeta = () => {
+  const addFeedbackSection = () => {
+    setFeedbackForm(f => ({
+      ...f,
+      sections: [...(f.sections || []), { heading: "", paragraphs: [] }],
+    }));
+  };
+
+  const removeFeedbackSection = idx => {
+    setFeedbackForm(f => ({
+      ...f,
+      sections: (f.sections || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  const saveIssuanceMeta = async () => {
     const current = appData.policiesAndIssuances || defaultIssuances;
     const updated = {
       ...current,
@@ -162,16 +229,27 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       items: current.items || [],
     };
 
-    onDataChange({
-      ...appData,
-      policiesAndIssuances: updated,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    showStatus(setIssuanceStatus, "success", "✓ Issuance panel heading saved.");
+    try {
+      await callApi("/api/issuances/meta", {
+        method: "PUT",
+        body: JSON.stringify({
+          title: updated.title,
+          subtitle: updated.subtitle,
+        }),
+      });
+      onDataChange({
+        ...appData,
+        policiesAndIssuances: updated,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setIssuanceStatus, "success", "✓ Issuance panel heading saved.");
+    } catch (e) {
+      showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     const pbest = String(profileForm.pbestText || "")
       .split("\n")
       .map(v => v.trim())
@@ -191,16 +269,24 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       },
     };
 
-    onDataChange({
-      ...appData,
-      organizationalProfile: updatedProfile,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    showStatus(setProfileStatus, "success", "✓ Mandate, Mission, Vision and Service Pledge saved.");
+    try {
+      await callApi("/api/profile", {
+        method: "PUT",
+        body: JSON.stringify(updatedProfile),
+      });
+      onDataChange({
+        ...appData,
+        organizationalProfile: updatedProfile,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setProfileStatus, "success", "✓ Mandate, Mission, Vision and Service Pledge saved.");
+    } catch (e) {
+      showStatus(setProfileStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const saveOfficeMeta = () => {
+  const saveOfficeMeta = async () => {
     const updated = {
       ...currentOfficeDirectory,
       title: officeMetaForm.title || "List of Offices",
@@ -208,13 +294,21 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       entries: currentOfficeDirectory.entries || [],
     };
 
-    onDataChange({
-      ...appData,
-      officeDirectory: updated,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    showStatus(setOfficeStatus, "success", "✓ Office directory heading saved.");
+    try {
+      await callApi("/api/offices/meta", {
+        method: "PUT",
+        body: JSON.stringify({ title: updated.title, region: updated.region }),
+      });
+      onDataChange({
+        ...appData,
+        officeDirectory: updated,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setOfficeStatus, "success", "✓ Office directory heading saved.");
+    } catch (e) {
+      showStatus(setOfficeStatus, "error", `✗ ${e.message}`);
+    }
   };
 
   const startEditOffice = idx => {
@@ -232,7 +326,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     setOfficeEditingIdx(-1);
   };
 
-  const saveOfficeEntry = () => {
+  const saveOfficeEntry = async () => {
     const officeName = String(officeForm.office || "").trim();
     if (!officeName) {
       showStatus(setOfficeStatus, "error", "✗ Office name is required.");
@@ -245,24 +339,69 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       contact: String(officeForm.contact || "").trim(),
     };
 
-    const entries = [...(currentOfficeDirectory.entries || [])];
-    if (officeEditingIdx >= 0) entries[officeEditingIdx] = nextEntry;
-    else entries.push(nextEntry);
+    try {
+      const editingEntry = officeEditingIdx >= 0 ? (currentOfficeDirectory.entries || [])[officeEditingIdx] : null;
+      let savedEntry = null;
 
-    onDataChange({
-      ...appData,
-      officeDirectory: {
-        ...currentOfficeDirectory,
-        title: officeMetaForm.title || currentOfficeDirectory.title || "List of Offices",
-        region: officeMetaForm.region || currentOfficeDirectory.region || "",
-        entries,
-      },
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    setOfficeEditingIdx(null);
-    setOfficeForm({ office: "", address: "", contact: "" });
-    showStatus(setOfficeStatus, "success", "✓ Office entry saved.");
+      if (editingEntry?.id) {
+        await callApi(`/api/offices/${editingEntry.id}`, {
+          method: "PUT",
+          body: JSON.stringify(nextEntry),
+        });
+        savedEntry = { ...editingEntry, ...nextEntry };
+      } else {
+        savedEntry = await callApi("/api/offices", {
+          method: "POST",
+          body: JSON.stringify(nextEntry),
+        });
+      }
+
+      const entries = [...(currentOfficeDirectory.entries || [])];
+      if (officeEditingIdx >= 0) entries[officeEditingIdx] = savedEntry;
+      else entries.push(savedEntry);
+
+      onDataChange({
+        ...appData,
+        officeDirectory: {
+          ...currentOfficeDirectory,
+          title: officeMetaForm.title || currentOfficeDirectory.title || "List of Offices",
+          region: officeMetaForm.region || currentOfficeDirectory.region || "",
+          entries,
+        },
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      setOfficeEditingIdx(null);
+      setOfficeForm({ office: "", address: "", contact: "" });
+      showStatus(setOfficeStatus, "success", "✓ Office entry saved.");
+    } catch (e) {
+      showStatus(setOfficeStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const deleteOfficeEntry = async idx => {
+    const entry = (currentOfficeDirectory.entries || [])[idx];
+    if (!entry) return;
+    if (!window.confirm(`Delete "${entry.office || "office entry"}"?`)) return;
+
+    try {
+      if (entry.id) {
+        await callApi(`/api/offices/${entry.id}`, { method: "DELETE" });
+      }
+      const entries = (currentOfficeDirectory.entries || []).filter((_, i) => i !== idx);
+      onDataChange({
+        ...appData,
+        officeDirectory: {
+          ...currentOfficeDirectory,
+          entries,
+        },
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setOfficeStatus, "success", "✓ Office entry deleted.");
+    } catch (e) {
+      showStatus(setOfficeStatus, "error", `✗ ${e.message}`);
+    }
   };
 
   const checkUpdates = async () => {
@@ -560,17 +699,22 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setIssuanceEditingIdx(idx)}>Edit</button>
                       <button
                         className="a-btn a-btn-danger a-btn-sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!window.confirm(`Delete "${item.circularNo || item.title || "issuance"}"?`)) return;
-                          const current = appData.policiesAndIssuances || defaultIssuances;
-                          const items = (current.items || []).filter((_, i) => i !== idx);
-                          onDataChange({
-                            ...appData,
-                            policiesAndIssuances: { ...current, items },
-                            version: appData.version + 1,
-                            lastUpdated: new Date().toISOString(),
-                          });
-                          showStatus(setIssuanceStatus, "success", "✓ Issuance deleted.");
+                          try {
+                            await callApi(`/api/issuances/${item.id}`, { method: "DELETE" });
+                            const current = appData.policiesAndIssuances || defaultIssuances;
+                            const items = (current.items || []).filter((_, i) => i !== idx);
+                            onDataChange({
+                              ...appData,
+                              policiesAndIssuances: { ...current, items },
+                              version: appData.version + 1,
+                              lastUpdated: new Date().toISOString(),
+                            });
+                            showStatus(setIssuanceStatus, "success", "✓ Issuance deleted.");
+                          } catch (e) {
+                            showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
+                          }
                         }}
                       >
                         Delete
@@ -584,25 +728,38 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             <IssuanceFormEditor
               issuance={issuanceEditingIdx >= 0 ? currentIssuances.items?.[issuanceEditingIdx] : null}
               onBack={() => setIssuanceEditingIdx(null)}
-              onSave={issuance => {
-                const current = appData.policiesAndIssuances || defaultIssuances;
-                const items = [...(current.items || [])];
-                if (issuanceEditingIdx >= 0) items[issuanceEditingIdx] = issuance;
-                else items.push(issuance);
+              onSave={async issuance => {
+                try {
+                  const isEditing = issuanceEditingIdx >= 0;
+                  const url = isEditing ? `/api/issuances/${issuance.id}` : "/api/issuances";
+                  const method = isEditing ? "PUT" : "POST";
+                  const saved = await callApi(url, {
+                    method,
+                    body: JSON.stringify(issuance),
+                  });
 
-                onDataChange({
-                  ...appData,
-                  policiesAndIssuances: {
-                    ...current,
-                    title: issuanceMetaForm.title || current.title,
-                    subtitle: issuanceMetaForm.subtitle || current.subtitle,
-                    items,
-                  },
-                  version: appData.version + 1,
-                  lastUpdated: new Date().toISOString(),
-                });
-                setIssuanceEditingIdx(null);
-                showStatus(setIssuanceStatus, "success", "✓ Issuance saved.");
+                  const nextIssuance = !isEditing && saved?.id ? { ...issuance, id: saved.id } : issuance;
+                  const current = appData.policiesAndIssuances || defaultIssuances;
+                  const items = [...(current.items || [])];
+                  if (isEditing) items[issuanceEditingIdx] = nextIssuance;
+                  else items.push(nextIssuance);
+
+                  onDataChange({
+                    ...appData,
+                    policiesAndIssuances: {
+                      ...current,
+                      title: issuanceMetaForm.title || current.title,
+                      subtitle: issuanceMetaForm.subtitle || current.subtitle,
+                      items,
+                    },
+                    version: appData.version + 1,
+                    lastUpdated: new Date().toISOString(),
+                  });
+                  setIssuanceEditingIdx(null);
+                  showStatus(setIssuanceStatus, "success", "✓ Issuance saved.");
+                } catch (e) {
+                  showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
+                }
               }}
             />
           )
@@ -720,11 +877,19 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               </div>
             </div>
 
+            <div style={{ display: "flex", gap: 10, marginTop: 12, marginBottom: 12 }}>
+              <button className="a-btn a-btn-success" onClick={addFeedbackSection}>+ Add Section</button>
+            </div>
+
             {(feedbackForm.sections || []).map((section, idx) => (
               <div key={idx}>
                 <div className="a-divider" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div className="a-label" style={{ marginBottom: 0 }}>Section {idx + 1}</div>
+                  <button className="a-btn a-btn-danger a-btn-sm" onClick={() => removeFeedbackSection(idx)}>Delete Section</button>
+                </div>
                 <div className="a-field">
-                  <label className="a-label">Section {idx + 1} Heading</label>
+                  <label className="a-label">Heading</label>
                   <input
                     className="a-input"
                     value={section.heading || ""}
@@ -851,7 +1016,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditOffice(idx)}>Edit</button>
                     <button
                       className="a-btn a-btn-danger a-btn-sm"
-                      onClick={() => handleDelete(svc.id)}
+                      onClick={() => deleteOfficeEntry(idx)}
                       >
                       Delete
                     </button>

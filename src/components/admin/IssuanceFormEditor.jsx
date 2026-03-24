@@ -53,25 +53,7 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
       deadlines,
     };
 
-    // --- FETCH CALL TO SAVE TO DATABASE ---
-    try {
-      const response = await fetch('http://localhost:3000/api/issuances', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(issuanceData),
-      });
-
-      if (response.ok) {
-        alert("Issuance saved to database!");
-        if (onSave) onSave(issuanceData);
-        if (onBack) onBack();
-      } else {
-        alert("Failed to save issuance.");
-      }
-    } catch (error) {
-      console.error("Connection error:", error);
-      alert("Server is offline.");
-    }
+    if (onSave) onSave(issuanceData);
   };
 
   return (

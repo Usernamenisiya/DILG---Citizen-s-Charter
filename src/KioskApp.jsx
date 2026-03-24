@@ -216,6 +216,10 @@ export default function KioskApp() {
   }, []);
 
   useEffect(() => {
+    fetch('/api/settings')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load settings (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({ ...p, settings: { ...p.settings, ...data } })));
+
     fetch('/api/services/internal')
       .then(res => { if (!res.ok) throw new Error(`Failed to load internal services (${res.status})`); return res.json(); })
       .then(data => setAppData(p => ({ ...p, services: data })));
@@ -227,6 +231,29 @@ export default function KioskApp() {
     fetch('/api/issuances')
       .then(res => { if (!res.ok) throw new Error(`Failed to load issuances (${res.status})`); return res.json(); })
       .then(data => setAppData(p => ({ ...p, policiesAndIssuances: { ...p.policiesAndIssuances, items: data } })))
+
+    fetch('/api/issuances/meta')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load issuance metadata (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({
+        ...p,
+        policiesAndIssuances: {
+          ...p.policiesAndIssuances,
+          title: data.title || p.policiesAndIssuances?.title,
+          subtitle: data.subtitle || p.policiesAndIssuances?.subtitle,
+        },
+      })));
+
+    fetch('/api/feedback')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load feedback (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({ ...p, feedbackAndComplaints: data })));
+
+    fetch('/api/offices')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load offices (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({ ...p, officeDirectory: data })));
+
+    fetch('/api/profile')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load profile (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({ ...p, organizationalProfile: data })))
       .catch(err => { console.error("API load failed:", err); });
   }, []);
 
