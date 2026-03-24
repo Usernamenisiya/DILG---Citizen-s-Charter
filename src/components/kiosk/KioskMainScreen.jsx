@@ -1,5 +1,6 @@
 import dilgIcon from "../../Dilg.svg";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
+import { useEffect, useRef, useState } from "react";
 
 export default function KioskMainScreen({
   visible,
@@ -42,6 +43,27 @@ export default function KioskMainScreen({
     const icon = String(svc?.icon || "").trim();
     return icon || null;
   };
+
+  /* ── Modal state ── */
+  const [modal, setModal] = useState(null); // { title, color, content: JSX }
+
+  const openModal = (title, color, content) => setModal({ title, color, content });
+  const closeModal = () => setModal(null);
+
+  /* Auto-show scrollbar while scrolling, hide after idle */
+  const contentRef = useRef(null);
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    let timer;
+    const onScroll = () => {
+      el.classList.add("is-scrolling");
+      clearTimeout(timer);
+      timer = setTimeout(() => el.classList.remove("is-scrolling"), 900);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => { el.removeEventListener("scroll", onScroll); clearTimeout(timer); };
+  }, []);
 
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
@@ -91,7 +113,7 @@ export default function KioskMainScreen({
         )}
       </div>
 
-      <div className="content">
+      <div className="content" ref={contentRef}>
         <div className="content-shell">
         {!currentService ? (
           <div className="card-menu">
@@ -152,96 +174,177 @@ export default function KioskMainScreen({
             )}
 
             {activeSection === "offices" && !!officeDirectory && (
-              <div className="office-panel" style={{ marginTop: 0 }}>
-                <div className="office-panel-head">
-                  <h3>{officeDirectory.title || "List of Offices"}</h3>
-                  <span>{officeDirectory.region || ""}</span>
-                </div>
-                <div className="office-grid">
-                  {(officeDirectory.entries || []).map((entry, idx) => (
-                    <div key={idx} className="office-item">
-                      {(() => {
-                        const contactInfo = parseOfficeContact(entry.contact);
-                        return (
-                          <div className="office-item-inner">
-                            <div className="office-section">
-                              <div className="office-section-label">Office</div>
-                              <h4>{entry.office}</h4>
-                            </div>
-
-                            <div className="office-section">
-                              <div className="office-section-label">Address</div>
-                              <p>{entry.address || "Not provided"}</p>
-                            </div>
-
-                            {!!contactInfo.mainLine && (
-                              <div className="office-section office-section-contact">
-                                <div className="office-section-label">Contact</div>
-                                <div className="office-contact-line">
-                                  <span className="office-contact-label">Main Line:</span>
-                                  <strong>{contactInfo.mainLine}</strong>
+              <div className="pv2-wrap">
+                <div className="pv2-grid pv2-grid--3col">
+                  {(officeDirectory.entries || []).map((entry, idx) => {
+                    const contactInfo = parseOfficeContact(entry.contact);
+                    const OFFICE_COLORS = ["#002C76","#C9282D","#FFDE15","#002C76","#C9282D","#FFDE15","#002C76","#C9282D","#FFDE15"];
+                    const color = OFFICE_COLORS[idx % OFFICE_COLORS.length];
+                    return (
+                      <div
+                        key={idx}
+                        className={`pv2-card pv2-card--clickable${color === "#FFDE15" ? " pv2-card--gold" : ""}`}
+                        style={{ "--pvc": color }}
+                        onClick={() => openModal(entry.office, color === "#FFDE15" ? "#002C76" : color,
+                          <div className="modal-office-detail">
+                            {!!entry.address && (
+                              <div className="modal-office-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  width="28" height="28" style={{ flexShrink: 0, color: color === "#FFDE15" ? "#002C76" : color }}>
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                  <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                <div>
+                                  <div className="modal-office-label">Address</div>
+                                  <div className="modal-body-text">{entry.address}</div>
                                 </div>
-                                {!!contactInfo.extension && (
-                                  <div className="office-contact-line">
-                                    <span className="office-contact-label">Extension:</span>
-                                    <strong>{contactInfo.extension}</strong>
-                                  </div>
-                                )}
+                              </div>
+                            )}
+                            {!!contactInfo.mainLine && (
+                              <div className="modal-office-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  width="28" height="28" style={{ flexShrink: 0, color: color === "#FFDE15" ? "#002C76" : color }}>
+                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/>
+                                </svg>
+                                <div>
+                                  <div className="modal-office-label">Contact</div>
+                                  <div className="modal-body-text">{contactInfo.mainLine}</div>
+                                  {!!contactInfo.extension && (
+                                    <div className="modal-body-text" style={{ opacity: 0.7 }}>Loc. {contactInfo.extension}</div>
+                                  )}
+                                </div>
                               </div>
                             )}
                             {!contactInfo.mainLine && (
-                              <div className="office-section office-section-contact">
-                                <div className="office-section-label">Contact</div>
-                                <div className="office-contact-line">
-                                  <strong>Not provided</strong>
-                                </div>
-                              </div>
+                              <div className="modal-body-text" style={{ opacity: 0.45 }}>No contact information available.</div>
                             )}
                           </div>
-                        );
-                      })()}
-                    </div>
-                  ))}
+                        )}>
+                        <div className="pv2-stripe" />
+                        <div className="pv2-body pv2-body--office">
+                          <div className="pv2-heading pv2-heading--office">{entry.office}</div>
+                          {!!entry.address && (
+                            <div className="pv2-office-row">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                width="18" height="18" style={{ flexShrink: 0, color: "var(--pvc)", marginTop: 2 }}>
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                              </svg>
+                              <span className="pv2-text">{entry.address}</span>
+                            </div>
+                          )}
+                          {!!contactInfo.mainLine && (
+                            <div className="pv2-office-row">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                width="18" height="18" style={{ flexShrink: 0, color: "var(--pvc)", marginTop: 2 }}>
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/>
+                              </svg>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span className="pv2-text">{contactInfo.mainLine}</span>
+                                {!!contactInfo.extension && (
+                                  <span className="pv2-text pv2-text--ext">Loc. {contactInfo.extension}</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {!contactInfo.mainLine && (
+                            <div className="pv2-office-row pv2-office-row--muted">
+                              <span className="pv2-text" style={{ opacity: 0.45 }}>No contact provided</span>
+                            </div>
+                          )}
+                          <div className="pv2-tap-hint">Tap for details</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
+            {/* ════════════════════════════════════════════════════
+                PROFILE — redesigned to match menu card language
+                ════════════════════════════════════════════════════ */}
             {activeSection === "profile" && !!organizationalProfile && (
-              <div className="profile-panel" style={{ marginTop: 0 }}>
-                <div className="profile-panel-head">
-                  <h3>{organizationalProfile.title || "Mandate, Mission, Vision and Service Pledge"}</h3>
-                </div>
+              <div className="pv2-wrap">
 
-                <div className="profile-grid">
-                  <div className="profile-item">
-                    <h4>I. Mandate</h4>
-                    <p>{organizationalProfile.mandate}</p>
+                {/* 2-column card grid — click to open modal */}
+                <div className="pv2-grid">
+
+                  {/* Mandate */}
+                  <div className="pv2-card pv2-card--clickable" style={{ "--pvc": "#002C76" }}
+                    onClick={() => openModal("Mandate", "#002C76",
+                      <p className="modal-body-text">{organizationalProfile.mandate}</p>
+                    )}>
+                    <div className="pv2-stripe" />
+                    <div className="pv2-body">
+                      <div className="pv2-heading">Mandate</div>
+                      <p className="pv2-text pv2-text--preview">{organizationalProfile.mandate}</p>
+                      <div className="pv2-tap-hint">Tap to read more</div>
+                    </div>
                   </div>
 
-                  <div className="profile-item">
-                    <h4>II. Mission</h4>
-                    <p>{organizationalProfile.mission}</p>
+                  {/* Mission */}
+                  <div className="pv2-card pv2-card--clickable" style={{ "--pvc": "#C9282D" }}
+                    onClick={() => openModal("Mission", "#C9282D",
+                      <p className="modal-body-text">{organizationalProfile.mission}</p>
+                    )}>
+                    <div className="pv2-stripe" />
+                    <div className="pv2-body">
+                      <div className="pv2-heading">Mission</div>
+                      <p className="pv2-text pv2-text--preview">{organizationalProfile.mission}</p>
+                      <div className="pv2-tap-hint">Tap to read more</div>
+                    </div>
                   </div>
 
-                  <div className="profile-item">
-                    <h4>III. Vision</h4>
-                    <p>{organizationalProfile.vision}</p>
+                  {/* Vision — full width */}
+                  <div className="pv2-card pv2-card--wide pv2-card--gold pv2-card--clickable" style={{ "--pvc": "#FFDE15" }}
+                    onClick={() => openModal("Vision", "#002C76",
+                      <p className="modal-body-text">{organizationalProfile.vision}</p>
+                    )}>
+                    <div className="pv2-stripe" />
+                    <div className="pv2-body">
+                      <div className="pv2-heading">Vision</div>
+                      <p className="pv2-text pv2-text--preview">{organizationalProfile.vision}</p>
+                      <div className="pv2-tap-hint">Tap to read more</div>
+                    </div>
                   </div>
 
-                  <div className="profile-item profile-item-wide">
-                    <h4>IV. Service Pledge</h4>
-                    <p>{organizationalProfile.servicePledge?.intro}</p>
-                    <p>{organizationalProfile.servicePledge?.serviceCommitment}</p>
-                    {!!organizationalProfile.servicePledge?.pbest?.length && (
-                      <ul>
-                        {organizationalProfile.servicePledge.pbest.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <p>{organizationalProfile.servicePledge?.officeHoursCommitment}</p>
-                    <p>{organizationalProfile.servicePledge?.closing}</p>
+                  {/* Service Pledge — full-width */}
+                  <div className="pv2-card pv2-card--wide pv2-card--clickable" style={{ "--pvc": "#002C76" }}
+                    onClick={() => openModal("Service Pledge", "#C9282D",
+                      <div>
+                        {!!organizationalProfile.servicePledge?.intro && (
+                          <p className="modal-body-text">{organizationalProfile.servicePledge.intro}</p>
+                        )}
+                        {!!organizationalProfile.servicePledge?.serviceCommitment && (
+                          <p className="modal-body-text">{organizationalProfile.servicePledge.serviceCommitment}</p>
+                        )}
+                        {!!organizationalProfile.servicePledge?.pbest?.length && (
+                          <div className="modal-pbest">
+                            <div className="modal-pbest-label">PBEST Framework</div>
+                            <ul className="modal-pbest-list">
+                              {organizationalProfile.servicePledge.pbest.map((item, i) => (
+                                <li key={i}><span className="modal-pbest-dot" />{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {!!organizationalProfile.servicePledge?.officeHoursCommitment && (
+                          <p className="modal-body-text">{organizationalProfile.servicePledge.officeHoursCommitment}</p>
+                        )}
+                        {!!organizationalProfile.servicePledge?.closing && (
+                          <p className="modal-body-text modal-body-text--closing">{organizationalProfile.servicePledge.closing}</p>
+                        )}
+                      </div>
+                    )}>
+                    <div className="pv2-stripe" />
+                    <div className="pv2-body">
+                      <div className="pv2-heading">Service Pledge</div>
+                      <p className="pv2-text pv2-text--preview">{organizationalProfile.servicePledge?.intro}</p>
+                      <div className="pv2-tap-hint">Tap to read more</div>
+                    </div>
                   </div>
+
                 </div>
               </div>
             )}
@@ -344,6 +447,40 @@ export default function KioskMainScreen({
       )}
 
       <div className="inact-bar" ref={inactBarRef} />
+
+      {/* ══ POP-UP MODAL ══ */}
+      {modal && (
+        <div className="kmodal-backdrop" onClick={closeModal}>
+          <div
+            className="kmodal-box"
+            style={{ "--modal-color": modal.color }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header bar */}
+            <div className="kmodal-header">
+              <div className="kmodal-header-stripe" />
+              <div className="kmodal-title">{modal.title}</div>
+              <button className="kmodal-close" onClick={closeModal}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  width="28" height="28">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="kmodal-body">
+              {modal.content}
+            </div>
+
+            {/* Footer close button */}
+            <div className="kmodal-footer">
+              <button className="kmodal-footer-btn" onClick={closeModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
