@@ -25,11 +25,32 @@ const DILG_COLORS = ["#002C76", "#C9282D", "#FFDE15"];
 /* ══════════════════════════════════════════════════════
    ROOT-LEVEL MODAL
    ══════════════════════════════════════════════════════ */
-function KioskModal({ section, organizationalProfile, officeDirectory, onClose }) {
+function KioskModal({
+  section,
+  organizationalProfile,
+  officeDirectory,
+  feedbackAndComplaints,
+  policiesAndIssuances,
+  announcements,
+  onClose,
+}) {
   if (!section) return null;
 
   const isProfile = section === "profile";
+  const isOffices = section === "offices";
+  const isFeedback = section === "feedback";
+  const isIssuances = section === "issuances";
+  const isAnnouncement = section === "announcement";
   const headerColor = "#002C76";
+  const modalTitle = isProfile
+    ? (organizationalProfile?.title || "Mandate, Mission, Vision & Service Pledge")
+    : isOffices
+      ? (officeDirectory?.title || "List of Offices")
+      : isFeedback
+        ? (feedbackAndComplaints?.title || "Feedback and Complaints Mechanism")
+        : isIssuances
+          ? (policiesAndIssuances?.title || "Policies and Issuances")
+          : "Announcements";
 
   return (
     <div className="kmodal-backdrop" onClick={onClose}>
@@ -41,11 +62,7 @@ function KioskModal({ section, organizationalProfile, officeDirectory, onClose }
         {/* ── Header ── */}
         <div className="kmodal-header">
           <div className="kmodal-header-stripe" />
-          <div className="kmodal-title">
-            {isProfile
-              ? (organizationalProfile?.title || "Mandate, Mission, Vision & Service Pledge")
-              : (officeDirectory?.title || "List of Offices")}
-          </div>
+          <div className="kmodal-title">{modalTitle}</div>
           <button className="kmodal-close" onClick={onClose}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="28" height="28">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -122,7 +139,7 @@ function KioskModal({ section, organizationalProfile, officeDirectory, onClose }
           )}
 
           {/* OFFICES */}
-          {!isProfile && !!officeDirectory && (
+          {isOffices && !!officeDirectory && (
             <div className="kmodal-office-grid">
               {(officeDirectory.entries || []).map((entry, idx) => {
                 const contactInfo = parseOfficeContact(entry.contact);
@@ -167,6 +184,101 @@ function KioskModal({ section, organizationalProfile, officeDirectory, onClose }
             </div>
           )}
 
+          {/* FEEDBACK */}
+          {isFeedback && !!feedbackAndComplaints && (
+            <div className="feedback-panel" style={{ marginTop: 0 }}>
+              <div className="feedback-panel-head">
+                <h3>{feedbackAndComplaints.title || "Feedback and Complaints Mechanism"}</h3>
+                <div className="feedback-contact">
+                  <span>Email: {feedbackAndComplaints.contact?.email || "N/A"}</span>
+                  <span>Tel: {feedbackAndComplaints.contact?.telephone || "N/A"}</span>
+                </div>
+              </div>
+              <div className="feedback-grid">
+                {(feedbackAndComplaints.sections || []).map((sectionItem, idx) => (
+                  <div key={idx} className="feedback-item">
+                    <h4>{sectionItem.heading}</h4>
+                    {(sectionItem.paragraphs || []).map((paragraph, pIdx) => (
+                      <p key={pIdx}>{paragraph}</p>
+                    ))}
+                    {!!sectionItem.items?.length && (
+                      <ul>
+                        {sectionItem.items.map((item, iIdx) => (
+                          <li key={iIdx}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ISSUANCES */}
+          {isIssuances && !!policiesAndIssuances && (
+            <div className="issuance-panel" style={{ marginTop: 0 }}>
+              <div className="issuance-panel-head">
+                <h3>{policiesAndIssuances.title || "Policies and Issuances"}</h3>
+                <span>{policiesAndIssuances.subtitle || "Compliance references and deadlines"}</span>
+              </div>
+              <div className="issuance-list">
+                {(policiesAndIssuances.items || []).map(item => (
+                  <div key={item.id} className="issuance-item">
+                    <div className="issuance-item-head">
+                      <h4>{item.circularNo || item.title || "Issuance"}</h4>
+                      {!!item.date && <span>{item.date}</span>}
+                    </div>
+                    {!!item.subject && <p className="issuance-subject">{item.subject}</p>}
+                    <div className="issuance-meta">
+                      {!!item.coverage && <div><strong>Coverage:</strong> {item.coverage}</div>}
+                      {!!item.effectivity && <div><strong>Effectivity:</strong> {item.effectivity}</div>}
+                      {!!item.supersedes && <div><strong>Supersedes:</strong> {item.supersedes}</div>}
+                      {!!item.approvingAuthority && <div><strong>Approving Authority:</strong> {item.approvingAuthority}</div>}
+                    </div>
+                    {!!item.highlights?.length && (
+                      <ul className="issuance-highlights">
+                        {item.highlights.map((highlight, index) => (
+                          <li key={index}>{highlight}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {!!item.deadlines?.length && (
+                      <div className="issuance-deadlines">
+                        {item.deadlines.map((deadline, index) => (
+                          <div key={index} className="issuance-deadline-chip">
+                            <span>{deadline.dueDate}</span>
+                            <strong>{deadline.label}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isAnnouncement && (
+            <div className="announcement-panel" style={{ marginTop: 0 }}>
+              <div className="issuance-panel-head">
+                <h3>Announcements</h3>
+                <span>Latest announcements from the administrator</span>
+              </div>
+              <div className="announcement-list">
+                {(announcements || []).length ? (
+                  (announcements || []).map((item, idx) => (
+                    <div key={item.id || idx} className="announcement-item">
+                      <div className="announcement-item-number">{String(idx + 1).padStart(2, "0")}</div>
+                      <div className="announcement-item-text">{item.message}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="announcement-empty">No announcements available.</div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* ── Footer ── */}
@@ -190,7 +302,7 @@ export default function KioskApp() {
   const [clockTime, setClockTime] = useState("");
   const [clockDate, setClockDate] = useState("");
   const [logoTaps, setLogoTaps] = useState(0);
-  const [modalSection, setModalSection] = useState(null); // "profile" | "offices" | null
+  const [modalSection, setModalSection] = useState(null); // "profile" | "offices" | "feedback" | "issuances" | null
   const logoTimerRef = useRef(null);
   const inactTimerRef = useRef(null);
   const inactBarRef = useRef(null);
@@ -254,6 +366,10 @@ export default function KioskApp() {
     fetch('/api/profile')
       .then(res => { if (!res.ok) throw new Error(`Failed to load profile (${res.status})`); return res.json(); })
       .then(data => setAppData(p => ({ ...p, organizationalProfile: data })))
+
+    fetch('/api/announcements')
+      .then(res => { if (!res.ok) throw new Error(`Failed to load announcements (${res.status})`); return res.json(); })
+      .then(data => setAppData(p => ({ ...p, announcements: data })))
       .catch(err => { console.error("API load failed:", err); });
   }, []);
 
@@ -300,9 +416,15 @@ export default function KioskApp() {
     }, 600);
   };
 
-  /* Intercept profile & offices → modal; everything else → main screen */
+  /* Intercept non-service sections → modal; services go to main screen */
   const selectSection = (sectionId) => {
-    if (sectionId === "profile" || sectionId === "offices") {
+    if (
+      sectionId === "profile" ||
+      sectionId === "offices" ||
+      sectionId === "feedback" ||
+      sectionId === "issuances" ||
+      sectionId === "announcement"
+    ) {
       setModalSection(sectionId);
       return;
     }
@@ -326,13 +448,14 @@ export default function KioskApp() {
     setCurrentService(null);
   };
 
-  const SERVICES_PER_PAGE = s.perPage || 8;
+  const SERVICES_PER_PAGE = Math.max(9, Number(s.perPage) || 9);
   const services = appData.services || [];
   const externalServices = appData.externalServices || KIOSK_DEFAULT_DATA.externalServices || [];
   const feedbackAndComplaints = appData.feedbackAndComplaints || KIOSK_DEFAULT_DATA.feedbackAndComplaints;
   const officeDirectory = appData.officeDirectory || KIOSK_DEFAULT_DATA.officeDirectory;
   const organizationalProfile = appData.organizationalProfile || KIOSK_DEFAULT_DATA.organizationalProfile;
   const policiesAndIssuances = appData.policiesAndIssuances || KIOSK_DEFAULT_DATA.policiesAndIssuances;
+  const announcements = appData.announcements || [];
   const servicesForSection = activeSection === "external" ? externalServices : services;
   const totalPages = Math.max(1, Math.ceil(servicesForSection.length / SERVICES_PER_PAGE));
   const pageServices = servicesForSection.slice(currentPage * SERVICES_PER_PAGE, (currentPage + 1) * SERVICES_PER_PAGE);
@@ -352,13 +475,14 @@ export default function KioskApp() {
   return (
     <div className="kiosk-root" onClick={handleUserAction} onTouchStart={handleUserAction}>
       {(screen === "idle" || idleHiding) && (
-        <KioskIdleScreen hiding={idleHiding} settings={s} onShowMain={showMain} />
+        <KioskIdleScreen hiding={idleHiding} settings={s} announcements={announcements} onShowMain={showMain} />
       )}
 
       {screen === "menu" && (
         <KioskMenuScreen
           visible={screen === "menu"}
           settings={s}
+          announcements={announcements}
           onSelectSection={selectSection}
           inactBarRef={inactBarRef}
         />
@@ -396,6 +520,9 @@ export default function KioskApp() {
           section={modalSection}
           organizationalProfile={organizationalProfile}
           officeDirectory={officeDirectory}
+          feedbackAndComplaints={feedbackAndComplaints}
+          policiesAndIssuances={policiesAndIssuances}
+          announcements={announcements}
           onClose={() => setModalSection(null)}
         />
       )}

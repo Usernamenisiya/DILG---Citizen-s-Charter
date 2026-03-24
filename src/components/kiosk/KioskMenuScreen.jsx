@@ -110,13 +110,33 @@ function NavItem({ id, label, color, onClick }) {
   );
 }
 
-export default function KioskMenuScreen({ visible, settings, onSelectSection, inactBarRef }) {
+export default function KioskMenuScreen({ visible, settings, announcements = [], onSelectSection, inactBarRef }) {
   const [clockTime, setClockTime]   = useState("");
   const [clockDate, setClockDate]   = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef    = useRef(null);
   const hamburgerRef = useRef(null);
-  const announcement = settings.announcement || DEFAULT_ANNOUNCEMENT;
+  const tickerItems = (announcements || [])
+    .map(a => String(a?.message || "").trim())
+    .filter(Boolean);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  useEffect(() => {
+    setAnnouncementIndex(0);
+  }, [tickerItems.length]);
+
+  useEffect(() => {
+    if (tickerItems.length <= 1) return undefined;
+    const id = setInterval(() => {
+      setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
+    }, 7000);
+    return () => clearInterval(id);
+  }, [tickerItems.length]);
+
+  const announcement =
+    tickerItems[announcementIndex] ||
+    String(settings.announcement || "").trim() ||
+    DEFAULT_ANNOUNCEMENT;
 
   useEffect(() => {
     const tick = () => {

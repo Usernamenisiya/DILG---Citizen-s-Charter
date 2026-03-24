@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import touchIcon from "../../assets/icons/touch.svg";
 import idleVideo from "../../assets/video/samplevid.mp4";
@@ -5,8 +6,31 @@ import idleVideo from "../../assets/video/samplevid.mp4";
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
-export default function KioskIdleScreen({ hiding, settings, onShowMain }) {
-  const announcement = settings.announcement || DEFAULT_ANNOUNCEMENT;
+export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain }) {
+  const tickerItems = useMemo(() => {
+    const fromList = (announcements || [])
+      .map(a => String(a?.message || "").trim())
+      .filter(Boolean);
+    if (fromList.length) return fromList;
+    const fallback = String(settings.announcement || "").trim();
+    return [fallback || DEFAULT_ANNOUNCEMENT];
+  }, [announcements, settings.announcement]);
+
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  useEffect(() => {
+    setAnnouncementIndex(0);
+  }, [tickerItems.length]);
+
+  useEffect(() => {
+    if (tickerItems.length <= 1) return undefined;
+    const id = setInterval(() => {
+      setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
+    }, 7000);
+    return () => clearInterval(id);
+  }, [tickerItems]);
+
+  const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
 
   return (
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>

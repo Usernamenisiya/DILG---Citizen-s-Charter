@@ -134,6 +134,12 @@ db.exec(`
     contact TEXT NOT NULL,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message TEXT NOT NULL,
+    sortOrder INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 ensureSingleRow(
@@ -254,6 +260,13 @@ if (officeCount.count === 0) {
   seedOffices.forEach((entry, index) => {
     insertOffice.run(entry[0], entry[1], entry[2], index + 1);
   });
+}
+
+const announcementCount = db.prepare("SELECT COUNT(*) AS count FROM announcements").get();
+if (announcementCount.count === 0) {
+  db.prepare("INSERT INTO announcements (message, sortOrder) VALUES (?, 1)").run(
+    "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service."
+  );
 }
 
 app.get("/api/services/:type", (req, res) => {
@@ -518,6 +531,7 @@ app.get("/api/settings", (req, res) => {
 
 app.put("/api/settings", (req, res) => {
   const s = req.body || {};
+  const perPage = Math.max(9, Number(s.perPage) || 9);
   try {
     db.prepare(`
       UPDATE kiosk_settings
@@ -530,7 +544,7 @@ app.put("/api/settings", (req, res) => {
       s.address || "",
       s.tagline || "",
       s.hours || "",
-      Number.isFinite(Number(s.perPage)) ? Number(s.perPage) : 9,
+      perPage,
       Number.isFinite(Number(s.resetTimer)) ? Number(s.resetTimer) : 60,
       s.adminPin || "0000",
       s.updateUrl || "",
@@ -726,6 +740,76 @@ app.delete("/api/offices/:id", (req, res) => {
   } catch (error) {
     console.error("Error deleting office entry:", error);
     res.status(500).json({ error: "Failed to delete office entry." });
+  }
+});
+
+app.get("/api/announcements", (req, res) => {
+  try {
+    const announcements = db
+      .prepare("SELECT id, message, sortOrder FROM announcements ORDER BY sortOrder ASC, id ASC")
+      .all();
+    res.json(announcements);
+  } catch (error) {
+    console.error("Error fetching announcements:", error);
+    res.status(500).json({ error: "Failed to fetch announcements." });
+  }
+});
+
+app.post("/api/announcements", (req, res) => {
+  const message = String(req.body?.message || "").trim();
+  if (!message) {
+    return res.status(400).json({ error: "Announcement message is required." });
+  }
+
+  try {
+    const currentMax = db
+      .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM announcements")
+      .get();
+    const info = db
+      .prepare("INSERT INTO announcements (message, sortOrder) VALUES (?, ?)")
+      .run(message, Number(currentMax.maxSort || 0) + 1);
+    const saved = db
+      .prepare("SELECT id, message, sortOrder FROM announcements WHERE id = ?")
+      .get(info.lastInsertRowid);
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error("Error creating announcement:", error);
+    res.status(500).json({ error: "Failed to create announcement." });
+  }
+});
+
+app.put("/api/announcements/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const message = String(req.body?.message || "").trim();
+  if (!message) {
+    return res.status(400).json({ error: "Announcement message is required." });
+  }
+
+  try {
+    const info = db
+      .prepare("UPDATE announcements SET message = ? WHERE id = ?")
+      .run(message, id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Announcement not found." });
+    }
+    res.json({ message: "Announcement updated successfully." });
+  } catch (error) {
+    console.error("Error updating announcement:", error);
+    res.status(500).json({ error: "Failed to update announcement." });
+  }
+});
+
+app.delete("/api/announcements/:id", (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const info = db.prepare("DELETE FROM announcements WHERE id = ?").run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Announcement not found." });
+    }
+    res.json({ message: "Announcement deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting announcement:", error);
+    res.status(500).json({ error: "Failed to delete announcement." });
   }
 });
 

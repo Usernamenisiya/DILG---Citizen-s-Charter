@@ -36,12 +36,14 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   const currentIssuances = appData.policiesAndIssuances || defaultIssuances;
   const currentExternalServices = appData.externalServices || defaultExternalServices;
   const currentOfficeDirectory = appData.officeDirectory || defaultOfficeDirectory;
+  const currentAnnouncements = appData.announcements || [];
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
   const [externalEditingIdx, setExternalEditingIdx] = useState(null);
   const [issuanceEditingIdx, setIssuanceEditingIdx] = useState(null);
   const [officeEditingIdx, setOfficeEditingIdx] = useState(null);
+  const [announcementEditingIdx, setAnnouncementEditingIdx] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -71,12 +73,14 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   const [issuanceStatus, setIssuanceStatus] = useState(null);
   const [officeStatus, setOfficeStatus] = useState(null);
   const [profileStatus, setProfileStatus] = useState(null);
+  const [announcementStatus, setAnnouncementStatus] = useState(null);
   const [updateUrl, setUpdateUrl] = useState(appData.settings.updateUrl || "");
   const [autoCheck, setAutoCheck] = useState(appData.settings.autoCheckUpdates || false);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [pendingUpdate, setPendingUpdate] = useState(null);
   const [backupStatus, setBackupStatus] = useState(null);
   const [pasteJson, setPasteJson] = useState("");
+  const [announcementForm, setAnnouncementForm] = useState({ message: "" });
 
   const callApi = async (url, options = {}) => {
     const response = await fetch(url, {
@@ -405,6 +409,81 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     }
   };
 
+  const startAddAnnouncement = () => {
+    setAnnouncementForm({ message: "" });
+    setAnnouncementEditingIdx(-1);
+  };
+
+  const startEditAnnouncement = idx => {
+    const entry = currentAnnouncements[idx] || { message: "" };
+    setAnnouncementForm({ message: entry.message || "" });
+    setAnnouncementEditingIdx(idx);
+  };
+
+  const saveAnnouncement = async () => {
+    const message = String(announcementForm.message || "").trim();
+    if (!message) {
+      showStatus(setAnnouncementStatus, "error", "✗ Announcement message is required.");
+      return;
+    }
+
+    try {
+      const editingEntry = announcementEditingIdx >= 0 ? currentAnnouncements[announcementEditingIdx] : null;
+      let savedEntry = null;
+
+      if (editingEntry?.id) {
+        await callApi(`/api/announcements/${editingEntry.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ message }),
+        });
+        savedEntry = { ...editingEntry, message };
+      } else {
+        savedEntry = await callApi("/api/announcements", {
+          method: "POST",
+          body: JSON.stringify({ message }),
+        });
+      }
+
+      const announcements = [...currentAnnouncements];
+      if (announcementEditingIdx >= 0) announcements[announcementEditingIdx] = savedEntry;
+      else announcements.push(savedEntry);
+
+      onDataChange({
+        ...appData,
+        announcements,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      setAnnouncementEditingIdx(null);
+      setAnnouncementForm({ message: "" });
+      showStatus(setAnnouncementStatus, "success", "✓ Announcement saved.");
+    } catch (e) {
+      showStatus(setAnnouncementStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const deleteAnnouncement = async idx => {
+    const entry = currentAnnouncements[idx];
+    if (!entry) return;
+    if (!window.confirm("Delete this announcement?")) return;
+
+    try {
+      if (entry.id) {
+        await callApi(`/api/announcements/${entry.id}`, { method: "DELETE" });
+      }
+      const announcements = currentAnnouncements.filter((_, i) => i !== idx);
+      onDataChange({
+        ...appData,
+        announcements,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setAnnouncementStatus, "success", "✓ Announcement deleted.");
+    } catch (e) {
+      showStatus(setAnnouncementStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -488,6 +567,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     { id: "issuances", label: "Issuances" },
     { id: "profile", label: "Profile" },
     { id: "feedback", label: "Feedback" },
+    { id: "announcements", label: "Announcements" },
     { id: "offices", label: "Offices" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
@@ -514,6 +594,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 setExternalEditingIdx(null);
                 setIssuanceEditingIdx(null);
                 setOfficeEditingIdx(null);
+                setAnnouncementEditingIdx(null);
               }}
             >
               {n.label}
@@ -793,9 +874,9 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 <input
                   className="a-input"
                   type="number"
-                  min={3}
+                  min={9}
                   max={9}
-                  value={settingsForm.perPage || 6}
+                  value={settingsForm.perPage || 9}
                   onChange={e => setSettingsForm(f => ({ ...f, perPage: e.target.value }))}
                 />
               </div>
@@ -937,6 +1018,64 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button className="a-btn a-btn-primary" onClick={saveFeedback}>💾 Save Feedback Content</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "announcements" && (
+          <div className="admin-sub-content">
+            <div className="admin-tab-title">Announcements</div>
+            <div className="admin-tab-sub">Add, edit, or remove ticker announcements shown on Idle and Menu screens.</div>
+            <StatusMsg status={announcementStatus} />
+
+            {announcementEditingIdx !== null && (
+              <div>
+                <div className="a-field">
+                  <label className="a-label">Announcement Message</label>
+                  <textarea
+                    className="a-textarea"
+                    value={announcementForm.message}
+                    onChange={e => setAnnouncementForm({ message: e.target.value })}
+                    placeholder="Type announcement text..."
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                  <button className="a-btn a-btn-primary" onClick={saveAnnouncement}>Save Announcement</button>
+                  <button
+                    className="a-btn a-btn-ghost"
+                    onClick={() => {
+                      setAnnouncementEditingIdx(null);
+                      setAnnouncementForm({ message: "" });
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {announcementEditingIdx === null && (
+              <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={startAddAnnouncement}>
+                + Add New Announcement
+              </button>
+            )}
+
+            <div className="svc-list">
+              {currentAnnouncements.map((item, idx) => (
+                <div key={item.id || idx} className="svc-row">
+                  <div className="svc-row-info">
+                    <div className="svc-row-name">Announcement {idx + 1}</div>
+                    <div className="svc-row-meta" style={{ color: "#334b84", fontSize: 12 }}>{item.message}</div>
+                  </div>
+                  <div className="svc-row-actions">
+                    <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditAnnouncement(idx)}>Edit</button>
+                    <button className="a-btn a-btn-danger a-btn-sm" onClick={() => deleteAnnouncement(idx)}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {!currentAnnouncements.length && (
+                <div style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>No announcements yet. Add one to show in the ticker.</div>
+              )}
             </div>
           </div>
         )}
