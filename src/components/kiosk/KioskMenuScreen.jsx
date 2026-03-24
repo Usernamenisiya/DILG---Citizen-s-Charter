@@ -233,17 +233,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
           {/* Drawer — inside content row, pushes cards */}
           <div ref={drawerRef} className={`mnav-drawer${drawerOpen ? " open" : ""}`}>
 
-            {/* Drawer header */}
-            <div className="mnav-drawer-header">
-              <div className="mnav-drawer-logo">
-                <img src={dilgIcon} alt="DILG" />
-              </div>
-              <div className="mnav-drawer-brand">
-                <div className="mnav-drawer-title">DILG</div>
-                <div className="mnav-drawer-office">{settings.office}</div>
-              </div>
-
-            </div>
+           
 
             <div className="mnav-drawer-divider" />
 
@@ -270,18 +260,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
               ))}
             </nav>
 
-            {/* Drawer footer */}
-            <div className="mnav-drawer-footer">
-              <div className="mnav-footer-greeting">Magandang araw!</div>
-              <div className="mnav-footer-address">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  width="11" height="11" style={{ flexShrink: 0, opacity: 0.5 }}>
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <span>{settings.address}</span>
-              </div>
-            </div>
+           
           </div>
 
           {/* Cards area */}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
+import lgrrcLogo from "../../lgrrc_logo.jpg"; 
 import touchIcon from "../../assets/icons/touch.svg";
 import idleVideo from "../../assets/video/samplevid.mp4";
 
@@ -49,20 +50,8 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
       <div className="idle-video-overlay" />
       <div className="idle-pat" />
 
-      {/* ── HEADER: logo + title LEFT · announcement ticker RIGHT ── */}
+      {/* ── HEADER: announcement ticker ── */}
       <div className="idle-header">
-        <div className="idle-header-left">
-          <div className="idle-header-logo">
-            <img src={dilgIcon} alt="DILG Seal" />
-          </div>
-          <div className="idle-header-text">
-            <div className="idle-header-title">{settings.kioskTitle}</div>
-            <div className="idle-header-tagline">{settings.tagline}</div>
-            <div className="idle-header-office">{settings.office} | {settings.address}</div>
-          </div>
-        </div>
-
-        {/* Announcement ticker */}
         <div className="idle-ticker">
           <div className="idle-ticker-badge">
             <svg viewBox="0 0 24 24" fill="white" width="50" height="50">
@@ -84,7 +73,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         </div>
       </div>
 
-      {/* ── TAP PROMPT — bottom center, faded ── */}
+      {/* ── TAP PROMPT — bottom center ── */}
       <div className="idle-tap">
         <div className="tap-ring">
           <img className="touchIcon" src={touchIcon} alt="Touch icon" />
@@ -92,8 +81,32 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         <div className="tap-label">Pindutin para Magsimula</div>
       </div>
 
+      {/* ── FOOTER ── */}
       <div className="idle-footer">
-        Department of the Interior and Local Government | Republic of the Philippines | {settings.hours}
+        
+        {/* Left: Logos + Dept Name + Tagline */}
+        <div className="idle-footer-left">
+          <div className="idle-footer-logos">
+            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+            <img src={dilgIcon} alt="DILG Seal" className="footer-logo" /> 
+          </div>
+          <div className="idle-footer-text">
+            <div className="idle-footer-office">Department of the Interior and Local Government</div>
+            <div className="idle-footer-tagline">{settings.tagline}</div>
+            
+          </div>
+        </div>
+        
+        {/* Center: Title */}
+        <div className="idle-footer-center">
+          <div className="idle-footer-title">{settings.kioskTitle}</div>
+        </div>
+
+        {/* Right: Invisible Spacer to force perfect centering */}
+        <div className="idle-footer-right">
+          <div className="idle-footer-hours">{settings.hours}</div>
+        </div>
+
       </div>
     </div>
   );
