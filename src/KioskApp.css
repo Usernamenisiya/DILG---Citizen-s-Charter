@@ -1849,3 +1849,407 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .kmodal-office-row {
   display: flex; align-items: flex-start; gap: 12px;
 }
+/* ══════════════════════════════════════════════════════
+   EVENTS CALENDAR MODAL  (append to KioskApp.css)
+   ══════════════════════════════════════════════════════ */
+
+/* Box overrides — wider when split */
+.kcal-box {
+  width: clamp(680px, 52vw, 1080px);
+  max-height: 84vh;
+  transition: width 0.38s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.kcal-box--split {
+  width: clamp(780px, 80vw, 1060px);
+}
+
+/* ── Body: flex row, fills remaining box height ── */
+.kcal-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Left panel: calendar ── */
+.kcal-panel-left {
+  flex: 0 0 auto;
+  width: 420px;
+  padding: 24px 28px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-right: 1.5px solid rgba(0, 44, 118, 0.12);
+  background: #f0f4ff;
+  transition: width 0.38s ease;
+}
+/* When NOT split, left panel fills the whole box */
+.kcal-box:not(.kcal-box--split) .kcal-panel-left {
+  width: 100%;
+  border-right: none;
+}
+
+/* ── Month navigation ── */
+.kcal-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.kcal-month-label {
+  font-family: var(--fd);
+  font-size: clamp(18px, 1.8vw, 26px);
+  font-weight: 800;
+  letter-spacing: .05em;
+  color: var(--blue);
+  text-transform: uppercase;
+}
+.kcal-nav-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  border: 2px solid rgba(0, 44, 118, 0.18);
+  background: #fff;
+  color: var(--blue);
+  font-size: 22px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .16s, border-color .16s;
+  font-weight: 700;
+}
+.kcal-nav-btn:hover {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+
+/* ── Calendar grid ── */
+.kcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.kcal-grid--header { margin-bottom: 4px; }
+
+.kcal-dow {
+  text-align: center;
+  font-family: var(--fd);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .10em;
+  color: var(--muted);
+  padding: 4px 0 6px;
+}
+
+/* ── Day cells ── */
+.kcal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: default;
+  border: 1.5px solid transparent;
+  transition: background .15s, border-color .15s, transform .12s;
+  gap: 3px;
+  background: transparent;
+}
+.kcal-day--has-event {
+  cursor: pointer;
+  background: #fff;
+  border-color: rgba(0, 44, 118, 0.14);
+  box-shadow: 0 2px 8px rgba(0, 44, 118, 0.08);
+}
+.kcal-day--has-event:hover {
+  background: #e0e8ff;
+  border-color: var(--blue);
+  transform: scale(1.06);
+}
+.kcal-day--today {
+  border-color: var(--blue) !important;
+  background: #dbe6ff !important;
+}
+.kcal-day--active {
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 44, 118, 0.35);
+}
+
+.kcal-day-num {
+  font-family: var(--fd);
+  font-size: clamp(14px, 1.4vw, 20px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.kcal-day--has-event .kcal-day-num   { color: var(--blue); font-weight: 800; }
+.kcal-day--today    .kcal-day-num   { color: var(--blue); }
+.kcal-day--active   .kcal-day-num   { color: #fff; }
+
+/* Event dot indicators */
+.kcal-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.kcal-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Hint text */
+.kcal-hint {
+  margin-top: 16px;
+  text-align: center;
+  font-family: var(--fb);
+  font-size: clamp(12px, 1vw, 14px);
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.8;
+}
+.kcal-hint--right {
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* ── Right panel: event list / detail ── */
+.kcal-panel-right {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 26px 20px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: kcal-slide-in 0.30s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+@keyframes kcal-slide-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.kcal-panel-right-header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid rgba(0, 44, 118, 0.10);
+}
+.kcal-panel-date-label {
+  font-family: var(--fd);
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--blue);
+  line-height: 1;
+}
+.kcal-panel-count {
+  font-family: var(--fb);
+  font-size: clamp(13px, 1.1vw, 16px);
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Event cards ── */
+.kcal-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kcal-event-card {
+  display: flex;
+  align-items: stretch;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f0f4ff;
+  border: 1.5px solid rgba(0, 44, 118, 0.12);
+  cursor: pointer;
+  transition: transform .16s, box-shadow .16s, background .16s;
+}
+.kcal-event-card--hover {
+  transform: translateX(5px);
+  background: #e0e8ff;
+  box-shadow: 0 4px 18px rgba(0, 44, 118, 0.18);
+}
+.kcal-event-stripe {
+  width: 5px;
+  background: var(--ec, #002C76);
+  flex-shrink: 0;
+}
+.kcal-event-body {
+  flex: 1;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.kcal-event-title {
+  font-family: var(--fd);
+  font-size: clamp(16px, 1.5vw, 22px);
+  font-weight: 800;
+  letter-spacing: .03em;
+  color: var(--blue);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.kcal-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.kcal-event-time {
+  font-family: var(--fb);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 600;
+  color: var(--ec, #002C76);
+  opacity: 0.85;
+}
+.kcal-event-loc {
+  font-family: var(--fb);
+  font-size: clamp(12px, 1vw, 14px);
+  color: var(--muted);
+}
+.kcal-event-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 22px;
+  color: var(--muted);
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.kcal-event-card--hover .kcal-event-arrow {
+  color: var(--blue);
+}
+
+/* ── Event detail view ── */
+.kcal-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: kcal-slide-in .25s ease both;
+}
+
+.kcal-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--fb);
+  font-size: clamp(13px, 1.1vw, 16px);
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0;
+  transition: color .15s;
+}
+.kcal-back-btn:hover { color: var(--blue); }
+
+.kcal-detail-card {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f0f4ff;
+  border: 1.5px solid rgba(0, 44, 118, 0.14);
+  display: flex;
+  box-shadow: 0 4px 18px rgba(0, 44, 118, 0.10);
+}
+.kcal-detail-card-stripe {
+  width: 7px;
+  background: var(--ec, #002C76);
+  flex-shrink: 0;
+}
+.kcal-detail-card-inner {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.kcal-detail-tag {
+  font-family: var(--fd);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ec, #002C76);
+  opacity: 0.75;
+}
+.kcal-detail-title {
+  font-family: var(--fd);
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--blue);
+  line-height: 1.1;
+}
+.kcal-detail-time {
+  font-family: var(--fb);
+  font-size: clamp(13px, 1.1vw, 16px);
+  font-weight: 600;
+  color: var(--ec, #002C76);
+}
+.kcal-detail-loc {
+  font-family: var(--fb);
+  font-size: clamp(13px, 1.1vw, 15px);
+  color: var(--muted);
+}
+
+/* Sections inside detail */
+.kcal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kcal-section-label {
+  font-family: var(--fd);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kcal-section-text {
+  font-family: var(--fb);
+  font-size: clamp(14px, 1.2vw, 18px);
+  line-height: 1.65;
+  color: #1e2f6a;
+  margin: 0;
+}
+
+/* Tags */
+.kcal-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kcal-tag {
+  font-family: var(--fb);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 20px;
+}
+.kcal-tag--dept {
+  background: rgba(0, 44, 118, 0.10);
+  color: var(--blue);
+  border: 1.5px solid rgba(0, 44, 118, 0.18);
+}
+.kcal-tag--person {
+  background: #f0f4ff;
+  color: var(--muted);
+  border: 1.5px solid rgba(0, 44, 118, 0.10);
+}
+
+/* Scrollbar inside panels */
+.kcal-panel-left::-webkit-scrollbar,
+.kcal-panel-right::-webkit-scrollbar { width: 5px; }
+.kcal-panel-left::-webkit-scrollbar-track,
+.kcal-panel-right::-webkit-scrollbar-track { background: transparent; }
+.kcal-panel-left::-webkit-scrollbar-thumb,
+.kcal-panel-right::-webkit-scrollbar-thumb {
+  background: rgba(0, 44, 118, 0.20);
+  border-radius: 3px;
+}

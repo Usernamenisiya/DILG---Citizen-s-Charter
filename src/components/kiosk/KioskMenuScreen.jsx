@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
+import EventsCalendarModal from "./modals/event_calendar_modal";
+
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
@@ -112,9 +114,10 @@ function NavItem({ id, label, color, onClick }) {
 }
 
 export default function KioskMenuScreen({ visible, settings, announcements = [], onSelectSection, inactBarRef }) {
-  const [clockTime, setClockTime]   = useState("");
-  const [clockDate, setClockDate]   = useState("");
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [clockTime, setClockTime]       = useState("");
+  const [clockDate, setClockDate]       = useState("");
+  const [drawerOpen, setDrawerOpen]     = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const drawerRef    = useRef(null);
   const hamburgerRef = useRef(null);
   const tickerItems = (announcements || [])
@@ -172,11 +175,20 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
   const handleSelect = (id) => {
     setDrawerOpen(false);
+    if (id === "calendar") {
+      setShowCalendar(true);
+      return;
+    }
     onSelectSection(id);
   };
 
   return (
     <div className={`menu-screen${visible ? " visible" : ""}`}>
+
+      {/* ── Events Calendar Modal ── */}
+      {showCalendar && (
+        <EventsCalendarModal onClose={() => setShowCalendar(false)} />
+      )}
 
       {/* ══ FULL-WIDTH LAYOUT: topbar + content ══ */}
       <div className={`mnav-layout${drawerOpen ? " drawer-open" : ""}`}>
