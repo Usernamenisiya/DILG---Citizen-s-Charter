@@ -1863,6 +1863,10 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   width: clamp(780px, 80vw, 1060px);
 }
 
+.kcal-box:not(.kcal-box--split) .kcal-panel-left {
+  width: 100%;
+  border-right: none;
+}
 /* ── Body: flex row, fills remaining box height ── */
 .kcal-body {
   display: flex;
@@ -2252,4 +2256,28 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .kcal-panel-right::-webkit-scrollbar-thumb {
   background: rgba(0, 44, 118, 0.20);
   border-radius: 3px;
+}
+
+
+
+/*TITLE SECTION ON MAIN MENU*/
+.main-page-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-top: clamp(40px, 8vw, 100px); 
+  box-sizing: border-box;
+}
+
+.main-page-title h1 {
+  margin: 0;
+  color: #FFDE15;
+  font-size: clamp(36px, 30vw, 130px); 
+  font-weight: 800;
+  font-family: var(--fd);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-align: center;
+  text-shadow: 8px 8px 2px #C9282D;
 }

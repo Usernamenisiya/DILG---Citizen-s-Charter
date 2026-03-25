@@ -81,6 +81,7 @@ export default function KioskMainScreen({
         </div>
       </header>
 
+
       <div className="screen-bar">
         {currentService ? (
           <>
