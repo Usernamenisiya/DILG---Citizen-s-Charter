@@ -21,6 +21,13 @@ const CATEGORY_COLORS = {
   holiday: "#B57A00",
 };
 
+const CATEGORY_LEGEND = [
+  { id: "internal", label: "Internal" },
+  { id: "external", label: "External" },
+  { id: "deadline", label: "Deadlines" },
+  { id: "holiday", label: "Holidays" },
+];
+
 function toKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
@@ -270,6 +277,7 @@ export default function EventsCalendarModal({ onClose }) {
         <div className="kcal-body">
           <div className="kcal-panel-left">
             <div className="kcal-toolbar">
+              <span className="kcal-toolbar-spacer" aria-hidden="true" />
               <div className="kcal-month-nav">
                 <button type="button" className="kcal-nav-btn kcal-nav-btn--prev" onClick={prevMonth} aria-label="Previous month">
                   <span className="kcal-nav-glyph" aria-hidden="true">&larr;</span>
@@ -280,6 +288,15 @@ export default function EventsCalendarModal({ onClose }) {
                 </button>
               </div>
               <button type="button" className="kcal-today-btn" onClick={goToToday}>Today</button>
+            </div>
+
+            <div className="kcal-legend-row" aria-label="Event category colors">
+              {CATEGORY_LEGEND.map((item) => (
+                <span key={item.id} className="kcal-legend-item">
+                  <span className="kcal-legend-dot" style={{ backgroundColor: CATEGORY_COLORS[item.id] }} />
+                  <span className="kcal-legend-label">{item.label}</span>
+                </span>
+              ))}
             </div>
 
             <div className="kcal-filter-row">
@@ -308,9 +325,9 @@ export default function EventsCalendarModal({ onClose }) {
               {visibleCells.map((cell) => {
                 const allCellEvents = EVENTS[cell.key] || [];
                 const filteredCellEvents = applyFilter(allCellEvents);
-                const hasEvent = filteredCellEvents.length > 0;
+                const eventCategories = [...new Set(filteredCellEvents.map((event) => event.category))];
+                const hasEvent = eventCategories.length > 0;
                 const isActive = cell.year === year && cell.month === month && cell.day === selectedDay;
-                const dotColor = hasEvent ? CATEGORY_COLORS[filteredCellEvents[0].category] : "transparent";
 
                 return (
                   <button
@@ -336,7 +353,13 @@ export default function EventsCalendarModal({ onClose }) {
                     }}
                   >
                     <span className="kcal-day-num">{cell.day}</span>
-                    {hasEvent && <span className="kcal-day-dot" style={{ backgroundColor: dotColor }} />}
+                    {hasEvent && (
+                      <span className="kcal-day-dot-row">
+                        {eventCategories.slice(0, 4).map((categoryId) => (
+                          <span key={categoryId} className="kcal-day-dot" style={{ backgroundColor: CATEGORY_COLORS[categoryId] }} />
+                        ))}
+                      </span>
+                    )}
                   </button>
                 );
               })}

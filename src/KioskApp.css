@@ -1888,16 +1888,22 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 }
 
 .kcal-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+}
+
+.kcal-toolbar-spacer {
+  width: 92px;
+  min-height: 52px;
 }
 
 .kcal-month-nav {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-self: center;
 }
 
 .kcal-month-label {
@@ -1976,6 +1982,40 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   font-size: 15px;
   letter-spacing: 0.04em;
   cursor: pointer;
+  justify-self: end;
+}
+
+.kcal-legend-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 12px 0 8px;
+}
+
+.kcal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 44, 118, 0.12);
+}
+
+.kcal-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.kcal-legend-label {
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 700;
+  color: #304f87;
 }
 
 .kcal-filter-row {
@@ -2078,6 +2118,13 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   height: 12px;
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.kcal-day-dot-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 12px;
 }
 
 .kcal-panel-right {
@@ -2413,5 +2460,5 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   text-transform: uppercase;
   letter-spacing: 4px;
   text-align: center;
-  text-shadow: 8px 8px 2px #C9282D;
+  text-shadow: 8px 8px 2px #18386f;
 }
