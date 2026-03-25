@@ -16,7 +16,7 @@ export const KIOSK_DEFAULT_DATA = {
     kioskTitle: "Citizen's Charter Information Kiosk",
     office: "DILG Region XIII (Caraga)",
     address: "Purok 1-A, Doongan, Butuan City",
-    tagline: "Matino, Mahusay at Maaasahang ",
+    tagline: "Matino, Mahusay at Maaasahan ",
     hours: "Monday to Friday, 8:00 AM - 5:00 PM",
     perPage: 9,
     resetTimer: 60,

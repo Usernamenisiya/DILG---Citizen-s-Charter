@@ -561,7 +561,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 }
 .mnav-card-label {
   font-family: var(--fd);
-  font-size: 34px;
+  font-size: 50px;
   font-weight: 800; color: var(--text);
   letter-spacing: .03em; line-height: 1.15; text-align: center;
 }

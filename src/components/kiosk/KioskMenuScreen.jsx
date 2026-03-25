@@ -81,15 +81,16 @@ const NAV_GROUPS = [
 ];
 
 const NAV_STANDALONE = [
-  { id: "profile", label: "Mandate, Mission, Vision", color: "#1f6f8b" },
-  { id: "offices", label: "List of Offices",          color: "#0a7c4b" },
+  { id: "profile", label: "Mission, Vision & Mandate", color: "#1f6f8b" },
+  { id: "offices", label: "Contact Us",          color: "#0a7c4b" },
+  { id: "Programs", label: "DILG Programs",   color: "#002C76" },
 ];
 
 const GRID_CARDS = [
-  { id: "internal",  label: "Internal Services",     desc: "Services for DILG staff and employees",     color: "#002C76", span: "full" },
-  { id: "external",  label: "External Services",     desc: "Services for the public",                   color: "#C9282D", span: "full" },
-  { id: "feedback",  label: "Feedback & Complaints", desc: "How to provide feedback or file complaints", color: "#FFDE15", span: "half" },
-  { id: "issuances", label: "Policies & Issuances",  desc: "Compliance references and deadlines",       color: "#b45309", span: "half" },
+  { id: "internal",  label: "Internal Services",     color: "#002C76", span: "full" },
+  { id: "external",  label: "External Services",     color: "#C9282D", span: "full" },
+  { id: "feedback",  label: "Feedback & Complaints", color: "#FFDE15", span: "half" },
+  { id: "issuances", label: "Policies & Issuances",  color: "#FFDE15", span: "half" },
 ];
 
 function NavItem({ id, label, color, onClick }) {

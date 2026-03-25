@@ -155,7 +155,7 @@ ensureSingleRow(
     "Citizen's Charter Information Kiosk",
     "DILG Region XIII (Caraga)",
     "Purok 1-A, Doongan, Butuan City",
-    "Serbisyong Maaasahan, Madali at Mabilis",
+    "Matino, Mahusay at Maaasahan",
     "Monday to Friday, 8:00 AM - 5:00 PM",
     9,
     60,
@@ -164,6 +164,11 @@ ensureSingleRow(
     0,
   ]
 );
+
+// One-time migration: align legacy seeded tagline with current default.
+db.prepare(
+  "UPDATE kiosk_settings SET tagline = ? WHERE id = 1 AND tagline = ?"
+).run("Matino, Mahusay at Maaasahan", "Serbisyong Maaasahan, Madali at Mabilis");
 
 ensureSingleRow(
   "feedback_content",
