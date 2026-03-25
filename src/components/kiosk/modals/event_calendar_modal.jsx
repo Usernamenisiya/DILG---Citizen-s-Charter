@@ -1,326 +1,372 @@
-import { useState } from "react";
-
-/* ─── Sample Event Data ──────────────────────────────────────────────────────── */
-const EVENTS = {
-  "2025-07-03": [
-    {
-      id: 1,
-      title: "Quarterly Budget Review",
-      time: "9:00 AM – 11:00 AM",
-      location: "Board Room A",
-      description:
-        "Review of Q2 financial performance and Q3 budget allocation across all departments.",
-      departments: ["Finance", "Executive Office", "Operations"],
-      personnel: ["Dir. Maria Santos", "CFO Ramon Cruz", "OIC Liza Reyes"],
-      color: "#002C76",
-    },
-    {
-      id: 2,
-      title: "IT Infrastructure Upgrade",
-      time: "2:00 PM – 5:00 PM",
-      location: "Server Room / IT Hub",
-      description:
-        "Scheduled maintenance and system upgrade for the kiosk network infrastructure.",
-      departments: ["Information Technology", "Facilities Management"],
-      personnel: ["IT Head Jun Bautista", "Engr. Paolo Vera"],
-      color: "#0047b2",
-    },
-  ],
-  "2025-07-10": [
-    {
-      id: 3,
-      title: "Employee Wellness Day",
-      time: "8:00 AM – 4:00 PM",
-      location: "Gymnasium & Outdoor Area",
-      description:
-        "Annual wellness activities including health check-ups, team sports, and mental health seminars.",
-      departments: ["Human Resources", "Medical Services", "All Departments"],
-      personnel: ["HR Dir. Anna Flores", "Dr. Carlo Mendez", "Nurse Jessa Go"],
-      color: "#0a7c4b",
-    },
-  ],
-  "2025-07-15": [
-    {
-      id: 4,
-      title: "Regional Planning Summit",
-      time: "10:00 AM – 3:00 PM",
-      location: "Conference Hall 2",
-      description:
-        "Inter-agency summit for regional development planning and resource coordination among LGUs.",
-      departments: ["Planning & Development", "Executive Office", "Legal"],
-      personnel: ["Planner Noel Tan", "Dir. Maria Santos", "Atty. Grace Uy"],
-      color: "#C9282D",
-    },
-    {
-      id: 5,
-      title: "Public Records Day",
-      time: "8:00 AM – 12:00 PM",
-      location: "Records Office Lobby",
-      description:
-        "Open access day for constituents to request and receive official records and documents.",
-      departments: ["Records Management", "Customer Service"],
-      personnel: ["Records Chief Dan Lim", "CSR Supervisor Tina Abad"],
-      color: "#C9282D",
-    },
-  ],
-  "2025-07-22": [
-    {
-      id: 6,
-      title: "Youth Leadership Forum",
-      time: "1:00 PM – 5:00 PM",
-      location: "Main Auditorium",
-      description:
-        "Forum for youth representatives to discuss governance, civic engagement, and leadership.",
-      departments: ["Youth Affairs", "Community Relations", "Education Office"],
-      personnel: ["Youth Coord. Mia Reyes", "PIO Head Bart Cruz", "DepEd Liaison"],
-      color: "#002C76",
-    },
-  ],
-  "2025-07-28": [
-    {
-      id: 7,
-      title: "End-of-Month Reporting",
-      time: "9:00 AM – 12:00 PM",
-      location: "Admin Office",
-      description:
-        "Submission and consolidation of all department monthly performance reports.",
-      departments: ["All Departments", "Executive Office"],
-      personnel: ["Admin Chief Rose Chua", "Exec. Asst. Kevin Sia"],
-      color: "#0a7c4b",
-    },
-  ],
-};
+import { useMemo, useState } from "react";
 
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
-const DAYS_SHORT = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+const DAYS_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "internal", label: "Internal" },
+  { id: "external", label: "External" },
+  { id: "deadline", label: "Deadlines" },
+  { id: "holiday", label: "Holiday" },
+];
+
+const CATEGORY_COLORS = {
+  internal: "#002C76",
+  external: "#0A7C4B",
+  deadline: "#C9282D",
+  holiday: "#B57A00",
+};
 
 function toKey(year, month, day) {
-  return `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-}
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-function getFirstDay(year, month) {
-  return new Date(year, month, 1).getDay();
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/* ─── EventCard ──────────────────────────────────────────────────────────────── */
-function EventCard({ event, onClick }) {
-  const [hover, setHover] = useState(false);
+function getMonthCells(year, month) {
+  const first = new Date(year, month, 1);
+  const firstDay = first.getDay();
+  const start = new Date(year, month, 1 - firstDay);
+  const out = [];
+  for (let i = 0; i < 42; i += 1) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    out.push({
+      day: d.getDate(),
+      month: d.getMonth(),
+      year: d.getFullYear(),
+      key: toKey(d.getFullYear(), d.getMonth(), d.getDate()),
+      inCurrentMonth: d.getMonth() === month,
+    });
+  }
+  return out;
+}
+
+function buildSampleEvents() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const nextMonthDate = new Date(y, m + 1, 1);
+  const y2 = nextMonthDate.getFullYear();
+  const m2 = nextMonthDate.getMonth();
+
+  const events = {};
+  const push = (year, month, day, item) => {
+    const key = toKey(year, month, day);
+    if (!events[key]) events[key] = [];
+    events[key].push(item);
+  };
+
+  push(y, m, 4, {
+    id: "ev-1",
+    title: "Citizen Service Frontline Briefing",
+    time: "9:00 AM - 10:30 AM",
+    location: "Regional Conference Hall",
+    category: "internal",
+    office: "Regional Director Office",
+    description: "Frontline teams align on service updates, queue handling, and citizen support protocols.",
+  });
+  push(y, m, 9, {
+    id: "ev-2",
+    title: "Barangay Documentation Assistance",
+    time: "1:30 PM - 4:00 PM",
+    location: "Public Service Desk",
+    category: "external",
+    office: "Customer Assistance Unit",
+    description: "Assistance day for documentary requirements and step-by-step filing guidance.",
+  });
+  push(y, m, 14, {
+    id: "ev-3",
+    title: "Submission Deadline: Monthly Compliance Report",
+    time: "Until 5:00 PM",
+    location: "Online Submission Portal",
+    category: "deadline",
+    office: "Monitoring and Evaluation Division",
+    description: "All covered offices must submit required compliance attachments before cutoff.",
+  });
+  push(y, m, 14, {
+    id: "ev-4",
+    title: "Civil Registry Coordination Meeting",
+    time: "2:00 PM - 3:30 PM",
+    location: "Meeting Room 2",
+    category: "internal",
+    office: "LG Capability Development Division",
+    description: "Coordination with support units for upcoming local registry assistance programs.",
+  });
+  push(y, m, 21, {
+    id: "ev-5",
+    title: "Public Consultation on Local Governance Programs",
+    time: "10:00 AM - 12:00 PM",
+    location: "Main Lobby Forum Area",
+    category: "external",
+    office: "Public Affairs and Communication",
+    description: "Open consultation for citizens regarding service improvements and outreach initiatives.",
+  });
+  push(y, m, 29, {
+    id: "ev-6",
+    title: "Special Non-Working Holiday",
+    time: "Whole Day",
+    location: "All Offices",
+    category: "holiday",
+    office: "DILG Region XIII",
+    description: "Office operations follow holiday schedule. Emergency support lines remain available.",
+  });
+
+  push(y2, m2, 3, {
+    id: "ev-7",
+    title: "Inter-Office Service Standards Workshop",
+    time: "9:00 AM - 11:30 AM",
+    location: "Training Room A",
+    category: "internal",
+    office: "Human Resource Development",
+    description: "Workshop focused on standardizing service touchpoints and processing updates.",
+  });
+  push(y2, m2, 8, {
+    id: "ev-8",
+    title: "External Services Info Day",
+    time: "8:30 AM - 3:00 PM",
+    location: "Ground Floor Help Desk",
+    category: "external",
+    office: "Citizen Engagement Unit",
+    description: "Walk-in orientation for service requirements and expected processing timelines.",
+  });
+
+  return events;
+}
+
+const EVENTS = buildSampleEvents();
+
+function formatLongDate(year, month, day) {
+  return `${MONTHS[month]} ${day}, ${year}`;
+}
+
+function EventCard({ event, onClick, delay = 0 }) {
   return (
-    <div
-      className={`kcal-event-card${hover ? " kcal-event-card--hover" : ""}`}
-      style={{ "--ec": event.color }}
-      onClick={() => onClick(event)}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+    <button
+      type="button"
+      className="kcal-event-card"
+      style={{ "--ec": CATEGORY_COLORS[event.category], animationDelay: `${delay}s` }}
+      onClick={() => onClick(event.id)}
     >
-      <div className="kcal-event-stripe" />
-      <div className="kcal-event-body">
-        <div className="kcal-event-title">{event.title}</div>
-        <div className="kcal-event-meta">
+      <span className="kcal-event-stripe" />
+      <span className="kcal-event-body">
+        <span className="kcal-event-topline">
+          <span className="kcal-event-pill">{event.category}</span>
           <span className="kcal-event-time">{event.time}</span>
-          <span className="kcal-event-loc">📍 {event.location}</span>
-        </div>
-      </div>
-      <div className="kcal-event-arrow">›</div>
-    </div>
+        </span>
+        <span className="kcal-event-title">{event.title}</span>
+        <span className="kcal-event-meta">{event.office} | {event.location}</span>
+      </span>
+      <span className="kcal-event-arrow">&gt;</span>
+    </button>
   );
 }
 
-/* ─── EventDetail ────────────────────────────────────────────────────────────── */
 function EventDetail({ event, onBack }) {
   return (
-    <div className="kcal-detail" style={{ "--ec": event.color }}>
-      <button className="kcal-back-btn" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Back to events
-      </button>
-
+    <div className="kcal-detail" style={{ "--ec": CATEGORY_COLORS[event.category] }}>
+      <button type="button" className="kcal-back-btn" onClick={onBack}>Back to list</button>
       <div className="kcal-detail-card">
         <div className="kcal-detail-card-stripe" />
         <div className="kcal-detail-card-inner">
-          <div className="kcal-detail-tag">Event Details</div>
+          <div className="kcal-detail-tag">{event.category}</div>
           <div className="kcal-detail-title">{event.title}</div>
           <div className="kcal-detail-time">{event.time}</div>
-          <div className="kcal-detail-loc">📍 {event.location}</div>
+          <div className="kcal-detail-loc">{event.location}</div>
         </div>
       </div>
-
+      <div className="kcal-section">
+        <div className="kcal-section-label">Assigned Office</div>
+        <p className="kcal-section-text">{event.office}</p>
+      </div>
       <div className="kcal-section">
         <div className="kcal-section-label">Description</div>
         <p className="kcal-section-text">{event.description}</p>
       </div>
-
-      <div className="kcal-section">
-        <div className="kcal-section-label">Departments Involved</div>
-        <div className="kcal-tag-row">
-          {event.departments.map((d) => (
-            <span key={d} className="kcal-tag kcal-tag--dept" style={{ "--ec": event.color }}>
-              🏢 {d}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="kcal-section">
-        <div className="kcal-section-label">Personnel</div>
-        <div className="kcal-tag-row">
-          {event.personnel.map((p) => (
-            <span key={p} className="kcal-tag kcal-tag--person">
-              👤 {p}
-            </span>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
 
-/* ─── Main Modal ─────────────────────────────────────────────────────────────── */
 export default function EventsCalendarModal({ onClose }) {
-  const today = new Date();
-  const [year, setYear]                   = useState(2025);
-  const [month, setMonth]                 = useState(6); // July for demo data
-  const [selectedDay, setSelectedDay]     = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const today = useMemo(() => new Date(), []);
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay    = getFirstDay(year, month);
+  const visibleCells = useMemo(() => getMonthCells(year, month), [year, month]);
+
   const selectedKey = selectedDay ? toKey(year, month, selectedDay) : null;
-  const dayEvents   = selectedKey ? (EVENTS[selectedKey] || []) : [];
-  const isSplit     = selectedDay !== null;
+  const isExpanded = selectedDay !== null;
 
-  function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
-    setSelectedDay(null); setSelectedEvent(null);
-  }
-  function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
-    setSelectedDay(null); setSelectedEvent(null);
-  }
-  function handleDayClick(day) {
-    const key = toKey(year, month, day);
-    if (EVENTS[key]) { setSelectedDay(day); setSelectedEvent(null); }
-  }
+  const isTodayCell = (cell) => {
+    return (
+      cell.day === today.getDate() &&
+      cell.month === today.getMonth() &&
+      cell.year === today.getFullYear()
+    );
+  };
 
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const applyFilter = (events) => {
+    if (filter === "all") return events;
+    return events.filter((event) => event.category === filter);
+  };
 
-  const isToday = (d) =>
-    d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+  const selectedEvents = useMemo(() => {
+    if (!selectedKey) return [];
+    return applyFilter(EVENTS[selectedKey] || []);
+  }, [selectedKey, filter]);
+
+  const selectedEvent = useMemo(() => {
+    return selectedEvents.find((event) => event.id === selectedEventId) || null;
+  }, [selectedEvents, selectedEventId]);
+
+  const prevMonth = () => {
+    setSelectedEventId(null);
+    setSelectedDay(null);
+    if (month === 0) {
+      setMonth(11);
+      setYear((prev) => prev - 1);
+      return;
+    }
+    setMonth((prev) => prev - 1);
+  };
+
+  const nextMonth = () => {
+    setSelectedEventId(null);
+    setSelectedDay(null);
+    if (month === 11) {
+      setMonth(0);
+      setYear((prev) => prev + 1);
+      return;
+    }
+    setMonth((prev) => prev + 1);
+  };
+
+  const goToToday = () => {
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
+    setSelectedDay(null);
+    setSelectedEventId(null);
+  };
 
   return (
     <div className="kmodal-backdrop" onClick={onClose}>
-      <div
-        className={`kmodal-box kcal-box${isSplit ? " kcal-box--split" : ""}`}
-        style={{ "--modal-color": "#002C76" }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* ── Header — reuses existing kmodal-header styles ── */}
+      <div className={`kmodal-box kcal-box${isExpanded ? " kcal-box--expanded" : ""}`} style={{ "--modal-color": "#002C76" }} onClick={(e) => e.stopPropagation()}>
         <div className="kmodal-header">
           <div className="kmodal-header-stripe" />
-          <div className="kmodal-title">Events Calendar</div>
+          <div className="kmodal-title">Calendar and Events</div>
           <button className="kmodal-close" onClick={onClose}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="28" height="28">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* ── Body ── */}
         <div className="kcal-body">
-
-          {/* Left: Calendar panel */}
           <div className="kcal-panel-left">
-            <div className="kcal-month-nav">
-              <button className="kcal-nav-btn" onClick={prevMonth}>‹</button>
-              <span className="kcal-month-label">{MONTHS[month]} {year}</span>
-              <button className="kcal-nav-btn" onClick={nextMonth}>›</button>
+            <div className="kcal-toolbar">
+              <div className="kcal-month-nav">
+                <button type="button" className="kcal-nav-btn kcal-nav-btn--prev" onClick={prevMonth} aria-label="Previous month">
+                  <span className="kcal-nav-glyph" aria-hidden="true">&larr;</span>
+                </button>
+                <span className="kcal-month-label">{MONTHS[month]} {year}</span>
+                <button type="button" className="kcal-nav-btn kcal-nav-btn--next" onClick={nextMonth} aria-label="Next month">
+                  <span className="kcal-nav-glyph" aria-hidden="true">&rarr;</span>
+                </button>
+              </div>
+              <button type="button" className="kcal-today-btn" onClick={goToToday}>Today</button>
+            </div>
+
+            <div className="kcal-filter-row">
+              {FILTERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={`kcal-filter-chip${filter === item.id ? " active" : ""}`}
+                  onClick={() => {
+                    setFilter(item.id);
+                    setSelectedEventId(null);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
             <div className="kcal-grid kcal-grid--header">
-              {DAYS_SHORT.map(d => (
+              {DAYS_SHORT.map((d) => (
                 <div key={d} className="kcal-dow">{d}</div>
               ))}
             </div>
 
             <div className="kcal-grid kcal-grid--days">
-              {cells.map((day, i) => {
-                if (!day) return <div key={`b${i}`} />;
-                const key      = toKey(year, month, day);
-                const hasEvent = !!EVENTS[key];
-                const isActive = selectedDay === day;
-                const dots     = hasEvent ? EVENTS[key] : [];
+              {visibleCells.map((cell) => {
+                const allCellEvents = EVENTS[cell.key] || [];
+                const filteredCellEvents = applyFilter(allCellEvents);
+                const hasEvent = filteredCellEvents.length > 0;
+                const isActive = cell.year === year && cell.month === month && cell.day === selectedDay;
+                const dotColor = hasEvent ? CATEGORY_COLORS[filteredCellEvents[0].category] : "transparent";
 
                 return (
-                  <div
-                    key={day}
+                  <button
+                    key={cell.key}
+                    type="button"
                     className={[
                       "kcal-day",
-                      hasEvent     ? "kcal-day--has-event" : "",
-                      isActive     ? "kcal-day--active"    : "",
-                      isToday(day) ? "kcal-day--today"     : "",
+                      cell.inCurrentMonth ? "" : "kcal-day--outside",
+                      hasEvent ? "kcal-day--has-event" : "",
+                      isActive ? "kcal-day--active" : "",
+                      isTodayCell(cell) ? "kcal-day--today" : "",
                     ].filter(Boolean).join(" ")}
-                    onClick={() => handleDayClick(day)}
+                    onClick={() => {
+                      if (isActive) {
+                        setSelectedDay(null);
+                        setSelectedEventId(null);
+                        return;
+                      }
+                      setYear(cell.year);
+                      setMonth(cell.month);
+                      setSelectedDay(cell.day);
+                      setSelectedEventId(null);
+                    }}
                   >
-                    <span className="kcal-day-num">{day}</span>
-                    {hasEvent && (
-                      <div className="kcal-dots">
-                        {dots.slice(0, 3).map(ev => (
-                          <span
-                            key={ev.id}
-                            className="kcal-dot"
-                            style={{ background: isActive ? "#FFDE15" : ev.color }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    <span className="kcal-day-num">{cell.day}</span>
+                    {hasEvent && <span className="kcal-day-dot" style={{ backgroundColor: dotColor }} />}
+                  </button>
                 );
               })}
             </div>
-
-            <div className="kcal-hint">
-              {isSplit ? "← Tap another date to switch" : "Tap a highlighted date to see events"}
-            </div>
           </div>
 
-          {/* Right: Event panel (only when a date is selected) */}
-          {isSplit && (
+          {isExpanded && (
             <div className="kcal-panel-right">
               {selectedEvent ? (
-                <EventDetail
-                  event={selectedEvent}
-                  onBack={() => setSelectedEvent(null)}
-                />
+                <EventDetail event={selectedEvent} onBack={() => setSelectedEventId(null)} />
               ) : (
                 <>
                   <div className="kcal-panel-right-header">
-                    <div className="kcal-panel-date-label">
-                      {MONTHS[month]} {selectedDay}, {year}
-                    </div>
+                    <div className="kcal-panel-date-label">{formatLongDate(year, month, selectedDay)}</div>
                     <div className="kcal-panel-count">
-                      {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} scheduled
+                      {selectedEvents.length} event{selectedEvents.length !== 1 ? "s" : ""} found
                     </div>
                   </div>
+
                   <div className="kcal-event-list">
-                    {dayEvents.map(ev => (
-                      <EventCard key={ev.id} event={ev} onClick={setSelectedEvent} />
+                    {selectedEvents.length === 0 && (
+                      <div className="kcal-empty-state">
+                        <div className="kcal-empty-title">No events scheduled</div>
+                        <div className="kcal-empty-sub">Try another date or switch filters.</div>
+                      </div>
+                    )}
+
+                    {selectedEvents.map((event, index) => (
+                      <EventCard key={event.id} event={event} onClick={setSelectedEventId} delay={index * 0.04} />
                     ))}
-                  </div>
-                  <div className="kcal-hint kcal-hint--right">
-                    Tap an event card to view full details
                   </div>
                 </>
               )}
