@@ -60,7 +60,7 @@ function NavItem({ id, label, color, onClick }) {
   const [hover, setHover] = useState(false);
   return (
     <button
-      className={`mnav-item${hover ? " hovered" : ""}`}f
+      className={`mnav-item${hover ? " hovered" : ""}`}
       style={{ "--nav-color": color }}
       onClick={() => onClick(id)}
       onMouseEnter={() => setHover(true)}

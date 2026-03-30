@@ -87,11 +87,11 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         {/* Left: Logos + Dept Name + Tagline */}
         <div className="idle-footer-left">
           <div className="idle-footer-logos">
+            <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
             <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
-            <img src={dilgIcon} alt="DILG Seal" className="footer-logo" /> 
           </div>
           <div className="idle-footer-text">
-            <div className="idle-footer-office">Department of the Interior and Local Government</div>
+            <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>
             <div className="idle-footer-tagline">{settings.tagline}</div>
             
           </div>
@@ -99,7 +99,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         
         {/* Center: Title */}
         <div className="idle-footer-center">
-          <div className="idle-footer-title">{settings.kioskTitle}</div>
+          <div className="idle-footer-title">Citizen's Charter & Information Kiosk</div>
         </div>
 
         {/* Right: Invisible Spacer to force perfect centering */}

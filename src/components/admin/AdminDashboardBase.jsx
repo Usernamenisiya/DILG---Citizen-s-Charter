@@ -105,7 +105,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     title: defaultOfficeDirectory.title || "List of Offices",
     region: defaultOfficeDirectory.region || "",
   });
-  const [officeForm, setOfficeForm] = useState({ office: "", address: "", contact: "" });
+  const [officeForm, setOfficeForm] = useState({ office: "", address: "", contact: "", type: "office" });
   const [settingsStatus, setSettingsStatus] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
   const [issuanceStatus, setIssuanceStatus] = useState(null);
@@ -450,17 +450,18 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const startEditOffice = idx => {
-    const entry = (currentOfficeDirectory.entries || [])[idx] || { office: "", address: "", contact: "" };
+    const entry = (currentOfficeDirectory.entries || [])[idx] || { office: "", address: "", contact: "", type: "office" };
     setOfficeForm({
       office: entry.office || "",
       address: entry.address || "",
       contact: entry.contact || "",
+      type: entry.type || "office",
     });
     setOfficeEditingIdx(idx);
   };
 
   const startAddOffice = () => {
-    setOfficeForm({ office: "", address: "", contact: "" });
+    setOfficeForm({ office: "", address: "", contact: "", type: "office" });
     setOfficeEditingIdx(-1);
   };
 
@@ -475,6 +476,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       office: officeName,
       address: String(officeForm.address || "").trim(),
       contact: String(officeForm.contact || "").trim(),
+      type: officeForm.type || "office",
     };
 
     try {
@@ -510,7 +512,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         lastUpdated: new Date().toISOString(),
       });
       setOfficeEditingIdx(null);
-      setOfficeForm({ office: "", address: "", contact: "" });
+      setOfficeForm({ office: "", address: "", contact: "", type: "office" });
       showStatus(setOfficeStatus, "success", "✓ Office entry saved.");
     } catch (e) {
       showStatus(setOfficeStatus, "error", `✗ ${e.message}`);
@@ -1646,6 +1648,17 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   />
                 </div>
                 <div className="a-field">
+                  <label className="a-label">Type</label>
+                  <select
+                    className="a-select"
+                    value={officeForm.type || "office"}
+                    onChange={e => setOfficeForm(f => ({ ...f, type: e.target.value }))}
+                  >
+                    <option value="office">Office</option>
+                    <option value="province">Province</option>
+                  </select>
+                </div>
+                <div className="a-field">
                   <label className="a-label">Address</label>
                   <textarea
                     className="a-textarea"
@@ -1672,7 +1685,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               {(currentOfficeDirectory.entries || []).map((entry, idx) => (
                 <div key={`${entry.office}-${idx}`} className="svc-row">
                   <div className="svc-row-info">
-                    <div className="svc-row-name">{entry.office || "Untitled Office"}</div>
+                    <div className="svc-row-name">{entry.office || "Untitled Office"} {entry.type ? `(${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)})` : ""}</div>
                     <div className="svc-row-meta">{entry.contact || "No contact"}</div>
                     {!!entry.address && <div className="svc-row-meta">{entry.address}</div>}
                   </div>

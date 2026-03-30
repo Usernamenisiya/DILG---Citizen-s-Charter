@@ -1552,10 +1552,10 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   gap: 14px;
 }
 
-/* Office card grid inside modal — 3 cols */
+/* Office card grid inside modal — 4 cols */
 .kmodal-office-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 14px;
 }
 

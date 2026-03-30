@@ -1,4 +1,7 @@
-const DILG_COLORS = ["#002C76", "#C9282D", "#FFDE15"];
+const TYPE_COLORS = {
+  "office": "#C9282D",  // Red for offices
+  "province": "#FFDE15" // Yellow for provinces
+};
 
 function parseOfficeContact(rawContact) {
   const text = String(rawContact || "").trim();
@@ -41,7 +44,8 @@ export default function OfficesModal({ officeDirectory, onClose }) {
           <div className="kmodal-office-grid">
             {(officeDirectory.entries || []).map((entry, idx) => {
               const contactInfo = parseOfficeContact(entry.contact);
-              const color = DILG_COLORS[idx % DILG_COLORS.length];
+              const entryType = (entry.type || "office").toLowerCase();
+              const color = TYPE_COLORS[entryType] || TYPE_COLORS.office;
               const isGold = color === "#FFDE15";
               return (
                 <div

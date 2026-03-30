@@ -132,6 +132,7 @@ db.exec(`
     office TEXT NOT NULL,
     address TEXT NOT NULL,
     contact TEXT NOT NULL,
+    type TEXT DEFAULT 'office',
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
 
@@ -141,6 +142,18 @@ db.exec(`
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
 `);
+
+// Migration: Add type column if it doesn't exist
+try {
+  const columns = db.prepare("PRAGMA table_info(office_directory_entries)").all();
+  const hasTypeColumn = columns.some(col => col.name === "type");
+  if (!hasTypeColumn) {
+    db.prepare("ALTER TABLE office_directory_entries ADD COLUMN type TEXT DEFAULT 'office'").run();
+    console.log("✓ Added 'type' column to office_directory_entries table");
+  }
+} catch (error) {
+  console.error("Migration error:", error);
+}
 
 ensureSingleRow(
   "issuance_meta",
@@ -658,7 +671,7 @@ app.get("/api/offices", (req, res) => {
   try {
     const meta = db.prepare("SELECT title, region FROM office_directory_meta WHERE id = 1").get();
     const entries = db
-      .prepare("SELECT id, office, address, contact, sortOrder FROM office_directory_entries ORDER BY sortOrder ASC, id ASC")
+      .prepare("SELECT id, office, address, contact, type, sortOrder FROM office_directory_entries ORDER BY sortOrder ASC, id ASC")
       .all();
 
     res.json({
@@ -698,11 +711,11 @@ app.post("/api/offices", (req, res) => {
       .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM office_directory_entries")
       .get();
     const info = db
-      .prepare("INSERT INTO office_directory_entries (office, address, contact, sortOrder) VALUES (?, ?, ?, ?)")
-      .run(office, body.address || "", body.contact || "", Number(currentMax.maxSort || 0) + 1);
+      .prepare("INSERT INTO office_directory_entries (office, address, contact, type, sortOrder) VALUES (?, ?, ?, ?, ?)")
+      .run(office, body.address || "", body.contact || "", body.type || "office", Number(currentMax.maxSort || 0) + 1);
 
     const saved = db
-      .prepare("SELECT id, office, address, contact, sortOrder FROM office_directory_entries WHERE id = ?")
+      .prepare("SELECT id, office, address, contact, type, sortOrder FROM office_directory_entries WHERE id = ?")
       .get(info.lastInsertRowid);
     res.status(201).json(saved);
   } catch (error) {
@@ -721,8 +734,8 @@ app.put("/api/offices/:id", (req, res) => {
 
   try {
     const info = db
-      .prepare("UPDATE office_directory_entries SET office = ?, address = ?, contact = ? WHERE id = ?")
-      .run(office, body.address || "", body.contact || "", id);
+      .prepare("UPDATE office_directory_entries SET office = ?, address = ?, contact = ?, type = ? WHERE id = ?")
+      .run(office, body.address || "", body.contact || "", body.type || "office", id);
 
     if (info.changes === 0) {
       return res.status(404).json({ error: "Office entry not found." });
