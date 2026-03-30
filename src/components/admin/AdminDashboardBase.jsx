@@ -601,11 +601,11 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       title: entry.title || "",
       message: entry.message || "",
       details: entry.details || "",
-      postedBy: entry.postedBy || "",
-      where: entry.where || "",
-      postedOn: entry.postedOn || "",
-      effectiveUntil: entry.effectiveUntil || "",
-      involvedParties: entry.involvedParties || "",
+      postedBy: entry.postedBy || entry.posted_by || "",
+      where: entry.where || entry.announcementWhere || "",
+      postedOn: entry.postedOn || entry.posted_on || "",
+      effectiveUntil: entry.effectiveUntil || entry.effective_until || "",
+      involvedParties: entry.involvedParties || entry.involved_parties || "",
       tickerDisplay: entry.tickerDisplay === "title" ? "title" : "message",
       attachmentsText,
     });
@@ -613,14 +613,15 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const saveAnnouncement = async () => {
+    const editingEntry = announcementEditingIdx >= 0 ? currentAnnouncements[announcementEditingIdx] : null;
     const title = String(announcementForm.title || "").trim();
     const message = String(announcementForm.message || "").trim();
     const details = String(announcementForm.details || "").trim();
-    const postedBy = String(announcementForm.postedBy || "").trim();
-    const where = String(announcementForm.where || "").trim();
-    const postedOn = String(announcementForm.postedOn || "").trim();
-    const effectiveUntil = String(announcementForm.effectiveUntil || "").trim();
-    const involvedParties = String(announcementForm.involvedParties || "").trim();
+    const postedBy = String(announcementForm.postedBy || editingEntry?.postedBy || editingEntry?.posted_by || "").trim();
+    const where = String(announcementForm.where || editingEntry?.where || editingEntry?.announcementWhere || "").trim();
+    const postedOn = String(announcementForm.postedOn || editingEntry?.postedOn || editingEntry?.posted_on || "").trim();
+    const effectiveUntil = String(announcementForm.effectiveUntil || editingEntry?.effectiveUntil || editingEntry?.effective_until || "").trim();
+    const involvedParties = String(announcementForm.involvedParties || editingEntry?.involvedParties || editingEntry?.involved_parties || "").trim();
     const tickerDisplay = announcementForm.tickerDisplay === "title" ? "title" : "message";
     const attachments = String(announcementForm.attachmentsText || "")
       .split("\n")
@@ -644,7 +645,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
 
     try {
-      const editingEntry = announcementEditingIdx >= 0 ? currentAnnouncements[announcementEditingIdx] : null;
       let savedEntry = null;
       const payload = {
         title,
@@ -1519,52 +1519,97 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">Who Posted This Announcement</label>
-                    <input
-                      className="a-input"
-                      value={announcementForm.postedBy}
-                      onChange={e => setAnnouncementForm(f => ({ ...f, postedBy: e.target.value }))}
-                      placeholder="e.g. Public Affairs Office"
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        className="a-input"
+                        value={announcementForm.postedBy}
+                        onChange={e => setAnnouncementForm(f => ({ ...f, postedBy: e.target.value }))}
+                        placeholder="e.g. Public Affairs Office"
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost a-btn-sm"
+                        onClick={() => setAnnouncementForm(f => ({ ...f, postedBy: "" }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                   <div className="a-field">
                     <label className="a-label">Where</label>
-                    <input
-                      className="a-input"
-                      value={announcementForm.where}
-                      onChange={e => setAnnouncementForm(f => ({ ...f, where: e.target.value }))}
-                      placeholder="e.g. Main Lobby Forum Area"
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        className="a-input"
+                        value={announcementForm.where}
+                        onChange={e => setAnnouncementForm(f => ({ ...f, where: e.target.value }))}
+                        placeholder="e.g. Main Lobby Forum Area"
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost a-btn-sm"
+                        onClick={() => setAnnouncementForm(f => ({ ...f, where: "" }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">Who Might Be Involved</label>
-                    <input
-                      className="a-input"
-                      value={announcementForm.involvedParties}
-                      onChange={e => setAnnouncementForm(f => ({ ...f, involvedParties: e.target.value }))}
-                      placeholder="e.g. Citizens, LGU Desk Officers"
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        className="a-input"
+                        value={announcementForm.involvedParties}
+                        onChange={e => setAnnouncementForm(f => ({ ...f, involvedParties: e.target.value }))}
+                        placeholder="e.g. Citizens, LGU Desk Officers"
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost a-btn-sm"
+                        onClick={() => setAnnouncementForm(f => ({ ...f, involvedParties: "" }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">Posted On</label>
-                    <input
-                      type="date"
-                      className="a-input"
-                      value={announcementForm.postedOn}
-                      onChange={e => setAnnouncementForm(f => ({ ...f, postedOn: e.target.value }))}
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="date"
+                        className="a-input"
+                        value={announcementForm.postedOn}
+                        onChange={e => setAnnouncementForm(f => ({ ...f, postedOn: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost a-btn-sm"
+                        onClick={() => setAnnouncementForm(f => ({ ...f, postedOn: "" }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                   <div className="a-field">
                     <label className="a-label">Effective Until</label>
-                    <input
-                      type="date"
-                      className="a-input"
-                      value={announcementForm.effectiveUntil}
-                      onChange={e => setAnnouncementForm(f => ({ ...f, effectiveUntil: e.target.value }))}
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="date"
+                        className="a-input"
+                        value={announcementForm.effectiveUntil}
+                        onChange={e => setAnnouncementForm(f => ({ ...f, effectiveUntil: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost a-btn-sm"
+                        onClick={() => setAnnouncementForm(f => ({ ...f, effectiveUntil: "" }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="a-field">
