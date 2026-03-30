@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { ArrowLeft, Delete, Lock, Shield, User, X } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
+import SuperAdminDashboard from "./SuperAdminDashboard";
 import "../../style/AdminPanel.css";
 
 export default function AdminAccessOverlay({ appData, onDataChange, onClose, defaultData }) {
@@ -65,16 +67,20 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose, def
     <div className="admin-overlay">
       {!authenticated ? (
         <div className="pin-screen">
-          <div className="pin-logo">🔐</div>
+          <div className="pin-logo"><Lock size={44} strokeWidth={2.2} /></div>
           {!selectedRole ? (
             <>
               <div className="pin-title">Choose Access</div>
               <div className="pin-sub">Select role to continue</div>
               <div style={{ display: "grid", gap: 12, width: "100%", marginBottom: 10 }}>
-                <button className="a-btn a-btn-primary" onClick={() => chooseRole("super-admin")}>Super Admin</button>
-                <button className="a-btn a-btn-ghost" onClick={() => chooseRole("admin")}>Admin</button>
+                <button className="a-btn a-btn-primary" onClick={() => chooseRole("super-admin")}>
+                  <Shield size={15} className="btn-icon" /> Super Admin
+                </button>
+                <button className="a-btn a-btn-ghost" onClick={() => chooseRole("admin")}>
+                  <User size={15} className="btn-icon" /> Admin
+                </button>
               </div>
-              <button className="pin-cancel" onClick={onClose}>✕ Cancel</button>
+              <button className="pin-cancel" onClick={onClose}><X size={14} className="btn-icon" /> Cancel</button>
             </>
           ) : (
             <>
@@ -90,24 +96,32 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose, def
                   <button key={d} className="pin-btn" onClick={() => pinKey(d)}>{d}</button>
                 ))}
                 <button className="pin-btn zero" onClick={() => pinKey("0")}>0</button>
-                <button className="pin-btn" onClick={pinDel}>⌫</button>
+                <button className="pin-btn" onClick={pinDel}><Delete size={22} /></button>
               </div>
               <div className="pin-err">{pinError}</div>
               <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
-                <button className="pin-cancel" onClick={backToRoleSelect}>← Back</button>
-                <button className="pin-cancel" onClick={onClose}>✕ Cancel</button>
+                <button className="pin-cancel" onClick={backToRoleSelect}><ArrowLeft size={14} className="btn-icon" /> Back</button>
+                <button className="pin-cancel" onClick={onClose}><X size={14} className="btn-icon" /> Cancel</button>
               </div>
             </>
           )}
         </div>
       ) : (
-        <AdminDashboard
-          role={selectedRole || "admin"}
-          appData={appData}
-          onDataChange={onDataChange}
-          onClose={onClose}
-          defaultData={defaultData}
-        />
+        selectedRole === "super-admin" ? (
+          <SuperAdminDashboard
+            appData={appData}
+            onDataChange={onDataChange}
+            onClose={onClose}
+            defaultData={defaultData}
+          />
+        ) : (
+          <AdminDashboard
+            appData={appData}
+            onDataChange={onDataChange}
+            onClose={onClose}
+            defaultData={defaultData}
+          />
+        )
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowLeft, Save, X } from "lucide-react";
 import IconPickerModal from "./IconPickerModal";
 import { ServiceIcon, normalizeLucideIconName } from "../ServiceIcon";
 
@@ -105,11 +106,11 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
   return (
     <div style={{ color: "#0e2a68" }} className="admin-sub-content">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-        <button className="a-btn a-btn-ghost a-btn-sm" onClick={onBack}>← Back</button>
+        <button className="a-btn a-btn-ghost a-btn-sm" onClick={onBack}><ArrowLeft size={14} className="btn-icon" /> Back</button>
         <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#07225f", letterSpacing: ".04em", flex: 1 }}>
           {service ? "Edit Service" : "Add New Service"}
         </div>
-        <button className="a-btn a-btn-primary" onClick={handleSave}>💾 Save Service</button>
+        <button className="a-btn a-btn-primary" onClick={handleSave}><Save size={14} className="btn-icon" /> Save Service</button>
       </div>
 
       <div className="a-field">
@@ -177,7 +178,7 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
                 <input className="a-input" value={r.text} placeholder="Requirement description..." onChange={e => setReq(i, "text", e.target.value)} />
                 <input className="a-input" value={r.where} placeholder="Where to secure..." onChange={e => setReq(i, "where", e.target.value)} />
               </div>
-              <button className="dyn-item-del" onClick={() => delReq(i)}>✕</button>
+              <button className="dyn-item-del" onClick={() => delReq(i)}><X size={14} /></button>
             </div>
           ))}
         </div>
@@ -192,7 +193,7 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
           {form.steps.map((s, i) => (
             <div key={i} className="dyn-item">
               <input className="a-input" value={s} placeholder="Describe this step..." onChange={e => setStep(i, e.target.value)} />
-              <button className="dyn-item-del" onClick={() => delStep(i)}>✕</button>
+              <button className="dyn-item-del" onClick={() => delStep(i)}><X size={14} /></button>
             </div>
           ))}
         </div>

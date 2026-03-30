@@ -49,7 +49,15 @@
   pointer-events: none;
 }
 
-.pin-logo { font-size: 46px; margin-bottom: 12px; filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.45)); }
+.pin-logo {
+  font-size: 46px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.45));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
 .pin-title {
   font-family: var(--fd);
   font-size: 34px;
@@ -112,6 +120,12 @@
   text-transform: uppercase;
 }
 .pin-cancel:hover { color: #fff; }
+
+.btn-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 6px;
+}
 
 .admin-panel {
   display: flex;
