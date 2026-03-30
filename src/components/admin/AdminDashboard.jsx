@@ -602,7 +602,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
           ))}
         </nav>
         <div className="admin-footer">
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", marginBottom: 8 }}>Data v{appData.version}</div>
+          <div style={{ fontSize: 11, color: "rgba(223,233,255,.75)", marginBottom: 8 }}>Data v{appData.version}</div>
           <button className="admin-logout" onClick={onClose}>✕ Exit Admin</button>
         </div>
       </div>
@@ -894,9 +894,9 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             </div>
 
             <div className="a-divider" />
-            <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Change Admin PIN</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginBottom: 14 }}>
-              Default PIN is <strong style={{ color: "var(--gold)" }}>0000</strong>.
+            <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>Change Admin PIN</div>
+            <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 14 }}>
+              Default PIN is <strong style={{ color: "#194fb7" }}>0000</strong>.
             </div>
             <div className="a-row">
               <div className="a-field">
@@ -1074,7 +1074,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 </div>
               ))}
               {!currentAnnouncements.length && (
-                <div style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>No announcements yet. Add one to show in the ticker.</div>
+                <div style={{ color: "#5370ab", fontSize: 13 }}>No announcements yet. Add one to show in the ticker.</div>
               )}
             </div>
           </div>
@@ -1281,21 +1281,21 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 onChange={e => setAutoCheck(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: "var(--gold)" }}
               />
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,.6)", cursor: "pointer" }}>
+              <label style={{ fontSize: 13, color: "#4b65a0", cursor: "pointer" }}>
                 Auto-check for updates on kiosk startup
               </label>
             </div>
             {pendingUpdate && (
               <div>
                 <div className="a-divider" />
-                <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+                <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 8 }}>
                   Changes in version {pendingUpdate.version}:
                 </div>
                 <div className="update-diff">
                   <div className="update-diff-item">{pendingUpdate.services?.length} services in update</div>
                   {pendingUpdate.officeDirectory && <div className="update-diff-item">Office directory data included</div>}
                   {pendingUpdate.policiesAndIssuances && <div className="update-diff-item">Policies and issuances data included</div>}
-                  {pendingUpdate.settings && <div className="update-diff-item" style={{ color: "#a0b4ff" }}>⚙️ Settings updated</div>}
+                  {pendingUpdate.settings && <div className="update-diff-item" style={{ color: "#1f63d2" }}>⚙️ Settings updated</div>}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                   <button className="a-btn a-btn-success" onClick={applyUpdate}>✓ Apply Update</button>
@@ -1304,10 +1304,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               </div>
             )}
             <div className="a-divider" />
-            <div style={{ fontFamily: "var(--fd)", fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,.6)", marginBottom: 4 }}>
+            <div style={{ fontFamily: "var(--fd)", fontSize: 15, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
               Export as Update File
             </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,.35)", marginBottom: 10 }}>Download current kiosk data as JSON.</div>
+            <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 10 }}>Download current kiosk data as JSON.</div>
             <button className="a-btn a-btn-ghost" onClick={exportUpdateFile}>⬇ Download kiosk-update.json</button>
           </div>
         )}
@@ -1322,7 +1322,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               <button className="a-btn a-btn-danger" onClick={confirmReset}>↩ Reset to Defaults</button>
             </div>
             <div className="a-divider" />
-            <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Import Backup</div>
+            <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 8 }}>Import Backup</div>
             <label className="backup-import-area" style={{ display: "block" }}>
               <p>📂 <strong>Click to select a backup JSON file</strong></p>
               <p style={{ marginTop: 4, fontSize: 12 }}>or paste JSON below and click Import</p>
@@ -1348,10 +1348,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 height: 100,
                 marginTop: 12,
                 padding: 10,
-                background: "rgba(255,255,255,.05)",
-                border: "1px solid rgba(255,255,255,.1)",
+                background: "#f4f8ff",
+                border: "1px solid rgba(143,170,230,.42)",
                 borderRadius: 8,
-                color: "#fff",
+                color: "#17387f",
                 fontSize: 11,
                 fontFamily: "monospace",
                 outline: "none",

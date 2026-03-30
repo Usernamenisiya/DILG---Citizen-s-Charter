@@ -103,10 +103,10 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
   };
 
   return (
-    <div style={{ color: "#fff" }} className="admin-sub-content">
+    <div style={{ color: "#0e2a68" }} className="admin-sub-content">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
         <button className="a-btn a-btn-ghost a-btn-sm" onClick={onBack}>← Back</button>
-        <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: ".04em", flex: 1 }}>
+        <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#07225f", letterSpacing: ".04em", flex: 1 }}>
           {service ? "Edit Service" : "Add New Service"}
         </div>
         <button className="a-btn a-btn-primary" onClick={handleSave}>💾 Save Service</button>

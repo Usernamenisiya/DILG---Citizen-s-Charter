@@ -57,10 +57,10 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
   };
 
   return (
-    <div style={{ color: "#fff" }}>
+    <div className="admin-sub-content" style={{ color: "#0e2a68" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
         <button className="a-btn a-btn-ghost a-btn-sm" onClick={onBack}>Back</button>
-        <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: ".04em", flex: 1 }}>
+        <div style={{ fontFamily: "var(--fd)", fontSize: 22, fontWeight: 800, color: "#07225f", letterSpacing: ".04em", flex: 1 }}>
           {issuance ? "Edit Issuance" : "Add New Issuance"}
         </div>
         <button className="a-btn a-btn-primary" onClick={handleSave}>Save Issuance</button>
