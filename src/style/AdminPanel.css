@@ -207,6 +207,29 @@
   user-select: text;
   -webkit-overflow-scrolling: touch;
 }
+.admin-role-badge {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  margin-left: auto;
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  border: 1px solid transparent;
+}
+.admin-role-badge.super-admin {
+  color: #08306f;
+  background: linear-gradient(120deg, #ffde15, #ffe88f);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.admin-role-badge.admin {
+  color: #ffffff;
+  background: linear-gradient(120deg, #1d62d7, #0e4ab7);
+  border-color: rgba(170, 201, 255, 0.48);
+}
 .admin-content::before {
   content: "";
   position: absolute;
@@ -285,6 +308,26 @@
 }
 .a-btn:hover { transform: translateY(-1px); }
 .a-btn:active { transform: translateY(0); }
+.a-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.role-lock-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #6d4e00;
+  background: rgba(255, 222, 21, 0.28);
+  border: 1px solid rgba(202, 156, 0, 0.35);
+  white-space: nowrap;
+}
 .a-btn-primary {
   background: linear-gradient(135deg, #0a4cc2 0%, #1e67e6 100%);
   color: #fff;

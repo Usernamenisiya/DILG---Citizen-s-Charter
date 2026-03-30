@@ -3,7 +3,11 @@ import ServiceFormEditor from "./ServiceFormEditor";
 import IssuanceFormEditor from "./IssuanceFormEditor";
 import { ServiceIcon } from "../ServiceIcon";
 
-export default function AdminDashboard({ appData, onDataChange, onClose, defaultData }) {
+export default function AdminDashboard({ role = "super-admin", appData, onDataChange, onClose, defaultData }) {
+  const isSuperAdmin = role === "super-admin";
+  const canDelete = isSuperAdmin;
+  const superAdminPin = appData.settings.superAdminPin || "0000";
+  const adminPin = appData.settings.adminPin || "1111";
   const defaultFeedback = appData.feedbackAndComplaints || defaultData.feedbackAndComplaints || {
     title: "Feedback and Complaints Mechanism",
     contact: { email: "", telephone: "" },
@@ -63,6 +67,8 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   });
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
+  const [adminOldPin, setAdminOldPin] = useState("");
+  const [adminNewPin, setAdminNewPin] = useState("");
   const [officeMetaForm, setOfficeMetaForm] = useState({
     title: defaultOfficeDirectory.title || "List of Offices",
     region: defaultOfficeDirectory.region || "",
@@ -121,7 +127,12 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       autoCheckUpdates: autoCheck,
     };
 
-    const nextSettings = { ...appData.settings, ...s, adminPin: appData.settings.adminPin };
+    const nextSettings = {
+      ...appData.settings,
+      ...s,
+      adminPin: appData.settings.adminPin,
+      superAdminPin,
+    };
 
     try {
       await callApi("/api/settings", {
@@ -135,8 +146,12 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
     }
   };
 
-  const changePin = async () => {
-    if (oldPin !== appData.settings.adminPin) {
+  const changeSuperAdminPin = async () => {
+    if (!isSuperAdmin) {
+      showStatus(setSettingsStatus, "error", "✗ Only Super Admin can change the Super Admin PIN.");
+      return;
+    }
+    if (oldPin !== superAdminPin) {
       showStatus(setSettingsStatus, "error", "✗ Current PIN is incorrect.");
       return;
     }
@@ -144,7 +159,11 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       showStatus(setSettingsStatus, "error", "✗ New PIN must be exactly 4 digits.");
       return;
     }
-    const nextSettings = { ...appData.settings, adminPin: newPin };
+    const nextSettings = {
+      ...appData.settings,
+      superAdminPin: newPin,
+      adminPin,
+    };
     try {
       await callApi("/api/settings", {
         method: "PUT",
@@ -153,7 +172,43 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       onDataChange({ ...appData, settings: nextSettings });
       setOldPin("");
       setNewPin("");
-      showStatus(setSettingsStatus, "success", "✓ PIN changed successfully.");
+      showStatus(setSettingsStatus, "success", "✓ Super Admin PIN changed successfully.");
+    } catch (e) {
+      showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const changeAdminPin = async () => {
+    const currentValue = isSuperAdmin ? adminOldPin : oldPin;
+    const nextValue = isSuperAdmin ? adminNewPin : newPin;
+
+    if (currentValue !== adminPin) {
+      showStatus(setSettingsStatus, "error", "✗ Current Admin PIN is incorrect.");
+      return;
+    }
+    if (!/^\d{4}$/.test(nextValue)) {
+      showStatus(setSettingsStatus, "error", "✗ New Admin PIN must be exactly 4 digits.");
+      return;
+    }
+    const nextSettings = {
+      ...appData.settings,
+      adminPin: nextValue,
+      superAdminPin,
+    };
+    try {
+      await callApi("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify(nextSettings),
+      });
+      onDataChange({ ...appData, settings: nextSettings });
+      if (isSuperAdmin) {
+        setAdminOldPin("");
+        setAdminNewPin("");
+      } else {
+        setOldPin("");
+        setNewPin("");
+      }
+      showStatus(setSettingsStatus, "success", "✓ Admin PIN changed successfully.");
     } catch (e) {
       showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
     }
@@ -219,6 +274,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   };
 
   const removeFeedbackSection = idx => {
+    if (!canDelete) {
+      showStatus(setFeedbackStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
     setFeedbackForm(f => ({
       ...f,
       sections: (f.sections || []).filter((_, i) => i !== idx),
@@ -385,6 +444,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   };
 
   const deleteOfficeEntry = async idx => {
+    if (!canDelete) {
+      showStatus(setOfficeStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
     const entry = (currentOfficeDirectory.entries || [])[idx];
     if (!entry) return;
     if (!window.confirm(`Delete "${entry.office || "office entry"}"?`)) return;
@@ -463,6 +526,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   };
 
   const deleteAnnouncement = async idx => {
+    if (!canDelete) {
+      showStatus(setAnnouncementStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
     const entry = currentAnnouncements[idx];
     if (!entry) return;
     if (!window.confirm("Delete this announcement?")) return;
@@ -575,12 +642,13 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
   ];
 
   const StatusMsg = ({ status }) => (status ? <div className={`a-status ${status.type}`}>{status.msg}</div> : null);
+  const lockHint = !isSuperAdmin ? <span className="role-lock-hint">🔒 Super Admin only</span> : null;
 
   return (
     <div className="admin-panel">
       <div className="admin-sidebar">
         <div className="admin-brand">
-          <div className="admin-brand-title">Admin Panel</div>
+          <div className="admin-brand-title">{isSuperAdmin ? "Super Admin Panel" : "Admin Panel"}</div>
           <div className="admin-brand-sub">DILG Kiosk CMS</div>
         </div>
         <nav className="admin-nav">
@@ -608,6 +676,14 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
       </div>
 
       <div className="admin-content">
+        <div className={`admin-role-badge${isSuperAdmin ? " super-admin" : " admin"}`}>
+          {isSuperAdmin ? "SUPER ADMIN" : "ADMIN"}
+        </div>
+        {!isSuperAdmin && (
+          <div className="a-status info" style={{ position: "relative", zIndex: 1, marginBottom: 12 }}>
+            Admin mode: Create and update are enabled. Delete actions are disabled.
+          </div>
+        )}
         {activeTab === "services" && (
           editingIdx === null ? (
             <div className="admin-sub-content">
@@ -628,22 +704,25 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                     </div>
                     <div className="svc-row-actions">
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setEditingIdx(idx)}>✏️ Edit</button>
-                      <button
-                        className="a-btn a-btn-danger a-btn-sm"
-                        onClick={async () => {
-                          if (!window.confirm(`Delete "${s.label}"?`)) return;
-                          const response = await fetch(`/api/services/internal/${s.id}`, { method: "DELETE" });
-                          if (!response.ok) {
-                            const errText = await response.text();
-                            alert("Failed to delete service from database: " + (errText || response.status));
-                            return;
-                          }
-                          const services = appData.services.filter((_, i) => i !== idx);
-                          onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
-                        }}
-                      >
-                        🗑
-                      </button>
+                      {canDelete && (
+                        <button
+                          className="a-btn a-btn-danger a-btn-sm"
+                          onClick={async () => {
+                            if (!window.confirm(`Delete "${s.label}"?`)) return;
+                            const response = await fetch(`/api/services/internal/${s.id}`, { method: "DELETE" });
+                            if (!response.ok) {
+                              const errText = await response.text();
+                              alert("Failed to delete service from database: " + (errText || response.status));
+                              return;
+                            }
+                            const services = appData.services.filter((_, i) => i !== idx);
+                            onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
+                          }}
+                        >
+                          🗑
+                        </button>
+                      )}
+                      {!canDelete && lockHint}
                     </div>
                   </div>
                 ))}
@@ -685,27 +764,30 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                     </div>
                     <div className="svc-row-actions">
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setExternalEditingIdx(idx)}>✏️ Edit</button>
-                      <button
-                        className="a-btn a-btn-danger a-btn-sm"
-                        onClick={async () => {
-                          if (!window.confirm(`Delete "${s.label}"?`)) return;
-                          const response = await fetch(`/api/services/external/${s.id}`, { method: "DELETE" });
-                          if (!response.ok) {
-                            const errText = await response.text();
-                            alert("Failed to delete service from database: " + (errText || response.status));
-                            return;
-                          }
-                          const externalServices = currentExternalServices.filter((_, i) => i !== idx);
-                          onDataChange({
-                            ...appData,
-                            externalServices,
-                            version: appData.version + 1,
-                            lastUpdated: new Date().toISOString(),
-                          });
-                        }}
-                      >
-                        🗑
-                      </button>
+                      {canDelete && (
+                        <button
+                          className="a-btn a-btn-danger a-btn-sm"
+                          onClick={async () => {
+                            if (!window.confirm(`Delete "${s.label}"?`)) return;
+                            const response = await fetch(`/api/services/external/${s.id}`, { method: "DELETE" });
+                            if (!response.ok) {
+                              const errText = await response.text();
+                              alert("Failed to delete service from database: " + (errText || response.status));
+                              return;
+                            }
+                            const externalServices = currentExternalServices.filter((_, i) => i !== idx);
+                            onDataChange({
+                              ...appData,
+                              externalServices,
+                              version: appData.version + 1,
+                              lastUpdated: new Date().toISOString(),
+                            });
+                          }}
+                        >
+                          🗑
+                        </button>
+                      )}
+                      {!canDelete && lockHint}
                     </div>
                   </div>
                 ))}
@@ -779,28 +861,31 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                     </div>
                     <div className="svc-row-actions">
                       <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => setIssuanceEditingIdx(idx)}>Edit</button>
-                      <button
-                        className="a-btn a-btn-danger a-btn-sm"
-                        onClick={async () => {
-                          if (!window.confirm(`Delete "${item.circularNo || item.title || "issuance"}"?`)) return;
-                          try {
-                            await callApi(`/api/issuances/${item.id}`, { method: "DELETE" });
-                            const current = appData.policiesAndIssuances || defaultIssuances;
-                            const items = (current.items || []).filter((_, i) => i !== idx);
-                            onDataChange({
-                              ...appData,
-                              policiesAndIssuances: { ...current, items },
-                              version: appData.version + 1,
-                              lastUpdated: new Date().toISOString(),
-                            });
-                            showStatus(setIssuanceStatus, "success", "✓ Issuance deleted.");
-                          } catch (e) {
-                            showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
-                          }
-                        }}
-                      >
-                        Delete
-                      </button>
+                      {canDelete && (
+                        <button
+                          className="a-btn a-btn-danger a-btn-sm"
+                          onClick={async () => {
+                            if (!window.confirm(`Delete "${item.circularNo || item.title || "issuance"}"?`)) return;
+                            try {
+                              await callApi(`/api/issuances/${item.id}`, { method: "DELETE" });
+                              const current = appData.policiesAndIssuances || defaultIssuances;
+                              const items = (current.items || []).filter((_, i) => i !== idx);
+                              onDataChange({
+                                ...appData,
+                                policiesAndIssuances: { ...current, items },
+                                version: appData.version + 1,
+                                lastUpdated: new Date().toISOString(),
+                              });
+                              showStatus(setIssuanceStatus, "success", "✓ Issuance deleted.");
+                            } catch (e) {
+                              showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                      {!canDelete && lockHint}
                     </div>
                   </div>
                 ))}
@@ -894,9 +979,19 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             </div>
 
             <div className="a-divider" />
-            <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>Change Admin PIN</div>
+            <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
+              {isSuperAdmin ? "Change Super Admin PIN" : "Change Admin PIN"}
+            </div>
             <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 14 }}>
-              Default PIN is <strong style={{ color: "#194fb7" }}>0000</strong>.
+              {isSuperAdmin ? (
+                <>
+                  Default Super Admin PIN is <strong style={{ color: "#194fb7" }}>0000</strong>.
+                </>
+              ) : (
+                <>
+                  Default Admin PIN is <strong style={{ color: "#194fb7" }}>1111</strong>.
+                </>
+              )}
             </div>
             <div className="a-row">
               <div className="a-field">
@@ -910,8 +1005,44 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="a-btn a-btn-primary" onClick={saveSettings}>💾 Save Settings</button>
-              <button className="a-btn a-btn-ghost" onClick={changePin}>🔒 Change PIN</button>
+              <button className="a-btn a-btn-ghost" onClick={isSuperAdmin ? changeSuperAdminPin : changeAdminPin}>
+                🔒 Change {isSuperAdmin ? "Super Admin" : "Admin"} PIN
+              </button>
             </div>
+
+            {isSuperAdmin && (
+              <>
+                <div className="a-divider" />
+                <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
+                  Change Admin PIN
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Current Admin PIN</label>
+                    <input
+                      className="a-input"
+                      type="password"
+                      maxLength={4}
+                      value={adminOldPin}
+                      onChange={e => setAdminOldPin(e.target.value)}
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">New Admin PIN (4 digits)</label>
+                    <input
+                      className="a-input"
+                      type="password"
+                      maxLength={4}
+                      value={adminNewPin}
+                      onChange={e => setAdminNewPin(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="a-btn a-btn-ghost" onClick={changeAdminPin}>🔒 Change Admin PIN</button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -968,7 +1099,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 <div className="a-divider" />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <div className="a-label" style={{ marginBottom: 0 }}>Section {idx + 1}</div>
-                  <button className="a-btn a-btn-danger a-btn-sm" onClick={() => removeFeedbackSection(idx)}>Delete Section</button>
+                  {canDelete && (
+                    <button className="a-btn a-btn-danger a-btn-sm" onClick={() => removeFeedbackSection(idx)}>Delete Section</button>
+                  )}
+                  {!canDelete && lockHint}
                 </div>
                 <div className="a-field">
                   <label className="a-label">Heading</label>
@@ -1069,7 +1203,8 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                   </div>
                   <div className="svc-row-actions">
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditAnnouncement(idx)}>Edit</button>
-                    <button className="a-btn a-btn-danger a-btn-sm" onClick={() => deleteAnnouncement(idx)}>Delete</button>
+                    {canDelete && <button className="a-btn a-btn-danger a-btn-sm" onClick={() => deleteAnnouncement(idx)}>Delete</button>}
+                    {!canDelete && lockHint}
                   </div>
                 </div>
               ))}
@@ -1154,12 +1289,15 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                   </div>
                   <div className="svc-row-actions">
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditOffice(idx)}>Edit</button>
-                    <button
-                      className="a-btn a-btn-danger a-btn-sm"
-                      onClick={() => deleteOfficeEntry(idx)}
+                    {canDelete && (
+                      <button
+                        className="a-btn a-btn-danger a-btn-sm"
+                        onClick={() => deleteOfficeEntry(idx)}
                       >
-                      Delete
-                    </button>
+                        Delete
+                      </button>
+                    )}
+                    {!canDelete && lockHint}
                   </div>
                 </div>
               ))}
@@ -1267,18 +1405,23 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             <div className="admin-tab-title">Online Updates</div>
             <div className="admin-tab-sub">Fetch the latest service data from a remote JSON file.</div>
             <StatusMsg status={updateStatus} />
+            {!isSuperAdmin && (
+              <div className="a-status info">Only Super Admin can check and apply online updates.</div>
+            )}
             <div className="update-url-row">
               <div className="a-field">
                 <label className="a-label">Update JSON URL</label>
                 <input className="a-input" value={updateUrl} placeholder="https://example.com/kiosk-update.json" onChange={e => setUpdateUrl(e.target.value)} />
               </div>
-              <button className="a-btn a-btn-primary" onClick={checkUpdates} style={{ flexShrink: 0 }}>🔍 Check Now</button>
+              <button className="a-btn a-btn-primary" onClick={checkUpdates} style={{ flexShrink: 0 }} disabled={!isSuperAdmin}>🔍 Check Now</button>
+              {!isSuperAdmin && lockHint}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
               <input
                 type="checkbox"
                 checked={autoCheck}
                 onChange={e => setAutoCheck(e.target.checked)}
+                disabled={!isSuperAdmin}
                 style={{ width: 16, height: 16, accentColor: "var(--gold)" }}
               />
               <label style={{ fontSize: 13, color: "#4b65a0", cursor: "pointer" }}>
@@ -1298,8 +1441,9 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                   {pendingUpdate.settings && <div className="update-diff-item" style={{ color: "#1f63d2" }}>⚙️ Settings updated</div>}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                  <button className="a-btn a-btn-success" onClick={applyUpdate}>✓ Apply Update</button>
+                  <button className="a-btn a-btn-success" onClick={applyUpdate} disabled={!isSuperAdmin}>✓ Apply Update</button>
                   <button className="a-btn a-btn-ghost" onClick={() => setPendingUpdate(null)}>Dismiss</button>
+                  {!isSuperAdmin && lockHint}
                 </div>
               </div>
             )}
@@ -1308,7 +1452,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
               Export as Update File
             </div>
             <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 10 }}>Download current kiosk data as JSON.</div>
-            <button className="a-btn a-btn-ghost" onClick={exportUpdateFile}>⬇ Download kiosk-update.json</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button className="a-btn a-btn-ghost" onClick={exportUpdateFile} disabled={!isSuperAdmin}>⬇ Download kiosk-update.json</button>
+              {!isSuperAdmin && lockHint}
+            </div>
           </div>
         )}
 
@@ -1317,9 +1464,13 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             <div className="admin-tab-title">Backup & Restore</div>
             <div className="admin-tab-sub">Export all data or restore from a previous backup. PIN is never exported.</div>
             <StatusMsg status={backupStatus} />
+            {!isSuperAdmin && (
+              <div className="a-status info">Only Super Admin can export, import, or reset kiosk data.</div>
+            )}
             <div className="backup-actions">
-              <button className="a-btn a-btn-primary" onClick={exportBackup}>⬇ Export Full Backup</button>
-              <button className="a-btn a-btn-danger" onClick={confirmReset}>↩ Reset to Defaults</button>
+              <button className="a-btn a-btn-primary" onClick={exportBackup} disabled={!isSuperAdmin}>⬇ Export Full Backup</button>
+              <button className="a-btn a-btn-danger" onClick={confirmReset} disabled={!isSuperAdmin}>↩ Reset to Defaults</button>
+              {!isSuperAdmin && lockHint}
             </div>
             <div className="a-divider" />
             <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 8 }}>Import Backup</div>
@@ -1330,6 +1481,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 type="file"
                 accept=".json"
                 style={{ display: "none" }}
+                disabled={!isSuperAdmin}
                 onChange={e => {
                   const f = e.target.files[0];
                   if (!f) return;
@@ -1342,6 +1494,7 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
             <textarea
               value={pasteJson}
               onChange={e => setPasteJson(e.target.value)}
+              disabled={!isSuperAdmin}
               placeholder="Paste backup JSON here..."
               style={{
                 width: "100%",
@@ -1358,9 +1511,10 @@ export default function AdminDashboard({ appData, onDataChange, onClose, default
                 resize: "vertical",
               }}
             />
-            <button className="a-btn a-btn-ghost" style={{ marginTop: 10 }} onClick={() => importData(pasteJson)}>
+            <button className="a-btn a-btn-ghost" style={{ marginTop: 10 }} onClick={() => importData(pasteJson)} disabled={!isSuperAdmin}>
               📥 Import from Pasted JSON
             </button>
+            {!isSuperAdmin && <div style={{ marginTop: 8 }}>{lockHint}</div>}
           </div>
         )}
       </div>

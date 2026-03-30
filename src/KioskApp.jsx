@@ -182,6 +182,27 @@ export default function KioskApp() {
 
   const s = appData.settings;
 
+  useEffect(() => {
+    const hasSuperAdminPin = typeof appData.settings?.superAdminPin === "string" && appData.settings.superAdminPin.length === 4;
+    const hasAdminPin = typeof appData.settings?.adminPin === "string" && appData.settings.adminPin.length === 4;
+    const shouldNormalizeAdmin = !hasAdminPin || appData.settings.adminPin === "0000";
+
+    if (!hasSuperAdminPin || shouldNormalizeAdmin) {
+      setAppData(prev => {
+        const next = {
+          ...prev,
+          settings: {
+            ...prev.settings,
+            superAdminPin: hasSuperAdminPin ? prev.settings.superAdminPin : "0000",
+            adminPin: shouldNormalizeAdmin ? "1111" : prev.settings.adminPin,
+          },
+        };
+        saveData(next);
+        return next;
+      });
+    }
+  }, [appData.settings]);
+
   const handleDataChange = useCallback(newData => {
     setAppData(newData);
     saveData(newData);
