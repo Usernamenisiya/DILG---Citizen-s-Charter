@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { MapPin } from "lucide-react";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -64,6 +65,7 @@ function buildSampleEvents() {
     title: "Citizen Service Frontline Briefing",
     time: "9:00 AM - 10:30 AM",
     location: "Regional Conference Hall",
+    attendees: "Regional Office Directors, Frontline Coordinators",
     category: "internal",
     office: "Regional Director Office",
     description: "Frontline teams align on service updates, queue handling, and citizen support protocols.",
@@ -73,6 +75,7 @@ function buildSampleEvents() {
     title: "Barangay Documentation Assistance",
     time: "1:30 PM - 4:00 PM",
     location: "Public Service Desk",
+    attendees: "Barangay Service Officers, Public Assistance Team",
     category: "external",
     office: "Customer Assistance Unit",
     description: "Assistance day for documentary requirements and step-by-step filing guidance.",
@@ -142,6 +145,31 @@ function formatLongDate(year, month, day) {
   return `${MONTHS[month]} ${day}, ${year}`;
 }
 
+function normalizeAttendees(attendees) {
+  if (!attendees) return [];
+  if (Array.isArray(attendees)) return attendees.filter(Boolean).map(String);
+  return String(attendees)
+    .split(/\r?\n|,|•/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatAttendeesSummary(attendees) {
+  const parts = normalizeAttendees(attendees);
+  return parts.join(" • ");
+}
+
+function renderAttendeesDetail(attendees) {
+  const parts = normalizeAttendees(attendees);
+  return parts.length ? (
+    <div className="kcal-attendees-list">
+      {parts.map((item, idx) => (
+        <div key={idx} className="kcal-attendees-item">{item}</div>
+      ))}
+    </div>
+  ) : null;
+}
+
 function EventCard({ event, onClick, delay = 0 }) {
   return (
     <button
@@ -157,7 +185,9 @@ function EventCard({ event, onClick, delay = 0 }) {
           <span className="kcal-event-time">{event.time}</span>
         </span>
         <span className="kcal-event-title">{event.title}</span>
-        <span className="kcal-event-meta">{event.office} | {event.location}</span>
+        <span className="kcal-event-meta">
+          {event.office} | <MapPin size={12} style={{ verticalAlign: "text-bottom", marginRight: 4 }} />{event.location}
+        </span>
       </span>
       <span className="kcal-event-arrow">&gt;</span>
     </button>
@@ -174,22 +204,30 @@ function EventDetail({ event, onBack }) {
           <div className="kcal-detail-tag">{event.category}</div>
           <div className="kcal-detail-title">{event.title}</div>
           <div className="kcal-detail-time">{event.time}</div>
-          <div className="kcal-detail-loc">{event.location}</div>
+          <div className="kcal-detail-loc"><MapPin size={14} style={{ verticalAlign: "text-bottom", marginRight: 6 }} />{event.location}</div>
         </div>
       </div>
+      {event.description && (
+        <div className="kcal-section">
+          <div className="kcal-section-label">Description</div>
+          <p className="kcal-section-text">{event.description}</p>
+        </div>
+      )}
       <div className="kcal-section">
         <div className="kcal-section-label">Assigned Office</div>
         <p className="kcal-section-text">{event.office}</p>
       </div>
-      <div className="kcal-section">
-        <div className="kcal-section-label">Description</div>
-        <p className="kcal-section-text">{event.description}</p>
-      </div>
+      {event.attendees && (
+        <div className="kcal-section">
+          <div className="kcal-section-label">Attending / Involved</div>
+          {renderAttendeesDetail(event.attendees)}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function EventsCalendarModal({ onClose }) {
+export default function EventsCalendarModal({ onClose, events = null }) {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -215,10 +253,26 @@ export default function EventsCalendarModal({ onClose }) {
     return events.filter((event) => event.category === filter);
   };
 
+  const eventsMap = useMemo(() => {
+    if (events == null) return buildSampleEvents();
+    const map = {};
+    events.forEach((event) => {
+      const date = String(event?.date || "");
+      const parts = date.split("-").map((v) => Number(v));
+      if (parts.length !== 3) return;
+      const [yearVal, monthVal, dayVal] = parts;
+      if (!Number.isFinite(yearVal) || !Number.isFinite(monthVal) || !Number.isFinite(dayVal)) return;
+      const key = toKey(yearVal, monthVal - 1, dayVal);
+      if (!map[key]) map[key] = [];
+      map[key].push(event);
+    });
+    return map;
+  }, [events]);
+
   const selectedEvents = useMemo(() => {
     if (!selectedKey) return [];
-    return applyFilter(EVENTS[selectedKey] || []);
-  }, [selectedKey, filter]);
+    return applyFilter(eventsMap[selectedKey] || []);
+  }, [selectedKey, filter, eventsMap]);
 
   const selectedEvent = useMemo(() => {
     return selectedEvents.find((event) => event.id === selectedEventId) || null;
@@ -315,7 +369,7 @@ export default function EventsCalendarModal({ onClose }) {
 
             <div className="kcal-grid kcal-grid--days">
               {visibleCells.map((cell) => {
-                const allCellEvents = EVENTS[cell.key] || [];
+                const allCellEvents = eventsMap[cell.key] || [];
                 const filteredCellEvents = applyFilter(allCellEvents);
                 const hasEvent = filteredCellEvents.length > 0;
                 const isActive = cell.year === year && cell.month === month && cell.day === selectedDay;

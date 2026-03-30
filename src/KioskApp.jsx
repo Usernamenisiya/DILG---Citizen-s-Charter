@@ -391,6 +391,7 @@ export default function KioskApp() {
           visible={screen === "menu"}
           settings={s}
           announcements={announcements}
+          calendarEvents={appData.calendarEvents}
           onSelectSection={selectSection}
           inactBarRef={inactBarRef}
         />

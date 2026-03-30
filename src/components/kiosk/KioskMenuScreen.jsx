@@ -46,7 +46,7 @@ const NAV_GROUPS = [
 const NAV_STANDALONE = [
   { id: "profile",   label: "Mission, Vision & Mandate", color: "#FFDE15" },
   { id: "offices",   label: "Contact Us",                color: "#FFDE15" },
-  { id: "Programs",  label: "DILG Programs",             color: "#FFDE15" },
+  { id: "Programs",  label: "LGUSS",             color: "#FFDE15" },
 ];
 
 const GRID_CARDS = [
@@ -60,7 +60,7 @@ function NavItem({ id, label, color, onClick }) {
   const [hover, setHover] = useState(false);
   return (
     <button
-      className={`mnav-item${hover ? " hovered" : ""}`}
+      className={`mnav-item${hover ? " hovered" : ""}`}f
       style={{ "--nav-color": color }}
       onClick={() => onClick(id)}
       onMouseEnter={() => setHover(true)}
@@ -74,7 +74,7 @@ function NavItem({ id, label, color, onClick }) {
   );
 }
 
-export default function KioskMenuScreen({ visible, settings, announcements = [], onSelectSection, inactBarRef }) {
+export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef }) {
   const [clockTime, setClockTime]       = useState("");
   const [clockDate, setClockDate]       = useState("");
   const [drawerOpen, setDrawerOpen]     = useState(false);
@@ -148,7 +148,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
       {/* ── Events Calendar Modal ── */}
       {showCalendar && (
-        <EventsCalendarModal onClose={() => setShowCalendar(false)} />
+        <EventsCalendarModal onClose={() => setShowCalendar(false)} events={calendarEvents} />
       )}
 
       {/* ══ FULL-WIDTH LAYOUT: topbar + content ══ */}

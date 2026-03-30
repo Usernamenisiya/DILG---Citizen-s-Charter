@@ -5,6 +5,7 @@ import {
   FolderOpen,
   KeyRound,
   LogOut,
+  MapPin,
   Pencil,
   RotateCcw,
   Save,
@@ -56,6 +57,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const currentExternalServices = appData.externalServices || defaultExternalServices;
   const currentOfficeDirectory = appData.officeDirectory || defaultOfficeDirectory;
   const currentAnnouncements = appData.announcements || [];
+  const currentCalendarEvents = appData.calendarEvents || defaultData.calendarEvents || [];
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
@@ -63,6 +65,21 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [issuanceEditingIdx, setIssuanceEditingIdx] = useState(null);
   const [officeEditingIdx, setOfficeEditingIdx] = useState(null);
   const [announcementEditingIdx, setAnnouncementEditingIdx] = useState(null);
+  const [calendarEditingIdx, setCalendarEditingIdx] = useState(null);
+  const [calendarForm, setCalendarForm] = useState({
+    title: "",
+    date: "",
+    timeFrom: "",
+    timeUntil: "",
+    timePeriod: "pm",
+    location: "",
+    office: "",
+    attendees: [],
+    attendeeInput: "",
+    category: "internal",
+    description: "",
+  });
+  const [calendarStatus, setCalendarStatus] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -131,6 +148,48 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const showStatus = (setter, type, msg) => {
     setter({ type, msg });
     setTimeout(() => setter(null), 5000);
+  };
+
+  const parseTimeRange = raw => {
+    const value = String(raw || "").trim();
+    if (!value) return { from: "", until: "", period: "pm" };
+    const match = value.match(/^(.+?)\s*-\s*(.+?)(?:\s*(am|pm))?$/i);
+    if (!match) return { from: value, until: "", period: "pm" };
+    return {
+      from: match[1].trim(),
+      until: match[2].trim(),
+      period: (match[3] || "pm").toLowerCase(),
+    };
+  };
+
+  const parseAttendees = raw => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+    return String(raw)
+      .split(/\r?\n|,|•/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const formatTimeValue = raw => {
+    const value = String(raw || "").trim();
+    if (!value) return "";
+    const digits = value.replace(/[^0-9]/g, "");
+    if (!digits) return value;
+    if (value.includes(":")) return value;
+    const normalized = digits.slice(0, 4);
+    if (normalized.length <= 2) return `${parseInt(normalized, 10)}:00`;
+    if (normalized.length === 3) {
+      return `${parseInt(normalized.slice(0, 1), 10)}:${normalized.slice(1).padEnd(2, "0")}`;
+    }
+    return `${parseInt(normalized.slice(0, 2), 10)}:${normalized.slice(2)}`;
+  };
+
+  const buildTimeRange = ({ timeFrom, timeUntil, timePeriod }) => {
+    if (timeFrom && timeUntil) {
+      return `${timeFrom} - ${timeUntil} ${timePeriod || "pm"}`;
+    }
+    return "";
   };
 
   const saveSettings = async () => {
@@ -566,6 +625,96 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
   };
 
+  const startAddCalendarEvent = () => {
+    setCalendarForm({
+      title: "",
+      date: "",
+      timeFrom: "",
+      timeUntil: "",
+      timePeriod: "pm",
+      location: "",
+      office: "",
+      attendees: [],
+      attendeeInput: "",
+      category: "internal",
+      description: "",
+    });
+    setCalendarEditingIdx(-1);
+  };
+
+  const startEditCalendarEvent = idx => {
+    const entry = currentCalendarEvents[idx] || {};
+    const parsed = parseTimeRange(entry.time);
+    setCalendarForm({
+      title: entry.title || "",
+      date: entry.date || "",
+      timeFrom: parsed.from,
+      timeUntil: parsed.until,
+      timePeriod: parsed.period,
+      location: entry.location || "",
+      office: entry.office || "",
+      attendees: parseAttendees(entry.attendees),
+      attendeeInput: "",
+      category: entry.category || "internal",
+      description: entry.description || "",
+    });
+    setCalendarEditingIdx(idx);
+  };
+
+  const saveCalendarEvent = () => {
+    const title = String(calendarForm.title || "").trim();
+    const date = String(calendarForm.date || "").trim();
+    if (!title || !date) {
+      showStatus(setCalendarStatus, "error", "✗ Event title and date are required.");
+      return;
+    }
+
+    const event = {
+      ...calendarForm,
+      time: buildTimeRange(calendarForm),
+      attendees: Array.isArray(calendarForm.attendees)
+        ? calendarForm.attendees.filter(Boolean).map(String)
+        : parseAttendees(calendarForm.attendees),
+      id: calendarEditingIdx >= 0 && currentCalendarEvents[calendarEditingIdx]?.id
+        ? currentCalendarEvents[calendarEditingIdx].id
+        : `evt_${Date.now()}`,
+    };
+    const calendarEvents = [...currentCalendarEvents];
+    if (calendarEditingIdx >= 0) {
+      calendarEvents[calendarEditingIdx] = event;
+    } else {
+      calendarEvents.push(event);
+    }
+
+    onDataChange({
+      ...appData,
+      calendarEvents,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    setCalendarEditingIdx(null);
+    setCalendarStatus({ type: "success", msg: "✓ Calendar event saved." });
+  };
+
+  const deleteCalendarEvent = idx => {
+    if (!canDelete) {
+      showStatus(setCalendarStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
+    const entry = currentCalendarEvents[idx];
+    if (!entry) return;
+    if (!window.confirm(`Delete event "${entry.title || entry.id}"?`)) return;
+
+    const calendarEvents = currentCalendarEvents.filter((_, i) => i !== idx);
+    onDataChange({
+      ...appData,
+      calendarEvents,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    showStatus(setCalendarStatus, "success", "✓ Calendar event deleted.");
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -650,6 +799,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     { id: "profile", label: "Profile" },
     { id: "feedback", label: "Feedback" },
     { id: "announcements", label: "Announcements" },
+    { id: "calendar-events", label: "Calendar Events" },
     { id: "offices", label: "Offices" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
@@ -1230,6 +1380,227 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 <div style={{ color: "#5370ab", fontSize: 13 }}>No announcements yet. Add one to show in the ticker.</div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === "calendar-events" && (
+          <div className="admin-sub-content">
+            <div className="admin-tab-title">Calendar Events</div>
+            <div className="admin-tab-sub">Add, edit, or remove events shown in the kiosk calendar.</div>
+            <StatusMsg status={calendarStatus} />
+
+            {calendarEditingIdx !== null ? (
+              <>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Event Title</label>
+                    <input
+                      className="a-input"
+                      value={calendarForm.title}
+                      onChange={e => setCalendarForm(f => ({ ...f, title: e.target.value }))}
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Event Date</label>
+                    <input
+                      type="date"
+                      className="a-input"
+                      value={calendarForm.date}
+                      onChange={e => setCalendarForm(f => ({ ...f, date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">From</label>
+                    <input
+                      className="a-input"
+                      list="calendar-time-values"
+                      placeholder="3:00"
+                      value={calendarForm.timeFrom}
+                      onChange={e => setCalendarForm(f => ({ ...f, timeFrom: formatTimeValue(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Until</label>
+                    <input
+                      className="a-input"
+                      list="calendar-time-values"
+                      placeholder="5:00"
+                      value={calendarForm.timeUntil}
+                      onChange={e => setCalendarForm(f => ({ ...f, timeUntil: formatTimeValue(e.target.value) }))}
+                    />
+                    <datalist id="calendar-time-values">
+                      <option value="7:00" />
+                      <option value="7:30" />
+                      <option value="8:00" />
+                      <option value="8:30" />
+                      <option value="9:00" />
+                      <option value="9:30" />
+                      <option value="10:00" />
+                      <option value="10:30" />
+                      <option value="11:00" />
+                      <option value="11:30" />
+                      <option value="12:00" />
+                      <option value="12:30" />
+                      <option value="1:00" />
+                      <option value="1:30" />
+                      <option value="2:00" />
+                      <option value="2:30" />
+                      <option value="3:00" />
+                      <option value="3:30" />
+                      <option value="4:00" />
+                      <option value="4:30" />
+                      <option value="5:00" />
+                      <option value="5:30" />
+                      <option value="6:00" />
+                      <option value="6:30" />
+                      <option value="7:00" />
+                      <option value="7:30" />
+                    </datalist>
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">AM / PM</label>
+                    <select
+                      className="a-input"
+                      value={calendarForm.timePeriod}
+                      onChange={e => setCalendarForm(f => ({ ...f, timePeriod: e.target.value }))}
+                    >
+                      <option value="am">AM</option>
+                      <option value="pm">PM</option>
+                    </select>
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Category</label>
+                    <select
+                      className="a-input"
+                      value={calendarForm.category}
+                      onChange={e => setCalendarForm(f => ({ ...f, category: e.target.value }))}
+                    >
+                      <option value="internal">Internal</option>
+                      <option value="external">External</option>
+                      <option value="deadline">Deadlines</option>
+                      <option value="holiday">Holiday</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">
+                      <MapPin size={14} style={{ marginRight: 6, verticalAlign: "text-bottom" }} />
+                      Location
+                    </label>
+                    <input
+                      className="a-input"
+                      value={calendarForm.location}
+                      onChange={e => setCalendarForm(f => ({ ...f, location: e.target.value }))}
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Office</label>
+                    <input
+                      className="a-input"
+                      value={calendarForm.office}
+                      onChange={e => setCalendarForm(f => ({ ...f, office: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Attending / Involved</label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                      {(calendarForm.attendees || []).map((item, idx) => (
+                        <span key={idx} className="a-pill" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "#eef3ff", borderRadius: 999, fontSize: 12 }}>
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() => setCalendarForm(f => ({
+                              ...f,
+                              attendees: (f.attendees || []).filter((_, i) => i !== idx),
+                            }))}
+                            style={{ border: "none", background: "transparent", cursor: "pointer", lineHeight: 1 }}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        className="a-input"
+                        placeholder="Add department/person"
+                        value={calendarForm.attendeeInput}
+                        onChange={e => setCalendarForm(f => ({ ...f, attendeeInput: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const value = e.currentTarget.value.trim();
+                            if (!value) return;
+                            setCalendarForm(f => ({
+                              ...f,
+                              attendees: [...(f.attendees || []), value],
+                              attendeeInput: "",
+                            }));
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-secondary"
+                        onClick={() => {
+                          const value = String(calendarForm.attendeeInput || "").trim();
+                          if (!value) return;
+                          setCalendarForm(f => ({
+                            ...f,
+                            attendees: [...(f.attendees || []), value],
+                            attendeeInput: "",
+                          }));
+                        }}
+                      >Add</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Description</label>
+                  <textarea
+                    className="a-textarea"
+                    rows={4}
+                    value={calendarForm.description}
+                    onChange={e => setCalendarForm(f => ({ ...f, description: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                  <button className="a-btn a-btn-primary" onClick={saveCalendarEvent}>Save Event</button>
+                  <button className="a-btn a-btn-ghost" onClick={() => setCalendarEditingIdx(null)}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={startAddCalendarEvent}>
+                  + Add New Event
+                </button>
+                <div className="svc-list">
+                  {currentCalendarEvents.map((item, idx) => (
+                    <div key={item.id || idx} className="svc-row">
+                      <div className="svc-row-info">
+                        <div className="svc-row-name">{item.title || "Untitled Event"}</div>
+                        <div className="svc-row-meta">{item.date || "No date"} · {item.category}</div>
+                      </div>
+                      <div className="svc-row-actions">
+                        <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditCalendarEvent(idx)}>Edit</button>
+                        {canDelete && (
+                          <button className="a-btn a-btn-danger a-btn-sm" onClick={() => deleteCalendarEvent(idx)}>Delete</button>
+                        )}
+                        {!canDelete && lockHint}
+                      </div>
+                    </div>
+                  ))}
+                  {!currentCalendarEvents.length && (
+                    <div style={{ color: "#5370ab", fontSize: 13 }}>No calendar events yet. Add one to show in the calendar.</div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
