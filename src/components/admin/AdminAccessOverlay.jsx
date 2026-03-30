@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
-import "./AdminPanel.css";
+import "../../style/AdminPanel.css";
 
 export default function AdminAccessOverlay({ appData, onDataChange, onClose, defaultData }) {
   const [pinInput, setPinInput] = useState("");

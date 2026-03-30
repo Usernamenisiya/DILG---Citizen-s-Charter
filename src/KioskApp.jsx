@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import "./KioskApp.css";
+import "./style/KioskApp.css";
 import { KIOSK_DEFAULT_DATA } from "./data/kioskDefaultData";
 import { loadData, saveData } from "./utils/kioskStorage";
 import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";

@@ -175,8 +175,11 @@ export default function KioskMainScreen({
                 <div className="pv2-grid pv2-grid--3col">
                   {(officeDirectory.entries || []).map((entry, idx) => {
                     const contactInfo = parseOfficeContact(entry.contact);
-                    const OFFICE_COLORS = ["#002C76","#C9282D","#FFDE15","#002C76","#C9282D","#FFDE15","#002C76","#C9282D","#FFDE15"];
-                    const color = OFFICE_COLORS[idx % OFFICE_COLORS.length];
+                    /*new*/
+                    const officeNameLower = (entry.office || "").toLowerCase();
+                    const isProvince = officeNameLower.includes("province");
+                    const isRedOffice = officeNameLower.includes("regional") || officeNameLower.includes("finance") || officeNameLower.includes("administrative") || officeNameLower.includes("lgcdd") || officeNameLower.includes("lgmed");
+                    const color = isProvince ? "#FFDE15" : isRedOffice ? "#C9282D" : "#002C76";
                     return (
                       <div
                         key={idx}
