@@ -16,17 +16,10 @@ const FILTERS = [
 
 const CATEGORY_COLORS = {
   internal: "#002C76",
-  external: "#0A7C4B",
+  external: "#FFDE15",
   deadline: "#C9282D",
   holiday: "#B57A00",
 };
-
-const CATEGORY_LEGEND = [
-  { id: "internal", label: "Internal" },
-  { id: "external", label: "External" },
-  { id: "deadline", label: "Deadlines" },
-  { id: "holiday", label: "Holidays" },
-];
 
 function toKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -231,26 +224,28 @@ export default function EventsCalendarModal({ onClose }) {
     return selectedEvents.find((event) => event.id === selectedEventId) || null;
   }, [selectedEvents, selectedEventId]);
 
+  const clampDayToMonth = (year, month, day) => {
+    if (day === null) return null;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return Math.min(day, daysInMonth);
+  };
+
   const prevMonth = () => {
+    const newMonth = month === 0 ? 11 : month - 1;
+    const newYear = month === 0 ? year - 1 : year;
+    setMonth(newMonth);
+    setYear(newYear);
     setSelectedEventId(null);
-    setSelectedDay(null);
-    if (month === 0) {
-      setMonth(11);
-      setYear((prev) => prev - 1);
-      return;
-    }
-    setMonth((prev) => prev - 1);
+    setSelectedDay((prevDay) => clampDayToMonth(newYear, newMonth, prevDay));
   };
 
   const nextMonth = () => {
+    const newMonth = month === 11 ? 0 : month + 1;
+    const newYear = month === 11 ? year + 1 : year;
+    setMonth(newMonth);
+    setYear(newYear);
     setSelectedEventId(null);
-    setSelectedDay(null);
-    if (month === 11) {
-      setMonth(0);
-      setYear((prev) => prev + 1);
-      return;
-    }
-    setMonth((prev) => prev + 1);
+    setSelectedDay((prevDay) => clampDayToMonth(newYear, newMonth, prevDay));
   };
 
   const goToToday = () => {
@@ -290,15 +285,6 @@ export default function EventsCalendarModal({ onClose }) {
               <button type="button" className="kcal-today-btn" onClick={goToToday}>Today</button>
             </div>
 
-            <div className="kcal-legend-row" aria-label="Event category colors">
-              {CATEGORY_LEGEND.map((item) => (
-                <span key={item.id} className="kcal-legend-item">
-                  <span className="kcal-legend-dot" style={{ backgroundColor: CATEGORY_COLORS[item.id] }} />
-                  <span className="kcal-legend-label">{item.label}</span>
-                </span>
-              ))}
-            </div>
-
             <div className="kcal-filter-row">
               {FILTERS.map((item) => (
                 <button
@@ -310,6 +296,12 @@ export default function EventsCalendarModal({ onClose }) {
                     setSelectedEventId(null);
                   }}
                 >
+                  {item.id !== "all" && (
+                    <span
+                      className="kcal-filter-dot"
+                      style={{ backgroundColor: CATEGORY_COLORS[item.id] }}
+                    />
+                  )}
                   {item.label}
                 </button>
               ))}
@@ -374,7 +366,19 @@ export default function EventsCalendarModal({ onClose }) {
               ) : (
                 <>
                   <div className="kcal-panel-right-header">
-                    <div className="kcal-panel-date-label">{formatLongDate(year, month, selectedDay)}</div>
+                    <div className="kcal-panel-right-header-top">
+                      <div className="kcal-panel-date-label">{formatLongDate(year, month, selectedDay)}</div>
+                      <button
+                        type="button"
+                        className="kcal-panel-collapse-btn"
+                        onClick={() => {
+                          setSelectedDay(null);
+                          setSelectedEventId(null);
+                        }}
+                      >
+                        Show full calendar
+                      </button>
+                    </div>
                     <div className="kcal-panel-count">
                       {selectedEvents.length} event{selectedEvents.length !== 1 ? "s" : ""} found
                     </div>
