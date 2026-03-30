@@ -325,8 +325,7 @@ export default function EventsCalendarModal({ onClose }) {
               {visibleCells.map((cell) => {
                 const allCellEvents = EVENTS[cell.key] || [];
                 const filteredCellEvents = applyFilter(allCellEvents);
-                const eventCategories = [...new Set(filteredCellEvents.map((event) => event.category))];
-                const hasEvent = eventCategories.length > 0;
+                const hasEvent = filteredCellEvents.length > 0;
                 const isActive = cell.year === year && cell.month === month && cell.day === selectedDay;
 
                 return (
@@ -354,9 +353,11 @@ export default function EventsCalendarModal({ onClose }) {
                   >
                     <span className="kcal-day-num">{cell.day}</span>
                     {hasEvent && (
-                      <span className="kcal-day-dot-row">
-                        {eventCategories.slice(0, 4).map((categoryId) => (
-                          <span key={categoryId} className="kcal-day-dot" style={{ backgroundColor: CATEGORY_COLORS[categoryId] }} />
+                      <span className="kcal-day-titles-row">
+                        {filteredCellEvents.slice(0, 3).map((event) => (
+                          <span key={event.id} className="kcal-day-title" style={{ color: CATEGORY_COLORS[event.category] }}>
+                            {event.title}
+                          </span>
                         ))}
                       </span>
                     )}

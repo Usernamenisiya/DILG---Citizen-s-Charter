@@ -1907,6 +1907,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 }
 
 .kcal-month-label {
+  text-align: center;
   font-family: var(--fd);
   font-size: clamp(30px, 3vw, 44px);
   letter-spacing: 0.05em;
@@ -2439,6 +2440,28 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   }
 }
 
+.kcal-day-titles-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+}
+
+.kcal-day-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid;
+  border-color: currentColor;
+  padding-left: 4px;
+  text-align: left;
+  flex: 1;
+}
 
 
 /*TITLE SECTION ON MAIN MENU*/
