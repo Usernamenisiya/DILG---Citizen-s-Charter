@@ -545,7 +545,7 @@ export default function KioskMainScreen({
                           <div className="announcement-page-item-title">{title}</div>
                           <div className="announcement-page-item-text">{summary || details || "Tap to view details"}</div>
                           {(postedBy || where || postedOn || effectiveUntil) && (
-                            <div className="announcement-page-item-text" style={{ fontSize: 11, opacity: 0.8 }}>
+                            <div className="announcement-page-item-text" style={{ fontSize: 14, opacity: 0.86 }}>
                               {postedBy ? `Posted by ${postedBy}` : ""}
                               {where ? `${postedBy ? " | " : ""}Where: ${where}` : ""}
                               {postedOn ? `${postedBy || where ? " | " : ""}Posted: ${postedOn}` : ""}
@@ -553,7 +553,7 @@ export default function KioskMainScreen({
                             </div>
                           )}
                           {!!involvedParties && (
-                            <div className="announcement-page-item-text" style={{ fontSize: 11, opacity: 0.8 }}>
+                            <div className="announcement-page-item-text" style={{ fontSize: 14, opacity: 0.86 }}>
                               Involved: {involvedParties}
                             </div>
                           )}
