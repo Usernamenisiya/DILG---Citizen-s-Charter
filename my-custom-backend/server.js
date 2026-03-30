@@ -2,12 +2,31 @@ const express = require("express");
 const cors = require("cors");
 const Database = require("better-sqlite3");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
 const app = express();
 const port = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+const uploadsRoot = path.join(__dirname, "uploads");
+const announcementsUploadDir = path.join(uploadsRoot, "announcements");
+fs.mkdirSync(announcementsUploadDir, { recursive: true });
+app.use("/uploads", express.static(uploadsRoot));
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, announcementsUploadDir),
+  filename: (_req, file, cb) => {
+    const safeBase = String(path.parse(file.originalname || "file").name)
+      .replace(/[^a-zA-Z0-9-_]/g, "_")
+      .slice(0, 60) || "file";
+    const safeExt = String(path.extname(file.originalname || "") || "").replace(/[^.a-zA-Z0-9]/g, "");
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
+  },
+});
+const uploadAnnouncementFiles = multer({ storage: uploadStorage });
 
 const dbPath = path.join(__dirname, "app-data.db");
 const db = new Database(dbPath);
@@ -138,7 +157,16 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS announcements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
     message TEXT NOT NULL,
+    details TEXT,
+    postedBy TEXT,
+    announcementWhere TEXT,
+    postedOn TEXT,
+    effectiveUntil TEXT,
+    involvedParties TEXT,
+    tickerDisplay TEXT,
+    attachments TEXT,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
 `);
@@ -153,6 +181,50 @@ try {
   }
 } catch (error) {
   console.error("Migration error:", error);
+}
+
+try {
+  const announcementColumns = db.prepare("PRAGMA table_info(announcements)").all();
+  const hasTitleColumn = announcementColumns.some(col => col.name === "title");
+  const hasDetailsColumn = announcementColumns.some(col => col.name === "details");
+  const hasAttachmentsColumn = announcementColumns.some(col => col.name === "attachments");
+  const hasPostedByColumn = announcementColumns.some(col => col.name === "postedBy");
+  const hasAnnouncementWhereColumn = announcementColumns.some(col => col.name === "announcementWhere");
+  const hasPostedOnColumn = announcementColumns.some(col => col.name === "postedOn");
+  const hasEffectiveUntilColumn = announcementColumns.some(col => col.name === "effectiveUntil");
+  const hasInvolvedPartiesColumn = announcementColumns.some(col => col.name === "involvedParties");
+  const hasTickerDisplayColumn = announcementColumns.some(col => col.name === "tickerDisplay");
+
+  if (!hasTitleColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN title TEXT").run();
+  }
+  if (!hasDetailsColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN details TEXT").run();
+  }
+  if (!hasAttachmentsColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN attachments TEXT").run();
+  }
+  if (!hasPostedByColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN postedBy TEXT").run();
+  }
+  if (!hasAnnouncementWhereColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN announcementWhere TEXT").run();
+  }
+  if (!hasPostedOnColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN postedOn TEXT").run();
+  }
+  if (!hasEffectiveUntilColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN effectiveUntil TEXT").run();
+  }
+  if (!hasInvolvedPartiesColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN involvedParties TEXT").run();
+  }
+  if (!hasTickerDisplayColumn) {
+    db.prepare("ALTER TABLE announcements ADD COLUMN tickerDisplay TEXT").run();
+    db.prepare("UPDATE announcements SET tickerDisplay = 'message' WHERE tickerDisplay IS NULL OR tickerDisplay = ''").run();
+  }
+} catch (error) {
+  console.error("Announcements migration error:", error);
 }
 
 ensureSingleRow(
@@ -764,9 +836,22 @@ app.delete("/api/offices/:id", (req, res) => {
 app.get("/api/announcements", (req, res) => {
   try {
     const announcements = db
-      .prepare("SELECT id, message, sortOrder FROM announcements ORDER BY sortOrder ASC, id ASC")
+      .prepare("SELECT id, title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder FROM announcements ORDER BY sortOrder ASC, id ASC")
       .all();
-    res.json(announcements);
+    res.json(
+      announcements.map(item => ({
+        ...item,
+        title: item.title || "",
+        details: item.details || "",
+        postedBy: item.postedBy || "",
+        where: item.announcementWhere || "",
+        postedOn: item.postedOn || "",
+        effectiveUntil: item.effectiveUntil || "",
+        involvedParties: item.involvedParties || "",
+        tickerDisplay: item.tickerDisplay === "title" ? "title" : "message",
+        attachments: safeJsonParse(item.attachments, []),
+      }))
+    );
   } catch (error) {
     console.error("Error fetching announcements:", error);
     res.status(500).json({ error: "Failed to fetch announcements." });
@@ -774,7 +859,16 @@ app.get("/api/announcements", (req, res) => {
 });
 
 app.post("/api/announcements", (req, res) => {
+  const title = String(req.body?.title || "").trim();
   const message = String(req.body?.message || "").trim();
+  const details = String(req.body?.details || "").trim();
+  const postedBy = String(req.body?.postedBy || "").trim();
+  const where = String(req.body?.where || "").trim();
+  const postedOn = String(req.body?.postedOn || "").trim();
+  const effectiveUntil = String(req.body?.effectiveUntil || "").trim();
+  const involvedParties = String(req.body?.involvedParties || "").trim();
+  const tickerDisplay = req.body?.tickerDisplay === "title" ? "title" : "message";
+  const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
   if (!message) {
     return res.status(400).json({ error: "Announcement message is required." });
   }
@@ -784,12 +878,23 @@ app.post("/api/announcements", (req, res) => {
       .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM announcements")
       .get();
     const info = db
-      .prepare("INSERT INTO announcements (message, sortOrder) VALUES (?, ?)")
-      .run(message, Number(currentMax.maxSort || 0) + 1);
+      .prepare("INSERT INTO announcements (title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(title, message, details, postedBy, where, postedOn, effectiveUntil, involvedParties, tickerDisplay, JSON.stringify(attachments), Number(currentMax.maxSort || 0) + 1);
     const saved = db
-      .prepare("SELECT id, message, sortOrder FROM announcements WHERE id = ?")
+      .prepare("SELECT id, title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder FROM announcements WHERE id = ?")
       .get(info.lastInsertRowid);
-    res.status(201).json(saved);
+    res.status(201).json({
+      ...saved,
+      title: saved.title || "",
+      details: saved.details || "",
+      postedBy: saved.postedBy || "",
+      where: saved.announcementWhere || "",
+      postedOn: saved.postedOn || "",
+      effectiveUntil: saved.effectiveUntil || "",
+      involvedParties: saved.involvedParties || "",
+      tickerDisplay: saved.tickerDisplay === "title" ? "title" : "message",
+      attachments: safeJsonParse(saved.attachments, []),
+    });
   } catch (error) {
     console.error("Error creating announcement:", error);
     res.status(500).json({ error: "Failed to create announcement." });
@@ -798,15 +903,24 @@ app.post("/api/announcements", (req, res) => {
 
 app.put("/api/announcements/:id", (req, res) => {
   const id = Number(req.params.id);
+  const title = String(req.body?.title || "").trim();
   const message = String(req.body?.message || "").trim();
+  const details = String(req.body?.details || "").trim();
+  const postedBy = String(req.body?.postedBy || "").trim();
+  const where = String(req.body?.where || "").trim();
+  const postedOn = String(req.body?.postedOn || "").trim();
+  const effectiveUntil = String(req.body?.effectiveUntil || "").trim();
+  const involvedParties = String(req.body?.involvedParties || "").trim();
+  const tickerDisplay = req.body?.tickerDisplay === "title" ? "title" : "message";
+  const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
   if (!message) {
     return res.status(400).json({ error: "Announcement message is required." });
   }
 
   try {
     const info = db
-      .prepare("UPDATE announcements SET message = ? WHERE id = ?")
-      .run(message, id);
+      .prepare("UPDATE announcements SET title = ?, message = ?, details = ?, postedBy = ?, announcementWhere = ?, postedOn = ?, effectiveUntil = ?, involvedParties = ?, tickerDisplay = ?, attachments = ? WHERE id = ?")
+      .run(title, message, details, postedBy, where, postedOn, effectiveUntil, involvedParties, tickerDisplay, JSON.stringify(attachments), id);
     if (info.changes === 0) {
       return res.status(404).json({ error: "Announcement not found." });
     }
@@ -833,4 +947,20 @@ app.delete("/api/announcements/:id", (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
+});
+
+app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8), (req, res) => {
+  try {
+    const files = Array.isArray(req.files) ? req.files : [];
+    const uploaded = files.map(file => ({
+      name: file.originalname || file.filename,
+      url: `/uploads/announcements/${file.filename}`,
+      mimeType: file.mimetype || "application/octet-stream",
+      size: Number(file.size || 0),
+    }));
+    res.status(201).json({ files: uploaded });
+  } catch (error) {
+    console.error("Error uploading announcement files:", error);
+    res.status(500).json({ error: "Failed to upload files." });
+  }
 });

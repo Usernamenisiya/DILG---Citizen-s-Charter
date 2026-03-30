@@ -173,7 +173,7 @@ export default function KioskApp() {
   const [clockDate, setClockDate]           = useState("");
   const [logoTaps, setLogoTaps]             = useState(0);
 
-  // "profile" | "offices" | "feedback" | "issuances" | "announcement" | null
+  // "profile" | "offices" | "feedback" | "issuances" | null
   const [modalSection, setModalSection] = useState(null);
 
   const logoTimerRef  = useRef(null);
@@ -319,7 +319,7 @@ export default function KioskApp() {
    * Service grid cards (internal / external) → go to main screen.
    */
   const selectSection = (sectionId) => {
-    const MODAL_SECTIONS = ["profile", "offices", "feedback", "issuances", "announcement"];
+    const MODAL_SECTIONS = ["profile", "offices", "feedback", "issuances"];
     if (MODAL_SECTIONS.includes(sectionId)) {
       setModalSection(sectionId);
       return;
@@ -406,6 +406,7 @@ export default function KioskApp() {
           officeDirectory={officeDirectory}
           organizationalProfile={organizationalProfile}
           policiesAndIssuances={policiesAndIssuances}
+          announcements={announcements}
           currentService={currentService}
           setCurrentService={setCurrentService}
           pageServices={pageServices}
@@ -442,10 +443,9 @@ export default function KioskApp() {
         />
       )}
 
-      {/* Feedback · Issuances · Announcement → inline KioskModal */}
+      {/* Feedback · Issuances → inline KioskModal */}
       {(modalSection === "feedback" ||
-        modalSection === "issuances" ||
-        modalSection === "announcement") && (
+        modalSection === "issuances") && (
         <KioskModal
           section={modalSection}
           feedbackAndComplaints={feedbackAndComplaints}

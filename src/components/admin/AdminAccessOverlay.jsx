@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Delete, Lock, Shield, User, X } from "lucide-react";
+import { ArrowLeft, Eraser, Lock, Shield, User, X } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import "../../style/AdminPanel.css";
@@ -96,7 +96,10 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose, def
                   <button key={d} className="pin-btn" onClick={() => pinKey(d)}>{d}</button>
                 ))}
                 <button className="pin-btn zero" onClick={() => pinKey("0")}>0</button>
-                <button className="pin-btn" onClick={pinDel}><Delete size={22} /></button>
+                <button className="pin-btn erase" onClick={pinDel} aria-label="Delete digit" title="Delete">
+                  <Eraser size={28} strokeWidth={2.4} />
+                  <span className="pin-erase-label">DEL</span>
+                </button>
               </div>
               <div className="pin-err">{pinError}</div>
               <div style={{ display: "flex", gap: 14, marginTop: 8 }}>

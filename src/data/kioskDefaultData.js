@@ -233,4 +233,39 @@ export const KIOSK_DEFAULT_DATA = {
       description: "Walk-in orientation for service requirements and expected processing timelines.",
     },
   ],
+  announcements: [
+    {
+      id: "ann-1",
+      title: "Service Advisory",
+      message: "Partial downtime for online request tracking on March 31, 2026.",
+      details:
+        "Online request tracking may be temporarily unavailable from 1:00 PM to 3:00 PM due to scheduled maintenance. Walk-in and help desk support remain available during this period.",
+      postedBy: "ICT Support Unit",
+      where: "Online Tracking Portal and Help Desk",
+      postedOn: "2026-03-28",
+      effectiveUntil: "2026-03-31",
+      involvedParties: "Walk-in clients, Help Desk Staff",
+      tickerDisplay: "message",
+      attachments: [
+        { name: "Advisory PDF", url: "https://example.com/advisory.pdf" },
+      ],
+    },
+    {
+      id: "ann-2",
+      title: "Public Consultation",
+      message: "Citizen consultation on local governance programs this Friday.",
+      details:
+        "Open forum will be conducted at the Main Lobby Forum Area, 10:00 AM to 12:00 PM. Citizens are encouraged to submit feedback and service recommendations.",
+      postedBy: "Public Affairs Office",
+      where: "Main Lobby Forum Area",
+      postedOn: "2026-03-27",
+      effectiveUntil: "2026-04-05",
+      involvedParties: "Citizens, LGU Representatives, Program Officers",
+      tickerDisplay: "title",
+      attachments: [
+        { name: "Event Poster", url: "https://example.com/consultation-poster.jpg" },
+        { name: "Program Agenda", url: "https://example.com/consultation-agenda.pdf" },
+      ],
+    },
+  ],
 };

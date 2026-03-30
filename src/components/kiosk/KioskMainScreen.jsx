@@ -10,6 +10,7 @@ export default function KioskMainScreen({
   officeDirectory,
   organizationalProfile,
   policiesAndIssuances,
+  announcements,
   currentService,
   setCurrentService,
   pageServices,
@@ -38,6 +39,34 @@ export default function KioskMainScreen({
       extension: String(match[2] || "").trim(),
       raw: text,
     };
+  };
+
+  const normalizeAnnouncementFiles = announcement => {
+    const rawFiles = Array.isArray(announcement?.attachments)
+      ? announcement.attachments
+      : Array.isArray(announcement?.files)
+        ? announcement.files
+        : [];
+
+    return rawFiles
+      .map((file, idx) => {
+        if (typeof file === "string") {
+          const url = file.trim();
+          if (!url) return null;
+          return {
+            name: `Attachment ${idx + 1}`,
+            url,
+          };
+        }
+        const name = String(file?.name || file?.label || file?.title || "").trim();
+        const url = String(file?.url || file?.href || file?.path || "").trim();
+        if (!url) return null;
+        return {
+          name: name || `Attachment ${idx + 1}`,
+          url,
+        };
+      })
+      .filter(Boolean);
   };
 
   /* ── Modal state ── */
@@ -102,7 +131,7 @@ export default function KioskMainScreen({
                 </div>
               ) : (
                 <div className="sc-label">
-                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : "Menu"}
+                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : activeSection === "announcement" ? "Announcements" : "Menu"}
                 </div>
               )}
             </div>
@@ -388,6 +417,158 @@ export default function KioskMainScreen({
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeSection === "announcement" && (
+              <div className="announcement-page" style={{ marginTop: 0 }}>
+                <div className="announcement-page-head">
+                  <h3>Announcements</h3>
+                  <span>
+                    Active announcements: <strong>{(announcements || []).length}</strong>
+                  </span>
+                </div>
+
+                {!!(announcements || []).length && (
+                  <div className="announcement-page-sub">
+                    Select an announcement to view full details and attachments.
+                  </div>
+                )}
+
+                <div className="announcement-page-list">
+                  {(announcements || []).map((item, idx) => {
+                    const files = normalizeAnnouncementFiles(item);
+                    const title = String(item?.title || "").trim() || `Announcement ${idx + 1}`;
+                    const summary = String(item?.message || "").trim();
+                    const details = String(item?.details || "").trim();
+                    const postedBy = String(item?.postedBy || "").trim();
+                    const where = String(item?.where || "").trim();
+                    const postedOn = String(item?.postedOn || "").trim();
+                    const effectiveUntil = String(item?.effectiveUntil || "").trim();
+                    const involvedParties = String(item?.involvedParties || "").trim();
+
+                    return (
+                      <button
+                        key={item.id || idx}
+                        className="announcement-page-item"
+                        onClick={() =>
+                          openModal(
+                            title,
+                            "#002C76",
+                            <div className="announcement-modal-content">
+                              {!!summary && (
+                                <section className="announcement-modal-section">
+                                  <div className="announcement-modal-heading">Summary</div>
+                                  <p className="modal-body-text">{summary}</p>
+                                </section>
+                              )}
+
+                              {!!details && (
+                                <section className="announcement-modal-section">
+                                  <div className="announcement-modal-heading">Details</div>
+                                  <p className="modal-body-text">{details}</p>
+                                </section>
+                              )}
+
+                              {(postedBy || where || postedOn || effectiveUntil) && (
+                                <section className="announcement-modal-section">
+                                  <div className="announcement-modal-heading">Who / When / Where</div>
+                                  <div className="announcement-meta-grid">
+                                    {!!postedBy && (
+                                      <div className="announcement-meta-item">
+                                        <span>Posted by</span>
+                                        <strong>{postedBy}</strong>
+                                      </div>
+                                    )}
+                                    {!!where && (
+                                      <div className="announcement-meta-item">
+                                        <span>Where</span>
+                                        <strong>{where}</strong>
+                                      </div>
+                                    )}
+                                    {!!postedOn && (
+                                      <div className="announcement-meta-item">
+                                        <span>Posted on</span>
+                                        <strong>{postedOn}</strong>
+                                      </div>
+                                    )}
+                                    {!!effectiveUntil && (
+                                      <div className="announcement-meta-item">
+                                        <span>Effective until</span>
+                                        <strong>{effectiveUntil}</strong>
+                                      </div>
+                                    )}
+                                  </div>
+                                </section>
+                              )}
+
+                              {!!involvedParties && (
+                                <section className="announcement-modal-section">
+                                  <div className="announcement-modal-heading">Who Might Be Involved</div>
+                                  <p className="modal-body-text">{involvedParties}</p>
+                                </section>
+                              )}
+
+                              {!!files.length && (
+                                <section className="announcement-modal-section">
+                                  <div className="announcement-modal-heading">Attached Files</div>
+                                  <div className="announcement-file-list">
+                                    {files.map((file, fileIdx) => (
+                                      <a
+                                        key={`${file.url}-${fileIdx}`}
+                                        className="announcement-file-link"
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {file.name}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </section>
+                              )}
+
+                              {!summary && !details && !postedBy && !where && !postedOn && !effectiveUntil && !involvedParties && !files.length && (
+                                <section className="announcement-modal-section">
+                                  <p className="modal-body-text" style={{ opacity: 0.7 }}>
+                                    No additional details available for this announcement.
+                                  </p>
+                                </section>
+                              )}
+                            </div>
+                          )
+                        }
+                      >
+                        <div className="announcement-page-item-no">{String(idx + 1).padStart(2, "0")}</div>
+                        <div className="announcement-page-item-content">
+                          <div className="announcement-page-item-title">{title}</div>
+                          <div className="announcement-page-item-text">{summary || details || "Tap to view details"}</div>
+                          {(postedBy || where || postedOn || effectiveUntil) && (
+                            <div className="announcement-page-item-text" style={{ fontSize: 11, opacity: 0.8 }}>
+                              {postedBy ? `Posted by ${postedBy}` : ""}
+                              {where ? `${postedBy ? " | " : ""}Where: ${where}` : ""}
+                              {postedOn ? `${postedBy || where ? " | " : ""}Posted: ${postedOn}` : ""}
+                              {effectiveUntil ? `${postedBy || where || postedOn ? " | " : ""}Until: ${effectiveUntil}` : ""}
+                            </div>
+                          )}
+                          {!!involvedParties && (
+                            <div className="announcement-page-item-text" style={{ fontSize: 11, opacity: 0.8 }}>
+                              Involved: {involvedParties}
+                            </div>
+                          )}
+                        </div>
+                        <div className="announcement-page-item-meta">
+                          {!!files.length && <span>{files.length} file{files.length > 1 ? "s" : ""}</span>}
+                          <span>View</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {!(announcements || []).length && (
+                    <div className="announcement-empty">No active announcements available.</div>
+                  )}
                 </div>
               </div>
             )}

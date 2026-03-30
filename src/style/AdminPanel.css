@@ -108,6 +108,21 @@
 .pin-btn:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.5); background: linear-gradient(150deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.12)); }
 .pin-btn:active { transform: scale(.93); }
 .pin-btn.zero { grid-column: 2; }
+.pin-btn.erase { grid-column: 3; }
+.pin-btn.erase svg {
+  width: 28px;
+  height: 28px;
+}
+.pin-btn.erase {
+  flex-direction: column;
+  gap: 2px;
+}
+.pin-erase-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1;
+}
 .pin-err { height: 18px; font-size: 12px; color: #ff7889; letter-spacing: .05em; text-align: center; margin-top: 8px; }
 .pin-cancel {
   margin-top: 14px;

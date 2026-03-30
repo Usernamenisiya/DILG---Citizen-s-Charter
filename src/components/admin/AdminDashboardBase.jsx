@@ -118,7 +118,18 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [pendingUpdate, setPendingUpdate] = useState(null);
   const [backupStatus, setBackupStatus] = useState(null);
   const [pasteJson, setPasteJson] = useState("");
-  const [announcementForm, setAnnouncementForm] = useState({ message: "" });
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    message: "",
+    details: "",
+    postedBy: "",
+    where: "",
+    postedOn: "",
+    effectiveUntil: "",
+    involvedParties: "",
+    tickerDisplay: "message",
+    attachmentsText: "",
+  });
 
   const callApi = async (url, options = {}) => {
     const response = await fetch(url, {
@@ -549,18 +560,84 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const startAddAnnouncement = () => {
-    setAnnouncementForm({ message: "" });
+    setActiveTab("announcements");
+    setEditingIdx(null);
+    setExternalEditingIdx(null);
+    setIssuanceEditingIdx(null);
+    setOfficeEditingIdx(null);
+    setAnnouncementForm({
+      title: "",
+      message: "",
+      details: "",
+      postedBy: "",
+      where: "",
+      postedOn: "",
+      effectiveUntil: "",
+      involvedParties: "",
+      tickerDisplay: "message",
+      attachmentsText: "",
+    });
     setAnnouncementEditingIdx(-1);
   };
 
   const startEditAnnouncement = idx => {
+    setActiveTab("announcements");
+    setEditingIdx(null);
+    setExternalEditingIdx(null);
+    setIssuanceEditingIdx(null);
+    setOfficeEditingIdx(null);
     const entry = currentAnnouncements[idx] || { message: "" };
-    setAnnouncementForm({ message: entry.message || "" });
+    const attachmentsText = (entry.attachments || [])
+      .map(file => {
+        const fileName = String(file?.name || "").trim();
+        const fileUrl = String(file?.url || "").trim();
+        if (!fileUrl) return "";
+        return fileName ? `${fileName} | ${fileUrl}` : fileUrl;
+      })
+      .filter(Boolean)
+      .join("\n");
+
+    setAnnouncementForm({
+      title: entry.title || "",
+      message: entry.message || "",
+      details: entry.details || "",
+      postedBy: entry.postedBy || "",
+      where: entry.where || "",
+      postedOn: entry.postedOn || "",
+      effectiveUntil: entry.effectiveUntil || "",
+      involvedParties: entry.involvedParties || "",
+      tickerDisplay: entry.tickerDisplay === "title" ? "title" : "message",
+      attachmentsText,
+    });
     setAnnouncementEditingIdx(idx);
   };
 
   const saveAnnouncement = async () => {
+    const title = String(announcementForm.title || "").trim();
     const message = String(announcementForm.message || "").trim();
+    const details = String(announcementForm.details || "").trim();
+    const postedBy = String(announcementForm.postedBy || "").trim();
+    const where = String(announcementForm.where || "").trim();
+    const postedOn = String(announcementForm.postedOn || "").trim();
+    const effectiveUntil = String(announcementForm.effectiveUntil || "").trim();
+    const involvedParties = String(announcementForm.involvedParties || "").trim();
+    const tickerDisplay = announcementForm.tickerDisplay === "title" ? "title" : "message";
+    const attachments = String(announcementForm.attachmentsText || "")
+      .split("\n")
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const parts = line.split("|");
+        if (parts.length < 2) {
+          return { name: "Attachment", url: line };
+        }
+        return {
+          name: String(parts[0] || "Attachment").trim() || "Attachment",
+          url: String(parts.slice(1).join("|") || "").trim(),
+        };
+      })
+      .filter(file => !!file.url);
+
     if (!message) {
       showStatus(setAnnouncementStatus, "error", "✗ Announcement message is required.");
       return;
@@ -569,17 +646,29 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     try {
       const editingEntry = announcementEditingIdx >= 0 ? currentAnnouncements[announcementEditingIdx] : null;
       let savedEntry = null;
+      const payload = {
+        title,
+        message,
+        details,
+        postedBy,
+        where,
+        postedOn,
+        effectiveUntil,
+        involvedParties,
+        tickerDisplay,
+        attachments,
+      };
 
       if (editingEntry?.id) {
         await callApi(`/api/announcements/${editingEntry.id}`, {
           method: "PUT",
-          body: JSON.stringify({ message }),
+          body: JSON.stringify(payload),
         });
-        savedEntry = { ...editingEntry, message };
+        savedEntry = { ...editingEntry, ...payload };
       } else {
         savedEntry = await callApi("/api/announcements", {
           method: "POST",
-          body: JSON.stringify({ message }),
+          body: JSON.stringify(payload),
         });
       }
 
@@ -594,10 +683,75 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         lastUpdated: new Date().toISOString(),
       });
       setAnnouncementEditingIdx(null);
-      setAnnouncementForm({ message: "" });
+      setAnnouncementForm({
+        title: "",
+        message: "",
+        details: "",
+        postedBy: "",
+        where: "",
+        postedOn: "",
+        effectiveUntil: "",
+        involvedParties: "",
+        tickerDisplay: "message",
+        attachmentsText: "",
+      });
       showStatus(setAnnouncementStatus, "success", "✓ Announcement saved.");
     } catch (e) {
       showStatus(setAnnouncementStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const uploadAnnouncementAttachments = async files => {
+    const pickedFiles = Array.from(files || []);
+    if (!pickedFiles.length) return;
+
+    try {
+      const formData = new FormData();
+      pickedFiles.forEach(file => formData.append("files", file));
+
+      const response = await fetch("/api/announcements/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let message = `Upload failed (${response.status})`;
+        try {
+          const data = await response.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // Ignore invalid response payload
+        }
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const uploadedFiles = Array.isArray(data?.files) ? data.files : [];
+      if (!uploadedFiles.length) {
+        showStatus(setAnnouncementStatus, "error", "✗ No files were uploaded.");
+        return;
+      }
+
+      const appendedLines = uploadedFiles
+        .map(file => {
+          const fileName = String(file?.name || "Attachment").trim() || "Attachment";
+          const fileUrl = String(file?.url || "").trim();
+          if (!fileUrl) return "";
+          return `${fileName} | ${fileUrl}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      setAnnouncementForm(prev => ({
+        ...prev,
+        attachmentsText: [String(prev.attachmentsText || "").trim(), appendedLines]
+          .filter(Boolean)
+          .join("\n"),
+      }));
+
+      showStatus(setAnnouncementStatus, "success", `✓ Uploaded ${uploadedFiles.length} file${uploadedFiles.length > 1 ? "s" : ""}.`);
+    } catch (error) {
+      showStatus(setAnnouncementStatus, "error", `✗ ${error.message}`);
     }
   };
 
@@ -1335,13 +1489,122 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             {announcementEditingIdx !== null && (
               <div>
                 <div className="a-field">
+                  <label className="a-label">Announcement Title</label>
+                  <input
+                    className="a-input"
+                    value={announcementForm.title}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Optional title"
+                  />
+                </div>
+                <div className="a-field">
                   <label className="a-label">Announcement Message</label>
                   <textarea
                     className="a-textarea"
                     value={announcementForm.message}
-                    onChange={e => setAnnouncementForm({ message: e.target.value })}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, message: e.target.value }))}
                     placeholder="Type announcement text..."
                   />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Additional Details</label>
+                  <textarea
+                    className="a-textarea"
+                    value={announcementForm.details}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, details: e.target.value }))}
+                    placeholder="Detailed information shown in popup modal..."
+                    style={{ minHeight: 90 }}
+                  />
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Who Posted This Announcement</label>
+                    <input
+                      className="a-input"
+                      value={announcementForm.postedBy}
+                      onChange={e => setAnnouncementForm(f => ({ ...f, postedBy: e.target.value }))}
+                      placeholder="e.g. Public Affairs Office"
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Where</label>
+                    <input
+                      className="a-input"
+                      value={announcementForm.where}
+                      onChange={e => setAnnouncementForm(f => ({ ...f, where: e.target.value }))}
+                      placeholder="e.g. Main Lobby Forum Area"
+                    />
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Who Might Be Involved</label>
+                    <input
+                      className="a-input"
+                      value={announcementForm.involvedParties}
+                      onChange={e => setAnnouncementForm(f => ({ ...f, involvedParties: e.target.value }))}
+                      placeholder="e.g. Citizens, LGU Desk Officers"
+                    />
+                  </div>
+                </div>
+                <div className="a-row">
+                  <div className="a-field">
+                    <label className="a-label">Posted On</label>
+                    <input
+                      type="date"
+                      className="a-input"
+                      value={announcementForm.postedOn}
+                      onChange={e => setAnnouncementForm(f => ({ ...f, postedOn: e.target.value }))}
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Effective Until</label>
+                    <input
+                      type="date"
+                      className="a-input"
+                      value={announcementForm.effectiveUntil}
+                      onChange={e => setAnnouncementForm(f => ({ ...f, effectiveUntil: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Running Ticker Display Source</label>
+                  <select
+                    className="a-input"
+                    value={announcementForm.tickerDisplay}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, tickerDisplay: e.target.value === "title" ? "title" : "message" }))}
+                  >
+                    <option value="message">Description / Message</option>
+                    <option value="title">Title</option>
+                  </select>
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Attached Files (one per line)</label>
+                  <textarea
+                    className="a-textarea"
+                    value={announcementForm.attachmentsText}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, attachmentsText: e.target.value }))}
+                    placeholder="File Name | https://example.com/file.pdf"
+                    style={{ minHeight: 80 }}
+                  />
+                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <label className="a-btn a-btn-ghost" style={{ marginBottom: 0, cursor: "pointer" }}>
+                      <Upload size={14} className="btn-icon" /> Upload Attachment Files
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt"
+                        style={{ display: "none" }}
+                        onChange={e => {
+                          uploadAnnouncementAttachments(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <span style={{ fontSize: 11, color: "#4a6499" }}>
+                      Uploaded files are automatically added to the list above.
+                    </span>
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                   <button className="a-btn a-btn-primary" onClick={saveAnnouncement}>Save Announcement</button>
@@ -1349,7 +1612,18 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     className="a-btn a-btn-ghost"
                     onClick={() => {
                       setAnnouncementEditingIdx(null);
-                      setAnnouncementForm({ message: "" });
+                      setAnnouncementForm({
+                        title: "",
+                        message: "",
+                        details: "",
+                        postedBy: "",
+                        where: "",
+                        postedOn: "",
+                        effectiveUntil: "",
+                        involvedParties: "",
+                        tickerDisplay: "message",
+                        attachmentsText: "",
+                      });
                     }}
                   >
                     Cancel
@@ -1368,8 +1642,28 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               {currentAnnouncements.map((item, idx) => (
                 <div key={item.id || idx} className="svc-row">
                   <div className="svc-row-info">
-                    <div className="svc-row-name">Announcement {idx + 1}</div>
+                    <div className="svc-row-name">{item.title || `Announcement ${idx + 1}`}</div>
                     <div className="svc-row-meta" style={{ color: "#334b84", fontSize: 12 }}>{item.message}</div>
+                    <div className="svc-row-meta" style={{ color: "#3f588f", fontSize: 11 }}>
+                      Posted by: {item.postedBy || "N/A"}
+                      {item.where ? ` | Where: ${item.where}` : ""}
+                      {item.postedOn ? ` | Posted on: ${item.postedOn}` : ""}
+                      {item.effectiveUntil ? ` | Effective until: ${item.effectiveUntil}` : ""}
+                    </div>
+                    {!!item.involvedParties && (
+                      <div className="svc-row-meta" style={{ color: "#3f588f", fontSize: 11 }}>
+                        Involved: {item.involvedParties}
+                      </div>
+                    )}
+                    <div className="svc-row-meta" style={{ color: "#2f57a0", fontSize: 11 }}>
+                      Ticker shows: {item.tickerDisplay === "title" ? "Title" : "Description / Message"}
+                    </div>
+                    {!!item.details && <div className="svc-row-meta" style={{ color: "#4a6499", fontSize: 11 }}>{item.details}</div>}
+                    {!!item.attachments?.length && (
+                      <div className="svc-row-meta" style={{ color: "#2f57a0", fontSize: 11 }}>
+                        {item.attachments.length} file{item.attachments.length > 1 ? "s" : ""} attached
+                      </div>
+                    )}
                   </div>
                   <div className="svc-row-actions">
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditAnnouncement(idx)}>Edit</button>

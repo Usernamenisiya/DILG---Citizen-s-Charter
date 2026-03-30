@@ -82,7 +82,20 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
   const drawerRef    = useRef(null);
   const hamburgerRef = useRef(null);
   const tickerItems = (announcements || [])
-    .map(a => String(a?.message || "").trim())
+    .map(a => {
+      const useTitle = a?.tickerDisplay === "title";
+      const candidate = useTitle ? a?.title : a?.message;
+      const fallback = useTitle ? a?.message : a?.title;
+      const baseText = String(candidate || fallback || "").trim();
+      const postedOn = String(a?.postedOn || "").trim();
+      const effectiveUntil = String(a?.effectiveUntil || "").trim();
+      const dateParts = [
+        postedOn ? `Posted: ${postedOn}` : "",
+        effectiveUntil ? `Effective until: ${effectiveUntil}` : "",
+      ].filter(Boolean);
+      if (!baseText) return "";
+      return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
+    })
     .filter(Boolean);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
 
