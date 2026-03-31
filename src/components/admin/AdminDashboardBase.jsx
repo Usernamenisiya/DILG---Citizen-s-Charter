@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   CheckCircle2,
   Download,
@@ -130,6 +130,35 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     tickerDisplay: "message",
     attachmentsText: "",
   });
+
+  // Store refs for feedback section heading inputs
+  const feedbackSectionRefs = useRef({});
+  const feedbackTitleRef = useRef(null); // Ref to the top of feedback section
+  // Track which feedback section index to scroll to after saving
+  const [scrollToFeedbackSectionIdx, setScrollToFeedbackSectionIdx] = useState(null);
+
+  // Helper function to scroll to an element within the admin-content scrollable container
+  const scrollToElementInContainer = (element) => {
+    if (!element) return;
+    
+    // Find the scrollable admin-content container
+    const scrollContainer = element.closest(".admin-content");
+    if (!scrollContainer) {
+      // Fallback to regular scrollIntoView
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    // Calculate the position relative to the container
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const elementTop = element.offsetTop;
+    const containerScrollTop = scrollContainer.scrollTop;
+    
+    // Scroll to center the element in the visible container
+    const targetScroll = elementTop - (scrollContainer.clientHeight / 2) + (element.clientHeight / 2);
+    scrollContainer.scrollTo({ top: targetScroll, behavior: "smooth" });
+  };
 
   const callApi = async (url, options = {}) => {
     const response = await fetch(url, {
@@ -338,6 +367,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         method: "PUT",
         body: JSON.stringify(updatedFeedback),
       });
+      
       onDataChange({
         ...appData,
         feedbackAndComplaints: updatedFeedback,
@@ -346,16 +376,28 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       });
       setFeedbackForm(JSON.parse(JSON.stringify(updatedFeedback)));
       showStatus(setFeedbackStatus, "success", "✓ Feedback and complaints content saved.");
+      
+      // Scroll to top of feedback section after saving
+      setTimeout(() => {
+        if (feedbackTitleRef.current) {
+          scrollToElementInContainer(feedbackTitleRef.current);
+        }
+      }, 50);
     } catch (e) {
       showStatus(setFeedbackStatus, "error", `✗ ${e.message}`);
     }
   };
 
   const addFeedbackSection = () => {
+    const newSectionIndex = (feedbackForm.sections || []).length;
+    
     setFeedbackForm(f => ({
       ...f,
       sections: [...(f.sections || []), { heading: "", paragraphs: [] }],
     }));
+    
+    // Set scroll target to the new section being added
+    setScrollToFeedbackSectionIdx(newSectionIndex);
   };
 
   const removeFeedbackSection = idx => {
@@ -965,6 +1007,20 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const StatusMsg = ({ status }) => (status ? <div className={`a-status ${status.type}`}>{status.msg}</div> : null);
   const lockHint = !isSuperAdmin ? <span className="role-lock-hint"><Shield size={12} /> Super Admin only</span> : null;
 
+  // Scroll to the target feedback section after saving or adding
+  useEffect(() => {
+    if (scrollToFeedbackSectionIdx !== null) {
+      setTimeout(() => {
+        const headingInput = feedbackSectionRefs.current[scrollToFeedbackSectionIdx];
+        if (headingInput) {
+          scrollToElementInContainer(headingInput);
+          headingInput.focus(); // Focus on the heading input
+        }
+        setScrollToFeedbackSectionIdx(null); // Reset after scrolling
+      }, 50);
+    }
+  }, [feedbackForm]); // Trigger when feedbackForm updates
+
   return (
     <div className="admin-panel">
       <div className="admin-sidebar">
@@ -1379,6 +1435,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             <div className="a-field">
               <label className="a-label">Section Title</label>
               <input
+                ref={feedbackTitleRef}
                 className="a-input"
                 value={feedbackForm.title || ""}
                 onChange={e => setFeedbackForm(f => ({ ...f, title: e.target.value }))}
@@ -1431,6 +1488,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 <div className="a-field">
                   <label className="a-label">Heading</label>
                   <input
+                    ref={input => feedbackSectionRefs.current[idx] = input}
                     className="a-input"
                     value={section.heading || ""}
                     onChange={e =>
