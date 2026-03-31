@@ -90,6 +90,16 @@ export default function KioskMainScreen({
     return () => { el.removeEventListener("scroll", onScroll); clearTimeout(timer); };
   }, []);
 
+  const getServiceCardColor = (classification) => {
+    const c = String(classification || "").toLowerCase();
+    if (c.includes("simple")) return "#002C76";
+    if (c.includes("complex") || c.includes("highly")) return "#C9282D";
+    return "#FFDE15";
+  };
+
+  const isInternalSection = activeSection === "internal";
+  const isExternalSection = activeSection === "external";
+
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
       <header className="header">
@@ -114,9 +124,9 @@ export default function KioskMainScreen({
       <div className="screen-bar">
         {currentService ? (
           <>
-            <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {activeSection === "internal" ? "Services" : activeSection === "external" ? "External" : "Menu"}</button>
+            <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</button>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-              <div className="sc-label">{activeSection === "internal" ? "Internal Services" : activeSection === "external" ? "External Services" : "Menu"}</div>
+              <div className="sc-label">{isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</div>
               <div className="sc-sep"><img src="/src/assets/icons/rightarrow.png" alt=">" className="sc-sep-glyph" /></div>
               <div className="sc-label sub">{currentService.label}</div>
             </div>
@@ -125,9 +135,9 @@ export default function KioskMainScreen({
           <>
             <button className="back-btn" onClick={onReturnToMenu}>Back to Menu</button>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-              {(activeSection === "internal" || activeSection === "external") ? (
+              {(isInternalSection || isExternalSection) ? (
                 <div className="greeting sc-greeting">
-                  {activeSection === "external" ? "Magandang araw! Pumili ng external service" : "Magandang araw! Pumili ng serbisyo"} — <strong>{settings.hours}</strong>
+                  {isExternalSection ? "Magandang araw! Piliin ang external service na kailangan ninyo." : "Magandang araw! Piliin ang serbisyong kailangan ninyo."} - <strong>{settings.hours}</strong>
                 </div>
               ) : (
                 <div className="sc-label">
@@ -139,35 +149,57 @@ export default function KioskMainScreen({
         )}
       </div>
 
-      <div className="content" ref={contentRef}>
+      <div className={`content${!currentService && (isInternalSection || isExternalSection) ? " content--services" : ""}`} ref={contentRef}>
         <div className="content-shell">
         {!currentService ? (
-          <div className="card-menu">
-            {(activeSection === "internal" || activeSection === "external") && (
-              <>
-                <div className="service-grid">
-                  {pageServices.map((svc, i) => (
-                    <div key={svc.id} className="service-card" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setCurrentService(svc)}>
-                      <div className="card-top">
-                        <div className="card-icon">
-                          <ServiceIcon icon={svc.icon} label={svc.label} size={30} className="card-icon-glyph" />
+          <div className={`card-menu${isInternalSection || isExternalSection ? " card-menu--services" : ""}`}>
+            {(isInternalSection || isExternalSection) && (
+              <div className="mnav-grid svc-grid">
+                {pageServices.map((svc, i) => {
+                  const cardColor = getServiceCardColor(svc.classification);
+                  const isGoldCard = cardColor === "#FFDE15";
+                  return (
+                    <div
+                      key={svc.id}
+                      className={`mnav-card mnav-card--svc${isGoldCard ? " mnav-card--svc-gold" : ""}`}
+                      style={{ "--card-color": cardColor, animationDelay: `${i * 0.05}s` }}
+                      onClick={() => setCurrentService(svc)}
+                    >
+                      {/* Colored top stripe */}
+                      <div className="mnav-card-stripe" />
+
+                      {/* Icon + Label */}
+                      <div className="mnav-card-main">
+                        <div className="svc-card-icon-wrap">
+                          <ServiceIcon
+                            icon={svc.icon}
+                            label={svc.label}
+                            size={34}
+                            color={isGoldCard ? "#7a5f00" : cardColor}
+                            className="card-icon-glyph"
+                          />
                         </div>
-                        <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>{svc.classification}</span>
+                        <div className="mnav-card-label">{svc.label}</div>
                       </div>
-                      <div className="card-label">{svc.label}</div>
-                      <div className="card-meta">
-                        <div className="card-time">
-                          {activeSection === "external"
-                            ? `Inquire At: ${svc.office || "DILG Office"}`
-                            : `Estimated Time: ${svc.processingTime}`}
+
+                      {/* Badge + Meta */}
+                      <div className="mnav-card-sub">
+                        <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>
+                          {svc.classification}
+                        </span>
+                        <div className="mnav-card-desc">
+                          {isExternalSection
+                            ? `Inquire At: ${String(svc.office || "").trim() || "DILG Office"}`
+                            : `Est. Time: ${String(svc.processingTime || "").trim() || "See service details"}`}
                         </div>
-                        {!!svc.fees && svc.fees !== "None" && <div className="card-fee">Fee: {svc.fees}</div>}
-                        <div className="card-arr"><img src="/src/assets/icons/rightarrow.png" alt="view" className="card-arr-glyph" /></div>
+                        {!!svc.fees && svc.fees !== "None" && (
+                          <div className="mnav-card-desc">Fee: {svc.fees}</div>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
+                  );
+                })}
+              </div>
             )}
 
             {activeSection === "feedback" && !!feedbackAndComplaints && (
@@ -573,49 +605,206 @@ export default function KioskMainScreen({
               </div>
             )}
           </div>
-        ) : (
-          <div>
-            <div className="detail-banner">
-              <div className="detail-icon">
-                <ServiceIcon icon={currentService.icon} label={currentService.label} size={36} className="detail-icon-glyph" color="#fff" />
-              </div>
-              <div className="detail-meta">
-                <h2>{currentService.label}</h2>
-                <p>{currentService.desc}</p>
-                <div className="d-chips">
-                  <span className="chip cls">Class: {currentService.classification}</span>
-                  <span className="chip">Estimated Time: {currentService.processingTime}</span>
-                  <span className="chip">{currentService.fees && currentService.fees !== "None" ? "Fee: " + currentService.fees : "No Fees"}</span>
-                  <span className="chip">Who: {currentService.who}</span>
-                  <span className="chip">Office: {currentService.office}</span>
+        ) : (() => {
+          const svcColor = getServiceCardColor(currentService.classification);
+          const isGold   = svcColor === "#FFDE15";
+          const accentColor = isGold ? "#7a5f00" : svcColor;
+          return (
+            <div className="svc-detail">
+
+              {/* ── HERO BANNER ── */}
+              <div className="svc-detail-hero" style={{ "--svc-accent": accentColor, "--svc-color": svcColor }}>
+                <div className="svc-detail-hero-stripe" />
+                <div className="svc-detail-hero-body">
+
+                  {/* Icon bubble */}
+                  <div className="svc-detail-icon-wrap">
+                    <ServiceIcon
+                      icon={currentService.icon}
+                      label={currentService.label}
+                      size={44}
+                      color="#ffffff"
+                      className="svc-detail-icon-glyph"
+                    />
+                  </div>
+
+                  {/* Title + desc */}
+                  <div className="svc-detail-title-block">
+                    <div className="svc-detail-title">{currentService.label}</div>
+                    {!!String(currentService.desc || "").trim() && (
+                      <div className="svc-detail-desc">{currentService.desc}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="detail-cols">
-              <div className="detail-box">
-                <h3>Requirements</h3>
-                {(currentService.requirements || []).map((r, i) => (
-                  <div key={i} className="req-item">
-                    <div className="req-n">{String(i + 1).padStart(2, "0")}</div>
-                    <div>
-                      <div>{r.text}</div>
-                      <div className="req-wh">Where: {r.where}</div>
+
+              {/* ── METADATA CARD — below hero ── */}
+              <div className="svc-meta-card" style={{ "--svc-accent": accentColor, "--svc-color": svcColor }}>
+                <div className="svc-meta-card-stripe" />
+                <div className="svc-meta-grid">
+
+                  <div className="svc-meta-item svc-meta-item--class">
+                    <div className="svc-meta-label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+                      </svg>
+                      Classification
+                    </div>
+                    <div className="svc-meta-value">{currentService.classification || "—"}</div>
+                  </div>
+
+                  {!isExternalSection && (
+                    <div className="svc-meta-item">
+                      <div className="svc-meta-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Processing Time
+                      </div>
+                      <div className="svc-meta-value">
+                        {String(currentService.processingTime || "").trim() || "See service details"}
+                      </div>
+                    </div>
+                  )}
+
+                  {isExternalSection && (
+                    <div className="svc-meta-item">
+                      <div className="svc-meta-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                          <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        Inquire At
+                      </div>
+                      <div className="svc-meta-value">
+                        {String(currentService.office || "DILG Office").trim()}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="svc-meta-item">
+                    <div className="svc-meta-label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                      </svg>
+                      Fees
+                    </div>
+                    <div className="svc-meta-value">
+                      {currentService.fees && currentService.fees !== "None"
+                        ? currentService.fees
+                        : "None / Free"}
                     </div>
                   </div>
-                ))}
+
+                  {!!String(currentService.who || "").trim() && (
+                    <div className="svc-meta-item">
+                      <div className="svc-meta-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Who May Avail
+                      </div>
+                      <div className="svc-meta-value">{currentService.who}</div>
+                    </div>
+                  )}
+
+                  {!isExternalSection && !!String(currentService.office || "").trim() && (
+                    <div className="svc-meta-item">
+                      <div className="svc-meta-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                        </svg>
+                        Office
+                      </div>
+                      <div className="svc-meta-value">{currentService.office}</div>
+                    </div>
+                  )}
+
+                </div>
               </div>
-              <div className="detail-box">
-                <h3>How to Avail</h3>
-                {(currentService.steps || []).map((step, i) => (
-                  <div key={i} className="step-item">
-                    <div className="step-c">{i + 1}</div>
-                    <div>{step}</div>
+
+              {/* ── TWO PANELS ── */}
+              <div className="svc-detail-panels">
+
+                {/* Requirements */}
+                <div className="svc-panel" style={{ "--panel-color": accentColor }}>
+                  <div className="svc-panel-header">
+                    <div className="svc-panel-stripe" />
+                    <div className="svc-panel-title">
+                      {isExternalSection ? "Required Documents" : "Requirements"}
+                    </div>
+                    <div className="svc-panel-count">
+                      {(currentService.requirements || []).length} item{(currentService.requirements || []).length !== 1 ? "s" : ""}
+                    </div>
                   </div>
-                ))}
+                  <div className="svc-panel-body">
+                    {(currentService.requirements || []).length ? (
+                      (currentService.requirements || []).map((r, i) => (
+                        <div key={i} className="svc-req-row">
+                          <div className="svc-req-num" style={{ background: accentColor }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </div>
+                          <div className="svc-req-content">
+                            <div className="svc-req-text">{r.text}</div>
+                            {!!String(r.where || "").trim() && (
+                              <div className="svc-req-where">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                  <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                {r.where}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="svc-panel-empty">No requirements listed.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Steps / How to Avail */}
+                <div className="svc-panel" style={{ "--panel-color": accentColor }}>
+                  <div className="svc-panel-header">
+                    <div className="svc-panel-stripe" />
+                    <div className="svc-panel-title">
+                      {isExternalSection ? "Service Flow" : "How to Avail"}
+                    </div>
+                    <div className="svc-panel-count">
+                      {(currentService.steps || []).length} step{(currentService.steps || []).length !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <div className="svc-panel-body">
+                    {(currentService.steps || []).length ? (
+                      (currentService.steps || []).map((step, i) => (
+                        <div key={i} className="svc-step-row">
+                          <div className="svc-step-left">
+                            <div className="svc-step-num" style={{ background: accentColor }}>{i + 1}</div>
+                            {i < (currentService.steps || []).length - 1 && (
+                              <div className="svc-step-connector" style={{ background: accentColor }} />
+                            )}
+                          </div>
+                          <div className="svc-step-text">{step}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="svc-panel-empty">No steps listed.</div>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         </div>
       </div>
 

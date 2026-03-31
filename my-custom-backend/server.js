@@ -255,6 +255,11 @@ db.prepare(
   "UPDATE kiosk_settings SET tagline = ? WHERE id = 1 AND tagline = ?"
 ).run("Matino, Mahusay at Maaasahan", "Serbisyong Maaasahan, Madali at Mabilis");
 
+// Ensure legacy kiosks use a page size compatible with the 3x3 card layout.
+db.prepare(
+  "UPDATE kiosk_settings SET perPage = 9 WHERE id = 1 AND (perPage IS NULL OR perPage < 9)"
+).run();
+
 ensureSingleRow(
   "feedback_content",
   "INSERT INTO feedback_content (id, title, email, telephone, sections) VALUES (1, ?, ?, ?, ?)",

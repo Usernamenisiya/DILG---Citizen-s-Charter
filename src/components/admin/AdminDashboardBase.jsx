@@ -206,7 +206,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const saveSettings = async () => {
     const s = {
       ...settingsForm,
-      perPage: parseInt(settingsForm.perPage) || 6,
+      perPage: Math.max(9, parseInt(settingsForm.perPage, 10) || 9),
       resetTimer: parseInt(settingsForm.resetTimer) || 60,
       updateUrl,
       autoCheckUpdates: autoCheck,

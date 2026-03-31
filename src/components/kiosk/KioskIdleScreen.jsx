@@ -74,7 +74,10 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
             <span>ANNOUNCEMENT</span>
           </div>
           <div className="idle-ticker-track">
-            <div className="idle-ticker-inner">
+            <div
+              key={`idle-announcement-${announcementIndex}`}
+              className="idle-ticker-inner"
+            >
               <span>{announcement}</span>
               <span className="idle-ticker-sep">◆</span>
               <span>{announcement}</span>

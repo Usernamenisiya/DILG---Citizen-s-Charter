@@ -199,7 +199,10 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
               <span>ANNOUNCEMENT</span>
             </div>
             <div className="mnav-ticker-track">
-              <div className="mnav-ticker-inner">
+              <div
+                key={`menu-announcement-${announcementIndex}`}
+                className="mnav-ticker-inner"
+              >
                 <span>{announcement}</span>
                 <span className="mnav-ticker-sep">◆</span>
                 <span>{announcement}</span>

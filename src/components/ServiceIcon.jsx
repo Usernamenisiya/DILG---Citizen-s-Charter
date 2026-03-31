@@ -44,7 +44,22 @@ export function ServiceIcon({
   const lucideName = !imageSource ? normalizeLucideIconName(icon) : null;
 
   if (imageSource) {
-    return <img src={imageSource} alt={label || "service icon"} className={className} />;
+    return (
+      <img
+        src={imageSource}
+        alt={label || "service icon"}
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          maxWidth: size,
+          maxHeight: size,
+          objectFit: "contain",
+          display: "block",
+          flexShrink: 0,
+        }}
+      />
+    );
   }
 
   if (lucideName) {
