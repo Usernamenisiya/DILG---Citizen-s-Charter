@@ -11,6 +11,7 @@ import KioskMainScreen from "./components/kiosk/KioskMainScreen";
 import ProfileModal from "./components/kiosk/modals/mmv_modal";
 import OfficesModal from "./components/kiosk/modals/list_of_offices_modal";
 
+
 /* ══════════════════════════════════════════════════════
    ROOT-LEVEL MODAL (feedback · issuances · announcement)
    ══════════════════════════════════════════════════════ */

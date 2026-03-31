@@ -141,7 +141,7 @@ export default function KioskMainScreen({
                 </div>
               ) : (
                 <div className="sc-label">
-                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : activeSection === "announcement" ? "Announcements" : "Menu"}
+                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : activeSection === "announcement" ? "Announcements"   : activeSection === "Officials" ? "Key Officials" : "Menu"}
                 </div>
               )}
             </div>

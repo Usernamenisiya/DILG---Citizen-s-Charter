@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import EventsCalendarModal from "./modals/event_calendar_modal";
+import KeyOfficialsModal from "./modals/key_officials_modal";
 import {
   CalendarDays,
   Megaphone,
@@ -20,15 +21,16 @@ const DEFAULT_ANNOUNCEMENT =
 
 /* ─── Icons ─── */
 const ICONS = {
-  calendar:     <CalendarDays      size={32} strokeWidth={2} />,
-  announcement: <Megaphone         size={32} strokeWidth={2} />,
-  profile:      <Award             size={32} strokeWidth={2} />,
-  offices:      <PhoneCall         size={32} strokeWidth={2} />,
-  Programs:     <LayoutGrid        size={32} strokeWidth={2} />,
-  internal:     <Briefcase         size={32} strokeWidth={2} />,
-  external:     <Globe             size={32} strokeWidth={2} />,
-  feedback:     <MessageSquareMore size={32} strokeWidth={2} />,
-  issuances:    <ScrollText        size={32} strokeWidth={2} />,
+  calendar:      <CalendarDays      size={32} strokeWidth={2} />,
+  announcement:  <Megaphone         size={32} strokeWidth={2} />,
+  profile:       <Award             size={32} strokeWidth={2} />,
+  offices:       <PhoneCall         size={32} strokeWidth={2} />,
+  Programs:      <LayoutGrid        size={32} strokeWidth={2} />,
+  internal:      <Briefcase         size={32} strokeWidth={2} />,
+  external:      <Globe             size={32} strokeWidth={2} />,
+  feedback:      <MessageSquareMore size={32} strokeWidth={2} />,
+  issuances:     <ScrollText        size={32} strokeWidth={2} />,
+  keyOfficials:  <Award             size={32} strokeWidth={2} />,
 };
 
 const NAV_GROUPS = [
@@ -44,9 +46,10 @@ const NAV_GROUPS = [
 ];
 
 const NAV_STANDALONE = [
-  { id: "profile",   label: "Mission, Vision & Mandate", color: "#FFDE15" },
-  { id: "offices",   label: "Contact Us",                color: "#FFDE15" },
-  { id: "Programs",  label: "LGUSS",             color: "#FFDE15" },
+  { id: "profile",      label: "Mission, Vision & Mandate", color: "#FFDE15" },
+  { id: "offices",      label: "Contact Us",                color: "#FFDE15" },
+  { id: "Programs",     label: "LGUSS",                     color: "#FFDE15" },
+  { id: "keyOfficials", label: "Key Officials",             color: "#FFDE15" },
 ];
 
 const GRID_CARDS = [
@@ -75,12 +78,14 @@ function NavItem({ id, label, color, onClick }) {
 }
 
 export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef }) {
-  const [clockTime, setClockTime]       = useState("");
-  const [clockDate, setClockDate]       = useState("");
-  const [drawerOpen, setDrawerOpen]     = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [clockTime, setClockTime]             = useState("");
+  const [clockDate, setClockDate]             = useState("");
+  const [drawerOpen, setDrawerOpen]           = useState(false);
+  const [showCalendar, setShowCalendar]       = useState(false);
+  const [showKeyOfficials, setShowKeyOfficials] = useState(false); // ← FIXED
   const drawerRef    = useRef(null);
   const hamburgerRef = useRef(null);
+
   const tickerItems = (announcements || [])
     .map(a => {
       const useTitle = a?.tickerDisplay === "title";
@@ -97,6 +102,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
       return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
     })
     .filter(Boolean);
+
   const [announcementIndex, setAnnouncementIndex] = useState(0);
 
   useEffect(() => {
@@ -153,6 +159,10 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
       setShowCalendar(true);
       return;
     }
+    if (id === "keyOfficials") { // ← FIXED
+      setShowKeyOfficials(true);
+      return;
+    }
     onSelectSection(id);
   };
 
@@ -162,6 +172,11 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
       {/* ── Events Calendar Modal ── */}
       {showCalendar && (
         <EventsCalendarModal onClose={() => setShowCalendar(false)} events={calendarEvents} />
+      )}
+
+      {/* ── Key Officials Modal ── */}
+      {showKeyOfficials && ( // ← FIXED
+        <KeyOfficialsModal onClose={() => setShowKeyOfficials(false)} />
       )}
 
       {/* ══ FULL-WIDTH LAYOUT: topbar + content ══ */}
@@ -218,8 +233,6 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
           {/* Drawer — inside content row, pushes cards */}
           <div ref={drawerRef} className={`mnav-drawer${drawerOpen ? " open" : ""}`}>
 
-           
-
             <div className="mnav-drawer-divider" />
 
             {/* Drawer nav */}
@@ -245,34 +258,31 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
               ))}
             </nav>
 
-           
           </div>
-
-          
 
           {/* Cards area */}
           <div className="mnav-cards-area">
             <div className="main-page-title">
               <h1>Citizen's Charter</h1>
             </div>
-          <div className="mnav-grid">
-            {GRID_CARDS.map((card, i) => (
-              <div
-                key={card.id}
-                className={`mnav-card${card.span === "full" ? " mnav-card--full" : ""}`}
-                style={{ "--card-color": card.color, animationDelay: `${i * 0.08}s` }}
-                onClick={() => onSelectSection(card.id)}
-              >
-                <div className="mnav-card-stripe" />
-                <div className="mnav-card-main">
-                  <div className="mnav-card-label">{card.label}</div>
+            <div className="mnav-grid">
+              {GRID_CARDS.map((card, i) => (
+                <div
+                  key={card.id}
+                  className={`mnav-card${card.span === "full" ? " mnav-card--full" : ""}`}
+                  style={{ "--card-color": card.color, animationDelay: `${i * 0.08}s` }}
+                  onClick={() => onSelectSection(card.id)}
+                >
+                  <div className="mnav-card-stripe" />
+                  <div className="mnav-card-main">
+                    <div className="mnav-card-label">{card.label}</div>
+                  </div>
+                  <div className="mnav-card-sub">
+                    <div className="mnav-card-desc">{card.desc}</div>
+                  </div>
                 </div>
-                <div className="mnav-card-sub">
-                  <div className="mnav-card-desc">{card.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           </div>
 
         </div>

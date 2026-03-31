@@ -480,6 +480,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   margin-top: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1075,42 +1076,6 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
     gap: 16px;
   }
 }
-
-@media (max-width: 1600px) {
-  .card-menu--services .service-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 300px;
-  }
-
-  .card-menu--services .service-card {
-    width: 100%;
-    max-width: none;
-    min-height: 300px;
-    height: 300px;
-    padding: 14px 14px 12px;
-  }
-
-  .card-menu--services .card-icon {
-    width: 58px;
-    height: 58px;
-  }
-
-  .card-menu--services .card-icon-glyph,
-  .card-menu--services .card-icon img {
-    width: 34px;
-    height: 34px;
-  }
-
-  .card-menu--services .card-label {
-    font-size: clamp(22px, 1.55vw, 28px);
-    min-height: 76px;
-  }
-
-  .card-menu--services .card-time,
-  .card-menu--services .card-fee {
-    font-size: clamp(15px, 0.95vw, 18px);
-  }
-}
 @keyframes cin {
   from { opacity:0; transform:translateY(16px) scale(.97); }
   to   { opacity:1; transform:translateY(0) scale(1); }
@@ -1293,38 +1258,224 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 .detail-icon-glyph { width:38px; height:38px; color:#fff; }
 
 /* ── RESPONSIVE ── */
-@media (max-width:1100px) {
+@media (max-width: 1900px) {
+  .card-menu--services .service-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 320px;
+    gap: 14px;
+  }
+
+  .card-menu--services .service-card {
+    min-height: 320px;
+    height: 320px;
+  }
+
+  .card-menu--services .card-label {
+    font-size: clamp(26px, 1.8vw, 32px);
+    min-height: 90px;
+  }
+
+  .card-menu--services .card-time,
+  .card-menu--services .card-fee {
+    font-size: clamp(16px, 1vw, 20px);
+  }
+}
+
+@media (max-width: 1600px) {
+  .card-menu--services .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 300px;
+    gap: 14px;
+  }
+
+  .card-menu--services .service-card {
+    width: 100%;
+    max-width: none;
+    min-height: 300px;
+    height: 300px;
+    padding: 14px 14px 12px;
+  }
+
+  .card-menu--services .card-icon {
+    width: 58px;
+    height: 58px;
+  }
+
+  .card-menu--services .card-icon-glyph,
+  .card-menu--services .card-icon img {
+    width: 34px;
+    height: 34px;
+  }
+
+  .card-menu--services .card-label {
+    font-size: clamp(22px, 1.55vw, 28px);
+    min-height: 76px;
+  }
+
+  .card-menu--services .card-time,
+  .card-menu--services .card-fee {
+    font-size: clamp(15px, 0.95vw, 18px);
+  }
+}
+
+@media (max-width: 1200px) {
+  .card-menu--services .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 280px;
+    gap: 12px;
+  }
+
+  .card-menu--services .service-card {
+    min-height: 280px;
+    height: 280px;
+    padding: 12px 12px 10px;
+  }
+
+  .card-menu--services .card-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  .card-menu--services .card-icon-glyph,
+  .card-menu--services .card-icon img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .card-menu--services .card-label {
+    font-size: clamp(20px, 1.4vw, 24px);
+    min-height: 68px;
+  }
+
+  .card-menu--services .card-time,
+  .card-menu--services .card-fee {
+    font-size: clamp(13px, 0.85vw, 16px);
+  }
+
+  .card-menu--services .card-badge {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+
+  .card-menu--services .card-arr-glyph {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (max-width: 900px) {
   .content--services {
+    padding: 12px 16px 80px;
     overflow-y: auto;
   }
 
-  .content--services .content-shell {
-    height: auto;
-    max-width: 1520px;
-  }
-
-  .card-menu--services {
-    height: auto;
-    display: block;
-  }
-
   .card-menu--services .service-grid {
-    display: flex;
-    height: auto;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    max-width: 600px;
+    margin: 0 auto;
   }
 
   .card-menu--services .service-card {
     height: auto;
-    max-width: calc((100% - (var(--svc-cols) - 1) * var(--svc-gap)) / var(--svc-cols));
+    min-height: 240px;
+    padding: 12px 12px 10px;
   }
 
-  .content { padding:14px 14px 88px; }
+  .card-menu--services .card-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .card-menu--services .card-icon-glyph,
+  .card-menu--services .card-icon img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .card-menu--services .card-label {
+    font-size: clamp(18px, 5vw, 22px);
+    min-height: 60px;
+  }
+
+  .card-menu--services .card-time,
+  .card-menu--services .card-fee {
+    font-size: clamp(13px, 3.5vw, 15px);
+  }
+
+  .card-menu--services .card-badge {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+
+  .card-menu--services .card-arr {
+    right: 12px;
+    bottom: 10px;
+  }
+
+  .card-menu--services .card-arr-glyph {
+    width: 20px;
+    height: 20px;
+  }
+
+  .content { padding:12px 16px 88px; }
   .feedback-grid,.profile-grid { grid-template-columns:1fr; }
   .office-grid { grid-template-columns:1fr; }
   .feedback-panel-head,.office-panel-head,.profile-panel-head,.issuance-panel-head { flex-direction:column; align-items:flex-start; }
   .feedback-contact { text-align:left; }
   .issuance-meta { grid-template-columns:1fr; }
   .detail-cols { grid-template-columns:1fr; }
+}
+
+@media (max-width: 600px) {
+  .content--services {
+    padding: 10px 12px 80px;
+  }
+
+  .card-menu--services .service-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    max-width: 100%;
+  }
+
+  .card-menu--services .service-card {
+    height: auto;
+    min-height: 220px;
+    padding: 10px 10px 8px;
+  }
+
+  .card-menu--services .card-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .card-menu--services .card-icon-glyph,
+  .card-menu--services .card-icon img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .card-menu--services .card-label {
+    font-size: clamp(16px, 6vw, 20px);
+    min-height: 54px;
+  }
+
+  .card-menu--services .card-time,
+  .card-menu--services .card-fee {
+    font-size: clamp(12px, 4vw, 14px);
+  }
+
+  .card-menu--services .card-badge {
+    font-size: 11px;
+    padding: 2px 5px;
+  }
+
+  .card-menu--services .card-meta {
+    gap: 6px;
+    padding-top: 8px;
+  }
+
+  .content { padding:10px 12px 88px; }
 }
 
 
@@ -2239,14 +2390,17 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 }
 
 .kcal-day--active {
-  background: #002c76;
+  
   border-color: #002c76;
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(0, 44, 118, 0.3);
 }
 
 .kcal-day--active .kcal-day-num {
-  color: #fff;
+  color: #002c76;
+  border-color: #002c76;
+  
+  
 }
 
 .kcal-day-dot {
@@ -2663,7 +2817,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 
 /* Card base overrides for the smaller service context */
 .mnav-card--svc {
-  min-height: 350px;
+  min-height: 230px;
 }
 
 /* Main area: icon stacked above label */
@@ -2700,30 +2854,52 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   overflow: hidden;
 }
 
-/* Sub area: left-aligned column */
+/* Sub area: row layout with badge and time on one line */
 .mnav-card--svc .mnav-card-sub {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 5px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 14px;
+  min-height: 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Badge styling */
+/* Sub area: row layout with badge left and time right */
+.mnav-card--svc .mnav-card-sub {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 18px 14px;
   min-height: 0;
 }
 
+/* Badge on left */
+.mnav-card--svc .card-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Time/inquiry on right */
 .mnav-card--svc .mnav-card-desc {
-  text-align: left;
+  text-align: right;
   font-size: clamp(13px, 1vw, 16px);
   line-height: 1.4;
+  margin: 0;
+  margin-left: auto;
 }
 
-/* Gold card — dark text for readability on white background */
-.mnav-card--svc-gold .mnav-card-label { color: #3d2600; }
-.mnav-card--svc-gold .mnav-card-desc  { color: #5a3e00; }
-.mnav-card--svc-gold .svc-card-icon-wrap {
-  background: rgba(122, 95, 0, 0.10);
-}
-
-/* ══════════════════════════════════════════════════════
-   SERVICE DETAIL — full redesign
+/* Fee below on full width if present */
+.mnav-card--svc .mnav-card-desc:nth-of-type(2) {
+  width: 100%;
+  text-align: left;
+  margin-left: 0;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0, 56, 168, 0.08);
+  padding-top: 8px;
    ══════════════════════════════════════════════════════ */
 
 .svc-detail {
@@ -3112,4 +3288,5 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   line-height: 1.5;
   padding: 6px 0 18px;
   flex: 1;
+}
 }
