@@ -349,6 +349,7 @@ export default function KioskApp() {
   const organizationalProfile  = appData.organizationalProfile  || KIOSK_DEFAULT_DATA.organizationalProfile;
   const policiesAndIssuances   = appData.policiesAndIssuances   || KIOSK_DEFAULT_DATA.policiesAndIssuances;
   const announcements          = appData.announcements          || [];
+  const programs               = appData.programs               || KIOSK_DEFAULT_DATA.programs || [];
 
   const servicesForSection = activeSection === "external" ? externalServices : services;
   const totalPages         = Math.max(1, Math.ceil(servicesForSection.length / SERVICES_PER_PAGE));
@@ -408,6 +409,7 @@ export default function KioskApp() {
           organizationalProfile={organizationalProfile}
           policiesAndIssuances={policiesAndIssuances}
           announcements={announcements}
+          programs={programs}
           currentService={currentService}
           setCurrentService={setCurrentService}
           pageServices={pageServices}

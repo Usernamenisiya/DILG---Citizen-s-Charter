@@ -268,4 +268,30 @@ export const KIOSK_DEFAULT_DATA = {
       ],
     },
   ],
+  programs: [
+    {
+      id: "prog-1",
+      title: "DILG Strategic Initiatives Overview",
+      description: "Introduction to DILG's key programs and initiatives focused on strengthening local governance.",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      category: "General Overview",
+      uploadedDate: "2026-02-15",
+    },
+    {
+      id: "prog-2",
+      title: "Peace and Order Program (PBEST)",
+      description: "Learn about DILG's Peace and Order Program and its community benefits.",
+      videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw",
+      category: "Programs",
+      uploadedDate: "2026-02-20",
+    },
+    {
+      id: "prog-3",
+      title: "Local Governance Excellence Tips",
+      description: "Short tips and insights on improving local governance practices.",
+      videoUrl: "https://www.youtube.com/embed/Ks-_Mh1QhMc",
+      category: "Training",
+      uploadedDate: "2026-03-01",
+    },
+  ],
 };

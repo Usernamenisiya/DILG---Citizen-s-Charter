@@ -3504,3 +3504,238 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   padding: 6px 0 18px;
   flex: 1;
 }
+
+/* ------------------------------------------------------
+  LGUSS PROGRAMS / VIDEOS PAGE
+  ------------------------------------------------------ */
+
+.programs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafb 0%, #f5f9ff 100%);
+  border-radius: 12px;
+  min-height: 600px;
+}
+
+.programs-page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.programs-page-head h3 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f2f6f;
+  letter-spacing: -0.3px;
+}
+
+.programs-page-head span {
+  font-size: 14px;
+  color: #516a98;
+  font-weight: 500;
+}
+
+.programs-page-sub {
+  font-size: 14px;
+  color: #516a98;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.programs-page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+
+.programs-page-card {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 2px solid #e0e8f2;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  padding: 0;
+  font-family: inherit;
+}
+
+.programs-page-card:hover {
+  border-color: #ffde15;
+  box-shadow: 0 8px 24px rgba(15, 47, 111, 0.12);
+  transform: translateY(-2px);
+}
+
+.programs-page-card-thumb {
+  position: relative;
+  background: linear-gradient(135deg, #ffde15 0%, #ffd700 100%);
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.programs-page-card-play-icon {
+  font-size: 48px;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.programs-page-card:hover .programs-page-card-play-icon {
+  transform: scale(1.15);
+}
+
+.programs-page-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  flex: 1;
+}
+
+.programs-page-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f2f6f;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.programs-page-card-category {
+  font-size: 12px;
+  color: #7a7a7a;
+  font-style: italic;
+}
+
+.programs-empty {
+  grid-column: 1 / -1;
+  padding: 40px 20px;
+  text-align: center;
+  color: #888;
+  background: rgba(200, 210, 230, 0.1);
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* Programs Modal */
+.programs-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.programs-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.programs-modal-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f2f6f;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.programs-video-container {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.programs-video-container iframe,
+.programs-video-container video {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.programs-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.programs-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.programs-meta-item span {
+  font-size: 12px;
+  color: #7a7a7a;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.programs-meta-item strong {
+  font-size: 14px;
+  color: #0f2f6f;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .programs-page-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .programs-page-head h3 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 680px) {
+  .programs-page {
+    padding: 16px;
+    gap: 18px;
+  }
+
+  .programs-page-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .programs-page-head h3 {
+    font-size: 20px;
+  }
+
+  .programs-page-card-thumb {
+    height: 110px;
+  }
+
+  .programs-page-card-play-icon {
+    font-size: 36px;
+  }
+
+  .programs-video-container {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .programs-page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .programs-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -11,6 +11,7 @@ export default function KioskMainScreen({
   organizationalProfile,
   policiesAndIssuances,
   announcements,
+  programs,
   currentService,
   setCurrentService,
   pageServices,
@@ -239,7 +240,7 @@ export default function KioskMainScreen({
                 </div>
               ) : (
                 <div className="sc-label">
-                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : activeSection === "announcement" ? "Announcements"   : activeSection === "Officials" ? "Key Officials" : "Menu"}
+                  {activeSection === "feedback" ? "Feedback & Complaints" : activeSection === "offices" ? "List of Offices" : activeSection === "profile" ? "Mandate, Mission, Vision" : activeSection === "issuances" ? "Policies & Issuances" : activeSection === "announcement" ? "Announcements" : activeSection === "Programs" ? "LGUSS Programs" : activeSection === "Officials" ? "Key Officials" : "Menu"}
                 </div>
               )}
             </div>
@@ -681,6 +682,110 @@ export default function KioskMainScreen({
 
                   {!(announcements || []).length && (
                     <div className="announcement-empty">No active announcements available.</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeSection === "Programs" && (
+              <div className="programs-page" style={{ marginTop: 0 }}>
+                <div className="programs-page-head">
+                  <h3>LGUSS Programs</h3>
+                  <span>
+                    Available videos: <strong>{(programs || []).length}</strong>
+                  </span>
+                </div>
+
+                {!!(programs || []).length && (
+                  <div className="programs-page-sub">
+                    Select a video to view full details and embedded content.
+                  </div>
+                )}
+
+                <div className="programs-page-grid">
+                  {(programs || []).map((prog, idx) => (
+                    <button
+                      key={prog.id || idx}
+                      className="programs-page-card"
+                      onClick={() =>
+                        openModal(
+                          prog.title || `Video ${idx + 1}`,
+                          "#FFDE15",
+                          <div className="programs-modal-content">
+                            {!!prog.description && (
+                              <section className="programs-modal-section">
+                                <div className="programs-modal-heading">Description</div>
+                                <p className="modal-body-text">{prog.description}</p>
+                              </section>
+                            )}
+
+                            <section className="programs-modal-section">
+                              <div className="programs-video-container">
+                                {prog.videoUrl.includes("youtube.com/embed") ? (
+                                  <iframe
+                                    src={prog.videoUrl}
+                                    width="100%"
+                                    height="450"
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    title={prog.title || "Video"}
+                                    style={{ borderRadius: 8 }}
+                                  />
+                                ) : prog.videoUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                                  <video
+                                    src={prog.videoUrl}
+                                    width="100%"
+                                    height="450"
+                                    controls
+                                    style={{ borderRadius: 8, backgroundColor: "#000" }}
+                                  />
+                                ) : (
+                                  <video
+                                    src={prog.videoUrl}
+                                    width="100%"
+                                    height="450"
+                                    controls
+                                    style={{ borderRadius: 8, backgroundColor: "#000" }}
+                                  />
+                                )}
+                              </div>
+                            </section>
+
+                            {(prog.category || prog.uploadedDate) && (
+                              <section className="programs-modal-section">
+                                <div className="programs-meta-grid">
+                                  {!!prog.category && (
+                                    <div className="programs-meta-item">
+                                      <span>Category</span>
+                                      <strong>{prog.category}</strong>
+                                    </div>
+                                  )}
+                                  {!!prog.uploadedDate && (
+                                    <div className="programs-meta-item">
+                                      <span>Uploaded</span>
+                                      <strong>{prog.uploadedDate}</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              </section>
+                            )}
+                          </div>
+                        )
+                      }
+                    >
+                      <div className="programs-page-card-thumb">
+                        <div className="programs-page-card-play-icon">▶</div>
+                      </div>
+                      <div className="programs-page-card-content">
+                        <div className="programs-page-card-title">{prog.title || `Video ${idx + 1}`}</div>
+                        {!!prog.category && <div className="programs-page-card-category">{prog.category}</div>}
+                      </div>
+                    </button>
+                  ))}
+
+                  {!(programs || []).length && (
+                    <div className="programs-empty">No videos available.</div>
                   )}
                 </div>
               </div>

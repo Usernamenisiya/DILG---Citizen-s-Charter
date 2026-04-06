@@ -59,6 +59,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const currentOfficeDirectory = appData.officeDirectory || defaultOfficeDirectory;
   const currentAnnouncements = appData.announcements || [];
   const currentCalendarEvents = appData.calendarEvents || defaultData.calendarEvents || [];
+  const currentPrograms = appData.programs || defaultData.programs || [];
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
@@ -67,6 +68,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [officeEditingIdx, setOfficeEditingIdx] = useState(null);
   const [announcementEditingIdx, setAnnouncementEditingIdx] = useState(null);
   const [calendarEditingIdx, setCalendarEditingIdx] = useState(null);
+  const [programEditingIdx, setProgramEditingIdx] = useState(null);
   const [calendarForm, setCalendarForm] = useState({
     title: "",
     date: "",
@@ -81,6 +83,14 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     description: "",
   });
   const [calendarStatus, setCalendarStatus] = useState(null);
+  const [programForm, setProgramForm] = useState({
+    title: "",
+    description: "",
+    videoUrl: "",
+    category: "",
+    uploadedDate: new Date().toISOString().split("T")[0],
+  });
+  const [programStatus, setProgramStatus] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -914,6 +924,75 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     showStatus(setCalendarStatus, "success", "✓ Calendar event deleted.");
   };
 
+  const startEditProgram = idx => {
+    const prog = currentPrograms[idx] || {};
+    setProgramForm({
+      title: prog.title || "",
+      description: prog.description || "",
+      videoUrl: prog.videoUrl || "",
+      category: prog.category || "",
+      uploadedDate: prog.uploadedDate || new Date().toISOString().split("T")[0],
+    });
+    setProgramEditingIdx(idx);
+  };
+
+  const saveProgram = () => {
+    const title = String(programForm.title || "").trim();
+    const videoUrl = String(programForm.videoUrl || "").trim();
+    if (!title || !videoUrl) {
+      showStatus(setProgramStatus, "error", "✗ Program title and video URL are required.");
+      return;
+    }
+
+    const program = {
+      ...programForm,
+      id: programEditingIdx >= 0 && currentPrograms[programEditingIdx]?.id
+        ? currentPrograms[programEditingIdx].id
+        : `prog_${Date.now()}`,
+    };
+    const programs = [...currentPrograms];
+    if (programEditingIdx >= 0) {
+      programs[programEditingIdx] = program;
+    } else {
+      programs.push(program);
+    }
+
+    onDataChange({
+      ...appData,
+      programs,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    setProgramEditingIdx(null);
+    setProgramForm({
+      title: "",
+      description: "",
+      videoUrl: "",
+      category: "",
+      uploadedDate: new Date().toISOString().split("T")[0],
+    });
+    setProgramStatus({ type: "success", msg: "✓ Program saved." });
+  };
+
+  const deleteProgram = idx => {
+    if (!canDelete) {
+      showStatus(setProgramStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
+    const prog = currentPrograms[idx];
+    if (!prog) return;
+    if (!window.confirm(`Delete program "${prog.title || prog.id}"?`)) return;
+
+    const programs = currentPrograms.filter((_, i) => i !== idx);
+    onDataChange({
+      ...appData,
+      programs,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+    showStatus(setProgramStatus, "success", "✓ Program deleted.");
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -999,6 +1078,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     { id: "feedback", label: "Feedback" },
     { id: "announcements", label: "Announcements" },
     { id: "calendar-events", label: "Calendar Events" },
+    { id: "programs", label: "LGUSS Programs" },
     { id: "offices", label: "Offices" },
     { id: "settings", label: "Settings" },
     { id: "updates", label: "Updates" },
@@ -2164,6 +2244,99 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "programs" && (
+          <div className="admin-sub-content">
+            <div className="admin-tab-title">LGUSS Programs</div>
+            <div className="admin-tab-sub">Manage embedded videos and programs shown in the LGUSS section on the kiosk.</div>
+            <StatusMsg status={programStatus} />
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+              <button className="a-btn a-btn-primary" onClick={() => setProgramEditingIdx(-1)}>+ Add Program</button>
+            </div>
+
+            {programEditingIdx !== null && (
+              <AdminFormModal
+                open={programEditingIdx !== null}
+                title={programEditingIdx >= 0 ? "Edit Program" : "Add Program"}
+                onClose={() => setProgramEditingIdx(null)}
+              >
+              <div>
+                <div className="a-field">
+                  <label className="a-label">Program Title</label>
+                  <input
+                    className="a-input"
+                    value={programForm.title}
+                    onChange={e => setProgramForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g., DILG Strategic Initiatives"
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Description</label>
+                  <textarea
+                    className="a-textarea"
+                    value={programForm.description}
+                    onChange={e => setProgramForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Brief description of the video content"
+                  />
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Video URL or Embed Code</label>
+                  <input
+                    className="a-input"
+                    value={programForm.videoUrl}
+                    onChange={e => setProgramForm(f => ({ ...f, videoUrl: e.target.value }))}
+                    placeholder="YouTube embed URL or video file URL"
+                  />
+                  <small style={{ marginTop: 4, color: "#666" }}>YouTube format: https://www.youtube.com/embed/VIDEO_ID or direct video URL</small>
+                </div>
+                <div className="a-field">
+                  <label className="a-label">Category</label>
+                  <input
+                    className="a-input"
+                    value={programForm.category}
+                    onChange={e => setProgramForm(f => ({ ...f, category: e.target.value }))}
+                    placeholder="e.g., General Overview, Training, Programs"
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 0 }}>
+                  <button className="a-btn a-btn-primary" onClick={saveProgram}>Save Program</button>
+                  <button className="a-btn a-btn-ghost" onClick={() => setProgramEditingIdx(null)}>Cancel</button>
+                </div>
+              </div>
+              </AdminFormModal>
+            )}
+
+            <div className="svc-list">
+              {(currentPrograms || []).map((prog, idx) => (
+                <div key={`prog-${prog.id || idx}`} className="svc-row">
+                  <div className="svc-row-info">
+                    <div className="svc-row-name">{prog.title || "Untitled Program"}</div>
+                    {prog.category && <div className="svc-row-meta">{prog.category}</div>}
+                    {prog.description && <div className="svc-row-meta">{prog.description.substring(0, 80)}...</div>}
+                  </div>
+                  <div className="svc-row-actions">
+                    <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditProgram(idx)}>Edit</button>
+                    {canDelete && (
+                      <button
+                        className="a-btn a-btn-danger a-btn-sm"
+                        onClick={() => deleteProgram(idx)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    {!canDelete && lockHint}
+                  </div>
+                </div>
+              ))}
+              {(!currentPrograms || currentPrograms.length === 0) && (
+                <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>
+                  No programs added yet. Click "+ Add Program" to add your first video.
+                </div>
+              )}
             </div>
           </div>
         )}

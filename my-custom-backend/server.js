@@ -169,6 +169,16 @@ db.exec(`
     attachments TEXT,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS programs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    videoUrl TEXT NOT NULL,
+    category TEXT,
+    uploadedDate TEXT,
+    sortOrder INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Migration: Add type column if it doesn't exist
@@ -835,6 +845,101 @@ app.delete("/api/offices/:id", (req, res) => {
   } catch (error) {
     console.error("Error deleting office entry:", error);
     res.status(500).json({ error: "Failed to delete office entry." });
+  }
+});
+
+// LGUSS Programs (Videos) APIs
+app.get("/api/programs", (req, res) => {
+  try {
+    const programs = db
+      .prepare("SELECT id, title, description, videoUrl, category, uploadedDate, sortOrder FROM programs ORDER BY sortOrder ASC, id ASC")
+      .all();
+    res.json(
+      programs.map(program => ({
+        ...program,
+        title: program.title || "",
+        description: program.description || "",
+        category: program.category || "",
+        uploadedDate: program.uploadedDate || "",
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    res.status(500).json({ error: "Failed to fetch programs." });
+  }
+});
+
+app.post("/api/programs", (req, res) => {
+  const title = String(req.body?.title || "").trim();
+  const description = String(req.body?.description || "").trim();
+  const videoUrl = String(req.body?.videoUrl || "").trim();
+  const category = String(req.body?.category || "").trim();
+  const uploadedDate = String(req.body?.uploadedDate || new Date().toISOString().split("T")[0]).trim();
+
+  if (!title || !videoUrl) {
+    return res.status(400).json({ error: "Program title and video URL are required." });
+  }
+
+  try {
+    const currentMax = db
+      .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM programs")
+      .get();
+    const info = db
+      .prepare("INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(title, description, videoUrl, category, uploadedDate, Number(currentMax.maxSort || 0) + 1);
+    const saved = db
+      .prepare("SELECT id, title, description, videoUrl, category, uploadedDate, sortOrder FROM programs WHERE id = ?")
+      .get(info.lastInsertRowid);
+    res.status(201).json({
+      ...saved,
+      title: saved.title || "",
+      description: saved.description || "",
+      category: saved.category || "",
+      uploadedDate: saved.uploadedDate || "",
+    });
+  } catch (error) {
+    console.error("Error creating program:", error);
+    res.status(500).json({ error: "Failed to create program." });
+  }
+});
+
+app.put("/api/programs/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const title = String(req.body?.title || "").trim();
+  const description = String(req.body?.description || "").trim();
+  const videoUrl = String(req.body?.videoUrl || "").trim();
+  const category = String(req.body?.category || "").trim();
+  const uploadedDate = String(req.body?.uploadedDate || "").trim();
+
+  if (!title || !videoUrl) {
+    return res.status(400).json({ error: "Program title and video URL are required." });
+  }
+
+  try {
+    const info = db
+      .prepare("UPDATE programs SET title = ?, description = ?, videoUrl = ?, category = ?, uploadedDate = ? WHERE id = ?")
+      .run(title, description, videoUrl, category, uploadedDate, id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Program not found." });
+    }
+    res.json({ message: "Program updated successfully." });
+  } catch (error) {
+    console.error("Error updating program:", error);
+    res.status(500).json({ error: "Failed to update program." });
+  }
+});
+
+app.delete("/api/programs/:id", (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const info = db.prepare("DELETE FROM programs WHERE id = ?").run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Program not found." });
+    }
+    res.json({ message: "Program deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting program:", error);
+    res.status(500).json({ error: "Failed to delete program." });
   }
 });
 
