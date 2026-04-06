@@ -14,8 +14,10 @@ app.use(express.json());
 const uploadsRoot = path.join(__dirname, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
+const idleVideosUploadDir = path.join(uploadsRoot, "idle-videos");
 fs.mkdirSync(announcementsUploadDir, { recursive: true });
 fs.mkdirSync(programsUploadDir, { recursive: true });
+fs.mkdirSync(idleVideosUploadDir, { recursive: true });
 app.use("/uploads", express.static(uploadsRoot));
 
 const announcementUploadStorage = multer.diskStorage({
@@ -38,10 +40,32 @@ const programUploadStorage = multer.diskStorage({
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
   },
 });
+const idleVideoUploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, idleVideosUploadDir),
+  filename: (_req, file, cb) => {
+    const safeBase = String(path.parse(file.originalname || "idle-video").name)
+      .replace(/[^a-zA-Z0-9-_]/g, "_")
+      .slice(0, 60) || "idle-video";
+    const safeExt = String(path.extname(file.originalname || "") || "").replace(/[^.a-zA-Z0-9]/g, "");
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
+  },
+});
 
 const uploadAnnouncementFiles = multer({ storage: announcementUploadStorage });
 const uploadProgramVideos = multer({
   storage: programUploadStorage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    if (mimeType.startsWith("video/")) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Only video files are allowed."));
+  },
+});
+const uploadIdleVideos = multer({
+  storage: idleVideoUploadStorage,
   limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const mimeType = String(file.mimetype || "").toLowerCase();
@@ -202,6 +226,14 @@ db.exec(`
     description TEXT,
     videoUrl TEXT NOT NULL,
     category TEXT,
+    uploadedDate TEXT,
+    sortOrder INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS idle_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    videoUrl TEXT NOT NULL,
     uploadedDate TEXT,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
@@ -982,6 +1014,46 @@ app.delete("/api/programs/:id", (req, res) => {
   }
 });
 
+app.get("/api/idle-videos", (req, res) => {
+  try {
+    const idleVideos = db
+      .prepare("SELECT id, title, videoUrl, uploadedDate, sortOrder FROM idle_videos ORDER BY sortOrder ASC, id ASC")
+      .all();
+    res.json(
+      idleVideos.map(video => ({
+        ...video,
+        title: video.title || "",
+        videoUrl: video.videoUrl || "",
+        uploadedDate: video.uploadedDate || "",
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching idle videos:", error);
+    res.status(500).json({ error: "Failed to fetch idle videos." });
+  }
+});
+
+app.delete("/api/idle-videos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const existing = db.prepare("SELECT videoUrl FROM idle_videos WHERE id = ?").get(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Idle video not found." });
+    }
+
+    const info = db.prepare("DELETE FROM idle_videos WHERE id = ?").run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Idle video not found." });
+    }
+
+    db.prepare("UPDATE kiosk_settings SET idleVideoUrl = '' WHERE id = 1 AND idleVideoUrl = ?").run(existing.videoUrl || "");
+    res.json({ message: "Idle video deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting idle video:", error);
+    res.status(500).json({ error: "Failed to delete idle video." });
+  }
+});
+
 app.get("/api/announcements", (req, res) => {
   try {
     const announcements = db
@@ -1133,6 +1205,54 @@ app.post("/api/programs/upload", (req, res) => {
     } catch (uploadError) {
       console.error("Error uploading program videos:", uploadError);
       res.status(500).json({ error: "Failed to upload program videos." });
+    }
+  });
+});
+
+app.post("/api/idle-videos/upload", (req, res) => {
+  uploadIdleVideos.array("files", 8)(req, res, (error) => {
+    if (error) {
+      const message = String(error?.message || "Upload failed.");
+      return res.status(400).json({ error: message });
+    }
+
+    try {
+      const files = Array.isArray(req.files) ? req.files : [];
+      if (!files.length) {
+        return res.status(400).json({ error: "No files uploaded." });
+      }
+
+      const maxSortRow = db.prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM idle_videos").get();
+      let nextSortOrder = Number(maxSortRow?.maxSort || 0);
+
+      const insertStmt = db.prepare(
+        "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)"
+      );
+      const readStmt = db.prepare("SELECT id, title, videoUrl, uploadedDate, sortOrder FROM idle_videos WHERE id = ?");
+      const today = new Date().toISOString().split("T")[0];
+
+      const uploaded = files.map(file => {
+        const videoUrl = `/uploads/idle-videos/${file.filename}`;
+        const title = String(path.parse(file.originalname || "Idle Video").name || "Idle Video").trim() || "Idle Video";
+        nextSortOrder += 1;
+        const info = insertStmt.run(title, videoUrl, today, nextSortOrder);
+        const saved = readStmt.get(info.lastInsertRowid);
+        return {
+          id: saved.id,
+          title: saved.title || title,
+          videoUrl: saved.videoUrl || videoUrl,
+          uploadedDate: saved.uploadedDate || today,
+          sortOrder: saved.sortOrder,
+          name: file.originalname || file.filename,
+          mimeType: file.mimetype || "application/octet-stream",
+          size: Number(file.size || 0),
+        };
+      });
+
+      res.status(201).json({ files: uploaded });
+    } catch (uploadError) {
+      console.error("Error uploading idle videos:", uploadError);
+      res.status(500).json({ error: "Failed to upload idle videos." });
     }
   });
 });

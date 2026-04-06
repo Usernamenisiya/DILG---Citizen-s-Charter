@@ -106,9 +106,10 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     videoUrl: "",
     category: "",
     uploadedDate: new Date().toISOString().split("T")[0],
-    useAsIdle: false,
   });
   const [programStatus, setProgramStatus] = useState(null);
+  const [idleVideosStatus, setIdleVideosStatus] = useState(null);
+  const [currentIdleVideos, setCurrentIdleVideos] = useState([]);
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -219,32 +220,25 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     setTimeout(() => setter(null), 5000);
   };
 
-  const normalizeStoredUrl = (rawUrl) => {
-    const value = String(rawUrl || "").trim();
-    if (!value) return "";
+  const currentIdleVideoOptions = (currentIdleVideos || [])
+    .map(video => ({
+      value: String(video?.videoUrl || "").trim(),
+      label: video?.title || "Idle Video",
+    }))
+    .filter(video => !!video.value);
+
+  const loadIdleVideos = async () => {
     try {
-      const parsed = new URL(value, window.location.origin);
-      if (parsed.origin === window.location.origin) return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    } catch {
-      // keep raw string
+      const videos = await callApi("/api/idle-videos");
+      setCurrentIdleVideos(Array.isArray(videos) ? videos : []);
+    } catch (e) {
+      showStatus(setIdleVideosStatus, "error", `✗ ${e.message}`);
     }
-    return value;
   };
 
-  const normalizedIdleVideoUrl = normalizeStoredUrl(settingsForm.idleVideoUrl || appData.settings.idleVideoUrl || "");
-  const currentProgramVideoOptions = (currentPrograms || [])
-    .map((program, idx) => {
-      const rawUrl = String(program?.videoUrl || "").trim();
-      const normalizedUrl = normalizeStoredUrl(rawUrl);
-      if (!rawUrl) return null;
-      return {
-        value: rawUrl,
-        normalizedValue: normalizedUrl,
-        label: `${program.title || `Program ${idx + 1}`} (${normalizedUrl.startsWith("/uploads/programs/") ? "Uploaded" : "Link"})`,
-      };
-    })
-    .filter(Boolean)
-    .filter((option, idx, list) => list.findIndex(item => item.normalizedValue === option.normalizedValue) === idx);
+  useEffect(() => {
+    loadIdleVideos();
+  }, []);
 
   const parseTimeRange = raw => {
     const value = String(raw || "").trim();
@@ -1021,15 +1015,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const startEditProgram = idx => {
     const prog = currentPrograms[idx] || {};
-    const selectedIdleVideo = normalizeStoredUrl(settingsForm.idleVideoUrl || appData.settings.idleVideoUrl || "");
-    const programVideo = normalizeStoredUrl(prog.videoUrl || "");
     setProgramForm({
       title: prog.title || "",
       description: prog.description || "",
       videoUrl: prog.videoUrl || "",
       category: prog.category || "",
       uploadedDate: prog.uploadedDate || new Date().toISOString().split("T")[0],
-      useAsIdle: !!programVideo && selectedIdleVideo === programVideo,
     });
     setProgramEditingIdx(idx);
   };
@@ -1118,26 +1109,9 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         programs.push(savedEntry);
       }
 
-      const nextIdleVideoUrl = programForm.useAsIdle ? savedEntry.videoUrl : (settingsForm.idleVideoUrl || appData.settings.idleVideoUrl || "");
-      const nextSettings = {
-        ...appData.settings,
-        ...settingsForm,
-        idleVideoUrl: nextIdleVideoUrl,
-        adminPin: appData.settings.adminPin,
-        superAdminPin,
-      };
-
-      if (programForm.useAsIdle) {
-        await callApi("/api/settings", {
-          method: "PUT",
-          body: JSON.stringify(nextSettings),
-        });
-      }
-
       onDataChange({
         ...appData,
         programs,
-        settings: nextSettings,
         version: appData.version + 1,
         lastUpdated: new Date().toISOString(),
       });
@@ -1148,12 +1122,108 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         videoUrl: "",
         category: "",
         uploadedDate: new Date().toISOString().split("T")[0],
-        useAsIdle: false,
       });
-      setSettingsForm(nextSettings);
       setProgramStatus({ type: "success", msg: "✓ Program saved." });
     } catch (e) {
       showStatus(setProgramStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const uploadIdleVideos = async files => {
+    const pickedFiles = Array.from(files || []);
+    if (!pickedFiles.length) return;
+
+    try {
+      const formData = new FormData();
+      pickedFiles.forEach(file => formData.append("files", file));
+
+      const response = await fetch("/api/idle-videos/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let message = `Upload failed (${response.status})`;
+        try {
+          const data = await response.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // Ignore invalid response payload
+        }
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const uploadedFiles = Array.isArray(data?.files) ? data.files : [];
+      if (!uploadedFiles.length) {
+        showStatus(setIdleVideosStatus, "error", "✗ No videos were uploaded.");
+        return;
+      }
+
+      const latestUploadedUrl = String(uploadedFiles[0]?.videoUrl || uploadedFiles[0]?.url || "").trim();
+      if (latestUploadedUrl) {
+        setSettingsForm(prev => ({ ...prev, idleVideoUrl: latestUploadedUrl }));
+      }
+      await loadIdleVideos();
+      showStatus(setIdleVideosStatus, "success", `✓ Uploaded ${uploadedFiles.length} idle video${uploadedFiles.length > 1 ? "s" : ""}.`);
+    } catch (error) {
+      showStatus(setIdleVideosStatus, "error", `✗ ${error.message}`);
+    }
+  };
+
+  const saveIdleVideoSelection = async () => {
+    const nextSettings = {
+      ...appData.settings,
+      ...settingsForm,
+      adminPin: appData.settings.adminPin,
+      superAdminPin,
+    };
+
+    try {
+      await callApi("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify(nextSettings),
+      });
+      onDataChange({ ...appData, settings: nextSettings });
+      showStatus(setIdleVideosStatus, "success", "✓ Idle screen video selection saved.");
+    } catch (e) {
+      showStatus(setIdleVideosStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const deleteIdleVideo = async (id, title) => {
+    if (!canDelete) {
+      showStatus(setIdleVideosStatus, "error", "✗ Admin role cannot delete items.");
+      return;
+    }
+    if (!window.confirm(`Delete idle video "${title || "Untitled Video"}"?`)) return;
+
+    try {
+      await callApi(`/api/idle-videos/${id}`, { method: "DELETE" });
+      const isDeletedSelected = String(settingsForm.idleVideoUrl || "").trim() === String(
+        (currentIdleVideos.find(video => Number(video.id) === Number(id)) || {}).videoUrl || ""
+      ).trim();
+
+      if (isDeletedSelected) {
+        const nextSettings = {
+          ...appData.settings,
+          ...settingsForm,
+          idleVideoUrl: "",
+          adminPin: appData.settings.adminPin,
+          superAdminPin,
+        };
+        await callApi("/api/settings", {
+          method: "PUT",
+          body: JSON.stringify(nextSettings),
+        });
+        onDataChange({ ...appData, settings: nextSettings });
+        setSettingsForm(nextSettings);
+      }
+
+      await loadIdleVideos();
+      showStatus(setIdleVideosStatus, "success", "✓ Idle video deleted.");
+    } catch (e) {
+      showStatus(setIdleVideosStatus, "error", `✗ ${e.message}`);
     }
   };
 
@@ -1269,6 +1339,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     { id: "feedback", label: "Feedback" },
     { id: "announcements", label: "Announcements" },
     { id: "calendar-events", label: "Calendar Events" },
+    { id: "idle-videos", label: "Idle Screen Video" },
     { id: "programs", label: "LGUSS Programs" },
     { id: "offices", label: "Offices" },
     { id: "settings", label: "Settings" },
@@ -1645,22 +1716,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   value={settingsForm.resetTimer || 60}
                   onChange={e => setSettingsForm(f => ({ ...f, resetTimer: e.target.value }))}
                 />
-              </div>
-              <div className="a-field settings-wide">
-                <label className="a-label">Idle Screen Video Source</label>
-                <select
-                  className="a-input"
-                  value={settingsForm.idleVideoUrl || ""}
-                  onChange={e => setSettingsForm(f => ({ ...f, idleVideoUrl: e.target.value }))}
-                >
-                  <option value="">Default built-in idle video</option>
-                  {currentProgramVideoOptions.map(option => (
-                    <option key={option.normalizedValue} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <small style={{ marginTop: 4, color: "#666" }}>
-                  Select any LGUSS video to use on idle screen.
-                </small>
               </div>
             </div>
 
@@ -2442,7 +2497,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         {activeTab === "programs" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">LGUSS Programs</div>
-            <div className="admin-tab-sub">Manage embedded videos and programs shown in the LGUSS section on the kiosk.</div>
+            <div className="admin-tab-sub">Manage LGUSS-only videos and programs shown in the LGUSS section on the kiosk.</div>
             <StatusMsg status={programStatus} />
 
             <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
@@ -2455,7 +2510,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     videoUrl: "",
                     category: "",
                     uploadedDate: new Date().toISOString().split("T")[0],
-                    useAsIdle: false,
                   });
                   setProgramEditingIdx(-1);
                 }}
@@ -2525,16 +2579,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     placeholder="e.g., General Overview, Training, Programs"
                   />
                 </div>
-                <div className="a-field" style={{ marginBottom: 18 }}>
-                  <label className="a-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!programForm.useAsIdle}
-                      onChange={e => setProgramForm(f => ({ ...f, useAsIdle: e.target.checked }))}
-                    />
-                    Use this video on Idle Screen
-                  </label>
-                </div>
                 <div style={{ display: "flex", gap: 10, marginBottom: 0 }}>
                   <button className="a-btn a-btn-primary" onClick={saveProgram}>Save Program</button>
                   <button className="a-btn a-btn-ghost" onClick={() => setProgramEditingIdx(null)}>Cancel</button>
@@ -2550,11 +2594,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     <div className="svc-row-name">{prog.title || "Untitled Program"}</div>
                     {prog.category && <div className="svc-row-meta">{prog.category}</div>}
                     {prog.description && <div className="svc-row-meta">{prog.description.substring(0, 80)}...</div>}
-                    {normalizeStoredUrl(prog.videoUrl || "") === normalizedIdleVideoUrl && (
-                      <div className="svc-row-meta" style={{ color: "#0b2f7a", fontWeight: 700 }}>
-                        Currently used on Idle Screen
-                      </div>
-                    )}
                   </div>
                   <div className="svc-row-actions">
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditProgram(idx)}>Edit</button>
@@ -2573,6 +2612,83 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               {(!currentPrograms || currentPrograms.length === 0) && (
                 <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>
                   No programs added yet. Click "+ Add Program" to add your first video.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "idle-videos" && (
+          <div className="admin-sub-content">
+            <div className="admin-tab-title">Idle Screen Video</div>
+            <div className="admin-tab-sub">Upload and choose videos used only for the idle background screen. This is separate from LGUSS videos.</div>
+            <StatusMsg status={idleVideosStatus} />
+
+            <div className="a-field settings-wide">
+              <label className="a-label">Upload Idle Video</label>
+              <input
+                className="a-input"
+                type="file"
+                accept="video/*"
+                multiple
+                onChange={e => {
+                  uploadIdleVideos(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <small style={{ marginTop: 4, color: "#666" }}>
+                Uploaded videos will appear in the list below.
+              </small>
+            </div>
+
+            <div className="a-field settings-wide" style={{ marginTop: 14 }}>
+              <label className="a-label">Selected Idle Video Source</label>
+              <select
+                className="a-input"
+                value={settingsForm.idleVideoUrl || ""}
+                onChange={e => setSettingsForm(f => ({ ...f, idleVideoUrl: e.target.value }))}
+              >
+                <option value="">Default built-in idle video</option>
+                {currentIdleVideoOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <button className="a-btn a-btn-primary" onClick={saveIdleVideoSelection}>
+                  <Save size={14} className="btn-icon" /> Save Idle Video
+                </button>
+              </div>
+            </div>
+
+            <div className="svc-list" style={{ marginTop: 16 }}>
+              {(currentIdleVideos || []).map((video, idx) => (
+                <div key={`idle-video-${video.id || idx}`} className="svc-row">
+                  <div className="svc-row-info">
+                    <div className="svc-row-name">{video.title || `Idle Video ${idx + 1}`}</div>
+                    <div className="svc-row-meta">{video.videoUrl}</div>
+                    {video.uploadedDate && <div className="svc-row-meta">Uploaded: {video.uploadedDate}</div>}
+                    {String(settingsForm.idleVideoUrl || "").trim() === String(video.videoUrl || "").trim() && (
+                      <div className="svc-row-meta" style={{ color: "#0b2f7a", fontWeight: 700 }}>
+                        Currently selected
+                      </div>
+                    )}
+                  </div>
+                  <div className="svc-row-actions">
+                    {canDelete && (
+                      <button
+                        className="a-btn a-btn-danger a-btn-sm"
+                        onClick={() => deleteIdleVideo(video.id, video.title)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    {!canDelete && lockHint}
+                  </div>
+                </div>
+              ))}
+              {(!currentIdleVideos || currentIdleVideos.length === 0) && (
+                <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>
+                  No idle videos uploaded yet. Add one above.
                 </div>
               )}
             </div>
