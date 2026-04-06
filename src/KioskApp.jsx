@@ -302,6 +302,15 @@ export default function KioskApp() {
     else clearInactivity();
   }, [screen, startInactivity, clearInactivity]);
 
+  /* ── Pause inactivity timer when modal is open ── */
+  useEffect(() => {
+    if (modalSection !== null) {
+      clearInactivity();
+    } else if (screen === "main" || screen === "menu") {
+      startInactivity();
+    }
+  }, [modalSection, screen, startInactivity, clearInactivity]);
+
   const handleUserAction = useCallback(() => {
     if (screen === "main" || screen === "menu") startInactivity();
   }, [screen, startInactivity]);
