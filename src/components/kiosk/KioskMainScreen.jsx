@@ -1,7 +1,11 @@
 import dilgIcon from "../../Dilg.svg";
+import lgrrcLogo from "../../lgrrc_logo.jpg";
+import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 import { useEffect, useRef, useState } from "react";
 import { ServiceIcon } from "../ServiceIcon";
+import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 
 export default function KioskMainScreen({
   visible,
@@ -28,6 +32,8 @@ export default function KioskMainScreen({
   activeSection,
   onReturnToMenu,
   onModalStateChange,
+  serviceSearch,
+  onServiceSearchChange,
 }) {
   const parseOfficeContact = rawContact => {
     const text = String(rawContact || "").trim();
@@ -98,6 +104,67 @@ export default function KioskMainScreen({
       playableUrl: input,
     };
   };
+
+  const addAutoplayParam = (rawUrl) => {
+    const value = String(rawUrl || "").trim();
+    if (!value) return "";
+    try {
+      const url = new URL(value, window.location.origin);
+      url.searchParams.set("autoplay", "1");
+      url.searchParams.set("playsinline", "1");
+      return url.toString();
+    } catch {
+      return value;
+    }
+  };
+
+  function ProgramFullscreenPlayer({ title, isYouTube, playableUrl }) {
+    const containerRef = useRef(null);
+    const autoplayUrl = isYouTube ? addAutoplayParam(playableUrl) : playableUrl;
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const request = container.requestFullscreen || container.webkitRequestFullscreen || container.msRequestFullscreen;
+      if (typeof request === "function") {
+        Promise.resolve(request.call(container)).catch(() => {
+          // Ignore fullscreen rejection when browser blocks it.
+        });
+      }
+    }, []);
+
+    return (
+      <section className="programs-modal-section">
+        <div className="programs-video-header">
+          <div className="programs-modal-heading">Now Playing</div>
+          <div className="programs-video-kicker">Fullscreen mode launches on selection</div>
+        </div>
+        <div className="programs-video-container" ref={containerRef}>
+          {isYouTube ? (
+            <iframe
+              src={autoplayUrl}
+              width="100%"
+              height="620"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={title}
+              style={{ borderRadius: 8 }}
+            />
+          ) : (
+            <video
+              src={autoplayUrl}
+              width="100%"
+              height="620"
+              controls
+              autoPlay
+              style={{ borderRadius: 8, backgroundColor: "#000" }}
+            />
+          )}
+        </div>
+      </section>
+    );
+  }
 
   const normalizeAnnouncementFiles = announcement => {
     const rawFiles = Array.isArray(announcement?.attachments)
@@ -266,7 +333,7 @@ export default function KioskMainScreen({
       </header>
 
 
-      <div className="screen-bar">
+      <div className={`screen-bar${isInternalSection || isExternalSection ? " screen-bar--transparent" : ""}`}>
         {currentService ? (
           <>
             <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</button>
@@ -279,6 +346,31 @@ export default function KioskMainScreen({
         ) : (
           <>
             <button className="back-btn" onClick={onReturnToMenu}>Back to Menu</button>
+            {(isInternalSection || isExternalSection) && (
+              <div className="service-search-inline">
+                <div className="service-search-field">
+                  <Search size={18} strokeWidth={2.5} className="service-search-icon" />
+                  <input
+                    type="text"
+                    className="service-search-input"
+                    value={serviceSearch}
+                    onChange={e => onServiceSearchChange?.(e.target.value)}
+                    placeholder={`Search ${isExternalSection ? "external" : "internal"} services...`}
+                    aria-label="Search services"
+                  />
+                  {!!serviceSearch && (
+                    <button
+                      type="button"
+                      className="service-search-clear"
+                      onClick={() => onServiceSearchChange?.("")}
+                      aria-label="Clear search"
+                    >
+                      <X size={16} strokeWidth={3} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
               {(isInternalSection || isExternalSection) ? (
                 <div className="greeting sc-greeting">
@@ -299,52 +391,58 @@ export default function KioskMainScreen({
         {!currentService ? (
           <div className={`card-menu${isInternalSection || isExternalSection ? " card-menu--services" : ""}`}>
             {(isInternalSection || isExternalSection) && (
-              <div className="mnav-grid svc-grid">
-                {pageServices.map((svc, i) => {
-                  const cardColor = getServiceCardColor(svc.classification);
-                  const isGoldCard = cardColor === "#FFDE15";
-                  return (
-                    <div
-                      key={svc.id}
-                      className={`mnav-card mnav-card--svc${isGoldCard ? " mnav-card--svc-gold" : ""}`}
-                      style={{ "--card-color": cardColor, animationDelay: `${i * 0.05}s` }}
-                      onClick={() => setCurrentService(svc)}
-                    >
-                      {/* Colored top stripe */}
-                      <div className="mnav-card-stripe" />
+              pageServices.length ? (
+                <div className="mnav-grid svc-grid">
+                  {pageServices.map((svc, i) => {
+                    const cardColor = getServiceCardColor(svc.classification);
+                    const isGoldCard = cardColor === "#FFDE15";
+                    return (
+                      <div
+                        key={svc.id}
+                        className={`mnav-card mnav-card--svc${isGoldCard ? " mnav-card--svc-gold" : ""}`}
+                        style={{ "--card-color": cardColor, animationDelay: `${i * 0.05}s` }}
+                        onClick={() => setCurrentService(svc)}
+                      >
+                        {/* Colored top stripe */}
+                        <div className="mnav-card-stripe" />
 
-                      {/* Icon + Label */}
-                      <div className="mnav-card-main">
-                        <div className="svc-card-icon-wrap">
-                          <ServiceIcon
-                            icon={svc.icon}
-                            label={svc.label}
-                            size={34}
-                            color={isGoldCard ? "#7a5f00" : cardColor}
-                            className="card-icon-glyph"
-                          />
+                        {/* Icon + Label */}
+                        <div className="mnav-card-main">
+                          <div className="svc-card-icon-wrap">
+                            <ServiceIcon
+                              icon={svc.icon}
+                              label={svc.label}
+                              size={34}
+                              color={isGoldCard ? "#7a5f00" : cardColor}
+                              className="card-icon-glyph"
+                            />
+                          </div>
+                          <div className="mnav-card-label">{svc.label}</div>
                         </div>
-                        <div className="mnav-card-label">{svc.label}</div>
-                      </div>
 
-                      {/* Badge + Meta */}
-                      <div className="mnav-card-sub">
-                        <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>
-                          {svc.classification}
-                        </span>
-                        <div className="mnav-card-desc">
-                          {isExternalSection
-                            ? `Inquire At: ${String(svc.office || "").trim() || "DILG Office"}`
-                            : `Est. Time: ${String(svc.processingTime || "").trim() || "See service details"}`}
+                        {/* Badge + Meta */}
+                        <div className="mnav-card-sub">
+                          <span className={`card-badge ${getServiceBadgeClass(svc.classification)}`}>
+                            {svc.classification}
+                          </span>
+                          <div className="mnav-card-desc">
+                            {isExternalSection
+                              ? `Inquire At: ${String(svc.office || "").trim() || "DILG Office"}`
+                              : `Est. Time: ${String(svc.processingTime || "").trim() || "See service details"}`}
+                          </div>
+                          {!!svc.fees && svc.fees !== "None" && (
+                            <div className="mnav-card-desc">Fee: {svc.fees}</div>
+                          )}
                         </div>
-                        {!!svc.fees && svc.fees !== "None" && (
-                          <div className="mnav-card-desc">Fee: {svc.fees}</div>
-                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="service-search-empty">
+                  No services matched “{serviceSearch}”.
+                </div>
+              )
             )}
 
             {activeSection === "feedback" && !!feedbackAndComplaints && (
@@ -768,34 +866,11 @@ export default function KioskMainScreen({
                             title,
                             "#FFDE15",
                             <div className="programs-modal-content">
-                              <section className="programs-modal-section">
-                                <div className="programs-video-header">
-                                  <div className="programs-modal-heading">Watch Program</div>
-                                  <div className="programs-video-kicker">LGUSS learning content</div>
-                                </div>
-                                <div className="programs-video-container">
-                                  {isYouTube ? (
-                                    <iframe
-                                      src={playableUrl}
-                                      width="100%"
-                                      height="450"
-                                      frameBorder="0"
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                      allowFullScreen
-                                      title={title}
-                                      style={{ borderRadius: 8 }}
-                                    />
-                                  ) : (
-                                    <video
-                                      src={playableUrl}
-                                      width="100%"
-                                      height="450"
-                                      controls
-                                      style={{ borderRadius: 8, backgroundColor: "#000" }}
-                                    />
-                                  )}
-                                </div>
-                              </section>
+                              <ProgramFullscreenPlayer
+                                title={title}
+                                isYouTube={isYouTube}
+                                playableUrl={playableUrl}
+                              />
 
                               {!!description && (
                                 <>
@@ -1061,11 +1136,49 @@ export default function KioskMainScreen({
         </div>
       </div>
 
+      {!currentService && (isInternalSection || isExternalSection) && (
+        <div className="idle-footer idle-footer--transparent">
+          <div className="idle-footer-left">
+            <div className="idle-footer-logos">
+              <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
+              <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+            </div>
+            <div className="idle-footer-text">
+              <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>
+              <div className="idle-footer-tagline">{settings.tagline}</div>
+              <div className="idle-footer-copyright">Copyright 2026 DILG Caraga. All rights reserved.</div>
+            </div>
+          </div>
+
+          <div className="svc-footer-page-info">
+            Page <span>{currentPage + 1}</span> of <span>{totalPages}</span>
+          </div>
+
+          <div className="idle-footer-right">
+            <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+            <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+          </div>
+        </div>
+      )}
+
       {!currentService && (activeSection === "internal" || activeSection === "external") && (
-        <div className="pagination">
-          <button className="nav-btn" disabled={currentPage === 0} onClick={onPrevPage}>Previous</button>
-          <div className="page-info">Page <span>{currentPage + 1}</span> of <span>{totalPages}</span></div>
-          <button className="nav-btn" disabled={(currentPage + 1) * perPage >= servicesLength} onClick={onNextPage}>Next</button>
+        <div className="svc-side-nav">
+          <button
+            className="svc-side-nav-btn svc-side-nav-btn--left"
+            disabled={currentPage === 0}
+            onClick={onPrevPage}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={34} strokeWidth={3} />
+          </button>
+          <button
+            className="svc-side-nav-btn svc-side-nav-btn--right"
+            disabled={(currentPage + 1) * perPage >= servicesLength}
+            onClick={onNextPage}
+            aria-label="Next page"
+          >
+            <ChevronRight size={34} strokeWidth={3} />
+          </button>
         </div>
       )}
 

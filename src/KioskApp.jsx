@@ -169,6 +169,7 @@ export default function KioskApp() {
   const [idleHiding, setIdleHiding]         = useState(false);
   const [currentPage, setCurrentPage]       = useState(0);
   const [currentService, setCurrentService] = useState(null);
+  const [serviceSearch, setServiceSearch]   = useState("");
   const [showAdmin, setShowAdmin]           = useState(false);
   const [clockTime, setClockTime]           = useState("");
   const [clockDate, setClockDate]           = useState("");
@@ -337,9 +338,11 @@ export default function KioskApp() {
   const selectSection = (sectionId) => {
     const MODAL_SECTIONS = ["profile", "offices", "feedback", "issuances"];
     if (MODAL_SECTIONS.includes(sectionId)) {
+      setServiceSearch("");
       setModalSection(sectionId);
       return;
     }
+    setServiceSearch("");
     setActiveSection(sectionId);
     setScreen("main");
     setCurrentPage(0);
@@ -367,11 +370,32 @@ export default function KioskApp() {
   const programs               = appData.programs               || KIOSK_DEFAULT_DATA.programs || [];
 
   const servicesForSection = activeSection === "external" ? externalServices : services;
-  const totalPages         = Math.max(1, Math.ceil(servicesForSection.length / SERVICES_PER_PAGE));
-  const pageServices       = servicesForSection.slice(
+  const serviceSearchQuery = serviceSearch.trim().toLowerCase();
+  const filteredServicesForSection = serviceSearchQuery
+    ? servicesForSection.filter(service => {
+        const searchBlob = [
+          service.label,
+          service.classification,
+          service.office,
+          service.desc,
+          service.who,
+          service.fees,
+          service.processingTime,
+        ]
+          .map(value => String(value || "").toLowerCase())
+          .join(" ");
+        return searchBlob.includes(serviceSearchQuery);
+      })
+    : servicesForSection;
+  const totalPages         = Math.max(1, Math.ceil(filteredServicesForSection.length / SERVICES_PER_PAGE));
+  const pageServices       = filteredServicesForSection.slice(
     currentPage * SERVICES_PER_PAGE,
     (currentPage + 1) * SERVICES_PER_PAGE
   );
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [activeSection, serviceSearch]);
 
   /* ── Secret admin tap ── */
   const handleLogoClick = () => {
@@ -430,7 +454,7 @@ export default function KioskApp() {
           pageServices={pageServices}
           currentPage={currentPage}
           totalPages={totalPages}
-          servicesLength={servicesForSection.length}
+          servicesLength={filteredServicesForSection.length}
           perPage={SERVICES_PER_PAGE}
           onPrevPage={() => setCurrentPage(p => p - 1)}
           onNextPage={() => setCurrentPage(p => p + 1)}
@@ -441,6 +465,8 @@ export default function KioskApp() {
           activeSection={activeSection}
           onReturnToMenu={returnToMenu}
           onModalStateChange={setMainScreenModalOpen}
+          serviceSearch={serviceSearch}
+          onServiceSearchChange={setServiceSearch}
         />
       )}
 

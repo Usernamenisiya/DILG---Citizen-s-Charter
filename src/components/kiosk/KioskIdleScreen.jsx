@@ -4,7 +4,7 @@ import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
-import idleVideo from "../../assets/video/samplevid.mp4";
+import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
@@ -48,6 +48,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
 
   const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
   const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
+  const idleVideoSource = String(settings.idleVideoUrl || "").trim() || fallbackIdleVideo;
 
   return (
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>
@@ -55,7 +56,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
       {/* ── VIDEO BACKGROUND ── */}
       <video
         className="idle-video-bg"
-        src={idleVideo}
+        src={idleVideoSource}
         autoPlay
         loop
         muted

@@ -13,10 +13,12 @@ app.use(express.json());
 
 const uploadsRoot = path.join(__dirname, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
+const programsUploadDir = path.join(uploadsRoot, "programs");
 fs.mkdirSync(announcementsUploadDir, { recursive: true });
+fs.mkdirSync(programsUploadDir, { recursive: true });
 app.use("/uploads", express.static(uploadsRoot));
 
-const uploadStorage = multer.diskStorage({
+const announcementUploadStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, announcementsUploadDir),
   filename: (_req, file, cb) => {
     const safeBase = String(path.parse(file.originalname || "file").name)
@@ -26,7 +28,30 @@ const uploadStorage = multer.diskStorage({
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
   },
 });
-const uploadAnnouncementFiles = multer({ storage: uploadStorage });
+const programUploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, programsUploadDir),
+  filename: (_req, file, cb) => {
+    const safeBase = String(path.parse(file.originalname || "video").name)
+      .replace(/[^a-zA-Z0-9-_]/g, "_")
+      .slice(0, 60) || "video";
+    const safeExt = String(path.extname(file.originalname || "") || "").replace(/[^.a-zA-Z0-9]/g, "");
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
+  },
+});
+
+const uploadAnnouncementFiles = multer({ storage: announcementUploadStorage });
+const uploadProgramVideos = multer({
+  storage: programUploadStorage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    if (mimeType.startsWith("video/")) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Only video files are allowed."));
+  },
+});
 
 const dbPath = path.join(__dirname, "app-data.db");
 const db = new Database(dbPath);
@@ -112,6 +137,7 @@ db.exec(`
     address TEXT NOT NULL,
     tagline TEXT NOT NULL,
     hours TEXT NOT NULL,
+    idleVideoUrl TEXT NOT NULL DEFAULT '',
     perPage INTEGER NOT NULL,
     resetTimer INTEGER NOT NULL,
     adminPin TEXT NOT NULL,
@@ -245,13 +271,14 @@ ensureSingleRow(
 
 ensureSingleRow(
   "kiosk_settings",
-  "INSERT INTO kiosk_settings (id, kioskTitle, office, address, tagline, hours, perPage, resetTimer, adminPin, updateUrl, autoCheckUpdates) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "INSERT INTO kiosk_settings (id, kioskTitle, office, address, tagline, hours, idleVideoUrl, perPage, resetTimer, adminPin, updateUrl, autoCheckUpdates) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   [
     "Citizen's Charter Information Kiosk",
     "DILG Region XIII (Caraga)",
     "Purok 1-A, Doongan, Butuan City",
     "Matino, Mahusay at Maaasahan",
     "Monday to Friday, 8:00 AM - 5:00 PM",
+    "",
     9,
     60,
     "0000",
@@ -269,6 +296,16 @@ db.prepare(
 db.prepare(
   "UPDATE kiosk_settings SET perPage = 9 WHERE id = 1 AND (perPage IS NULL OR perPage < 9)"
 ).run();
+
+try {
+  const settingsColumns = db.prepare("PRAGMA table_info(kiosk_settings)").all();
+  const hasIdleVideoUrlColumn = settingsColumns.some(col => col.name === "idleVideoUrl");
+  if (!hasIdleVideoUrlColumn) {
+    db.prepare("ALTER TABLE kiosk_settings ADD COLUMN idleVideoUrl TEXT NOT NULL DEFAULT ''").run();
+  }
+} catch (error) {
+  console.error("Settings migration error:", error);
+}
 
 ensureSingleRow(
   "feedback_content",
@@ -622,6 +659,7 @@ app.get("/api/settings", (req, res) => {
       address: s.address,
       tagline: s.tagline,
       hours: s.hours,
+      idleVideoUrl: s.idleVideoUrl || "",
       perPage: s.perPage,
       resetTimer: s.resetTimer,
       adminPin: s.adminPin,
@@ -640,7 +678,7 @@ app.put("/api/settings", (req, res) => {
   try {
     db.prepare(`
       UPDATE kiosk_settings
-      SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?,
+      SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?, idleVideoUrl = ?,
           perPage = ?, resetTimer = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
       WHERE id = 1
     `).run(
@@ -649,6 +687,7 @@ app.put("/api/settings", (req, res) => {
       s.address || "",
       s.tagline || "",
       s.hours || "",
+      s.idleVideoUrl || "",
       perPage,
       Number.isFinite(Number(s.resetTimer)) ? Number(s.resetTimer) : 60,
       s.adminPin || "0000",
@@ -1073,4 +1112,27 @@ app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8),
     console.error("Error uploading announcement files:", error);
     res.status(500).json({ error: "Failed to upload files." });
   }
+});
+
+app.post("/api/programs/upload", (req, res) => {
+  uploadProgramVideos.array("files", 8)(req, res, (error) => {
+    if (error) {
+      const message = String(error?.message || "Upload failed.");
+      return res.status(400).json({ error: message });
+    }
+
+    try {
+      const files = Array.isArray(req.files) ? req.files : [];
+      const uploaded = files.map(file => ({
+        name: file.originalname || file.filename,
+        url: `/uploads/programs/${file.filename}`,
+        mimeType: file.mimetype || "application/octet-stream",
+        size: Number(file.size || 0),
+      }));
+      res.status(201).json({ files: uploaded });
+    } catch (uploadError) {
+      console.error("Error uploading program videos:", uploadError);
+      res.status(500).json({ error: "Failed to upload program videos." });
+    }
+  });
 });

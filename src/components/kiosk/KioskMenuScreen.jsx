@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
+import lgrrcLogo from "../../lgrrc_logo.jpg";
+import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import csuLogo from "../../assets/images/CSU_LOGO.png";
 import EventsCalendarModal from "./modals/event_calendar_modal";
 import KeyOfficialsModal from "./modals/key_officials_modal";
 import {
@@ -287,6 +290,25 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
         </div>
 
+      </div>
+
+      <div className="idle-footer idle-footer--menu">
+        <div className="idle-footer-left">
+          <div className="idle-footer-logos">
+            <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
+            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+          </div>
+          <div className="idle-footer-text">
+            <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>
+            <div className="idle-footer-tagline">{settings.tagline}</div>
+            <div className="idle-footer-copyright">Copyright 2026 DILG Caraga. All rights reserved.</div>
+          </div>
+        </div>
+
+        <div className="idle-footer-right">
+          <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+          <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+        </div>
       </div>
     </div>
   );

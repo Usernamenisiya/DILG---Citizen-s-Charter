@@ -18,6 +18,7 @@ export const KIOSK_DEFAULT_DATA = {
     address: "Purok 1-A, Doongan, Butuan City",
     tagline: "Matino, Mahusay at Maaasahan ",
     hours: "Monday to Friday, 8:00 AM - 5:00 PM",
+    idleVideoUrl: "",
     perPage: 9,
     resetTimer: 60,
     superAdminPin: "0000",
