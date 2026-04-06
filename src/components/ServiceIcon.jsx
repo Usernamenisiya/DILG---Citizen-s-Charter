@@ -2,6 +2,30 @@ import { DynamicIcon, iconNames } from "lucide-react/dynamic";
 
 const ICON_NAME_SET = new Set(iconNames);
 
+const LEGACY_IMAGE_ICON_TO_LUCIDE = {
+  leave: "file-text",
+  travel: "plane",
+  certification: "badge-check",
+  equipment: "wrench",
+  vehicle: "car",
+  procurement: "shopping-cart",
+  "claims-regional": "folder-open",
+  "claims-provincial": "folder-open",
+  ict: "monitor-cog",
+  legal: "scale",
+};
+
+function getLegacyLucideFromImage(value) {
+  const icon = String(value || "").trim();
+  if (!icon) return null;
+
+  const noQuery = icon.split("?")[0];
+  const fileName = noQuery.split("/").pop() || "";
+  const baseName = fileName.replace(/\.[^.]+$/, "").toLowerCase();
+
+  return LEGACY_IMAGE_ICON_TO_LUCIDE[baseName] || null;
+}
+
 export function isImageIconSource(value) {
   const icon = String(value || "").trim();
   if (!icon) return false;
@@ -41,9 +65,11 @@ export function ServiceIcon({
   color,
 }) {
   const imageSource = isImageIconSource(icon) ? String(icon).trim() : null;
-  const lucideName = !imageSource ? normalizeLucideIconName(icon) : null;
+  const normalizedLucideName = normalizeLucideIconName(icon);
+  const legacyLucideName = imageSource ? getLegacyLucideFromImage(icon) : null;
+  const lucideName = normalizedLucideName || legacyLucideName;
 
-  if (imageSource) {
+  if (imageSource && !lucideName) {
     return (
       <img
         src={imageSource}
