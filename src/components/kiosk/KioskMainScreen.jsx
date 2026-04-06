@@ -43,6 +43,62 @@ export default function KioskMainScreen({
     };
   };
 
+  const parseYouTubeStartSeconds = rawValue => {
+    const value = String(rawValue || "").trim().toLowerCase();
+    if (!value) return 0;
+    if (/^\d+$/.test(value)) return Number(value);
+
+    const hours = (value.match(/(\d+)h/) || [])[1];
+    const minutes = (value.match(/(\d+)m/) || [])[1];
+    const seconds = (value.match(/(\d+)s/) || [])[1];
+    const total = (Number(hours || 0) * 3600) + (Number(minutes || 0) * 60) + Number(seconds || 0);
+    return Number.isFinite(total) ? total : 0;
+  };
+
+  const getProgramVideoInfo = rawUrl => {
+    const input = String(rawUrl || "").trim();
+    if (!input) return { isYouTube: false, playableUrl: "" };
+
+    const withProtocol = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+
+    try {
+      const url = new URL(withProtocol);
+      const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+      const path = url.pathname;
+      let videoId = "";
+
+      if (host === "youtu.be") {
+        videoId = path.replace(/^\/+/, "").split("/")[0] || "";
+      } else if (host === "youtube.com" || host === "m.youtube.com") {
+        if (path === "/watch") {
+          videoId = url.searchParams.get("v") || "";
+        } else if (path.startsWith("/embed/")) {
+          videoId = path.replace("/embed/", "").split("/")[0] || "";
+        } else if (path.startsWith("/shorts/")) {
+          videoId = path.replace("/shorts/", "").split("/")[0] || "";
+        }
+      }
+
+      if (videoId) {
+        const startSeconds = parseYouTubeStartSeconds(
+          url.searchParams.get("t") || url.searchParams.get("start") || url.searchParams.get("time_continue")
+        );
+        const suffix = startSeconds > 0 ? `?start=${startSeconds}` : "";
+        return {
+          isYouTube: true,
+          playableUrl: `https://www.youtube.com/embed/${videoId}${suffix}`,
+        };
+      }
+    } catch {
+      // Keep original URL for non-YouTube or malformed links.
+    }
+
+    return {
+      isYouTube: /youtube\.com\/embed\//i.test(input),
+      playableUrl: input,
+    };
+  };
+
   const normalizeAnnouncementFiles = announcement => {
     const rawFiles = Array.isArray(announcement?.attachments)
       ? announcement.attachments
@@ -101,9 +157,15 @@ export default function KioskMainScreen({
                     <img
                       src={file.url}
                       alt={file.name}
-                      style={{ maxWidth: "100%", maxHeight: "600px", borderRadius: "8px" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "min(78vh, 980px)",
+                        borderRadius: "8px",
+                        objectFit: "contain",
+                      }}
                     />
-                  </div>
+                  </div>,
+                  { size: "attachment" }
                 );
               } else if (kind === "pdf" || kind === "text") {
                 openModal(
@@ -113,12 +175,13 @@ export default function KioskMainScreen({
                     src={file.url}
                     style={{
                       width: "100%",
-                      height: "600px",
+                      height: "min(78vh, 980px)",
                       border: "none",
                       borderRadius: "8px",
                     }}
                     title={file.name}
-                  />
+                  />,
+                  { size: "attachment" }
                 );
               } else {
                 // For other file types, open in new tab
@@ -146,10 +209,10 @@ export default function KioskMainScreen({
   }
 
   /* ── Modal state ── */
-  const [modal, setModal] = useState(null); // { title, color, content: JSX }
+  const [modal, setModal] = useState(null); // { title, color, content: JSX, size?: string }
 
-  const openModal = (title, color, content) => {
-    setModal({ title, color, content });
+  const openModal = (title, color, content, options = {}) => {
+    setModal({ title, color, content, size: options.size || "default" });
     onModalStateChange?.(true);
   };
   const closeModal = () => {
@@ -675,7 +738,7 @@ export default function KioskMainScreen({
                 <div className="programs-page-head">
                   <h3>LGUSS Programs</h3>
                   <span>
-                    Available videos: <strong>{(programs || []).length}</strong>
+                    <strong>{(programs || []).length}</strong> video{(programs || []).length === 1 ? "" : "s"} available
                   </span>
                 </div>
 
@@ -685,87 +748,108 @@ export default function KioskMainScreen({
                   </div>
                 )}
 
+                <div className="programs-section-divider" role="separator" aria-hidden="true">
+                  <span>Program Library</span>
+                </div>
+
                 <div className="programs-page-grid">
-                  {(programs || []).map((prog, idx) => (
-                    <button
-                      key={prog.id || idx}
-                      className="programs-page-card"
-                      onClick={() =>
-                        openModal(
-                          prog.title || `Video ${idx + 1}`,
-                          "#FFDE15",
-                          <div className="programs-modal-content">
-                            {!!prog.description && (
-                              <section className="programs-modal-section">
-                                <div className="programs-modal-heading">Description</div>
-                                <p className="modal-body-text">{prog.description}</p>
-                              </section>
-                            )}
+                  {(programs || []).map((prog, idx) => {
+                    const title = prog.title || `Video ${idx + 1}`;
+                    const description = String(prog.description || "").trim();
+                    const category = String(prog.category || "").trim();
+                    const { isYouTube, playableUrl } = getProgramVideoInfo(prog.videoUrl);
 
-                            <section className="programs-modal-section">
-                              <div className="programs-video-container">
-                                {prog.videoUrl.includes("youtube.com/embed") ? (
-                                  <iframe
-                                    src={prog.videoUrl}
-                                    width="100%"
-                                    height="450"
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    title={prog.title || "Video"}
-                                    style={{ borderRadius: 8 }}
-                                  />
-                                ) : prog.videoUrl.match(/\.(mp4|webm|ogg)$/i) ? (
-                                  <video
-                                    src={prog.videoUrl}
-                                    width="100%"
-                                    height="450"
-                                    controls
-                                    style={{ borderRadius: 8, backgroundColor: "#000" }}
-                                  />
-                                ) : (
-                                  <video
-                                    src={prog.videoUrl}
-                                    width="100%"
-                                    height="450"
-                                    controls
-                                    style={{ borderRadius: 8, backgroundColor: "#000" }}
-                                  />
-                                )}
-                              </div>
-                            </section>
-
-                            {(prog.category || prog.uploadedDate) && (
+                    return (
+                      <button
+                        key={prog.id || idx}
+                        className="programs-page-card"
+                        onClick={() =>
+                          openModal(
+                            title,
+                            "#FFDE15",
+                            <div className="programs-modal-content">
                               <section className="programs-modal-section">
-                                <div className="programs-meta-grid">
-                                  {!!prog.category && (
-                                    <div className="programs-meta-item">
-                                      <span>Category</span>
-                                      <strong>{prog.category}</strong>
-                                    </div>
-                                  )}
-                                  {!!prog.uploadedDate && (
-                                    <div className="programs-meta-item">
-                                      <span>Uploaded</span>
-                                      <strong>{prog.uploadedDate}</strong>
-                                    </div>
+                                <div className="programs-video-header">
+                                  <div className="programs-modal-heading">Watch Program</div>
+                                  <div className="programs-video-kicker">LGUSS learning content</div>
+                                </div>
+                                <div className="programs-video-container">
+                                  {isYouTube ? (
+                                    <iframe
+                                      src={playableUrl}
+                                      width="100%"
+                                      height="450"
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                      title={title}
+                                      style={{ borderRadius: 8 }}
+                                    />
+                                  ) : (
+                                    <video
+                                      src={playableUrl}
+                                      width="100%"
+                                      height="450"
+                                      controls
+                                      style={{ borderRadius: 8, backgroundColor: "#000" }}
+                                    />
                                   )}
                                 </div>
                               </section>
-                            )}
-                          </div>
-                        )
-                      }
-                    >
-                      <div className="programs-page-card-thumb">
-                        <div className="programs-page-card-play-icon">▶</div>
-                      </div>
-                      <div className="programs-page-card-content">
-                        <div className="programs-page-card-title">{prog.title || `Video ${idx + 1}`}</div>
-                        {!!prog.category && <div className="programs-page-card-category">{prog.category}</div>}
-                      </div>
-                    </button>
-                  ))}
+
+                              {!!description && (
+                                <>
+                                  <div className="programs-modal-divider" role="separator" aria-hidden="true">
+                                    <span>About This Program</span>
+                                  </div>
+                                  <section className="programs-modal-section">
+                                    <div className="programs-modal-heading">Description</div>
+                                    <p className="modal-body-text">{description}</p>
+                                  </section>
+                                </>
+                              )}
+
+                              {(category || prog.uploadedDate) && (
+                                <>
+                                  <div className="programs-modal-divider" role="separator" aria-hidden="true">
+                                    <span>Program Details</span>
+                                  </div>
+                                  <section className="programs-modal-section">
+                                    <div className="programs-meta-grid">
+                                      {!!category && (
+                                        <div className="programs-meta-item">
+                                          <span>Category</span>
+                                          <strong>{category}</strong>
+                                        </div>
+                                      )}
+                                      {!!prog.uploadedDate && (
+                                        <div className="programs-meta-item">
+                                          <span>Uploaded</span>
+                                          <strong>{prog.uploadedDate}</strong>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </section>
+                                </>
+                              )}
+                            </div>,
+                            { size: "attachment" }
+                          )
+                        }
+                      >
+                        <div className="programs-page-card-thumb">
+                          <span className="programs-page-card-index">{String(idx + 1).padStart(2, "0")}</span>
+                          {!!category && <span className="programs-page-card-badge">{category}</span>}
+                          <div className="programs-page-card-play-icon">▶</div>
+                        </div>
+                        <div className="programs-page-card-content">
+                          <div className="programs-page-card-title">{title}</div>
+                          {!!description && <div className="programs-page-card-desc">{description}</div>}
+                          <div className="programs-page-card-cta">Tap to watch</div>
+                        </div>
+                      </button>
+                    );
+                  })}
 
                   {!(programs || []).length && (
                     <div className="programs-empty">No videos available.</div>
@@ -991,7 +1075,7 @@ export default function KioskMainScreen({
       {modal && (
         <div className="kmodal-backdrop" onClick={closeModal}>
           <div
-            className="kmodal-box"
+            className={`kmodal-box${modal.size ? ` kmodal-box--${modal.size}` : ""}`}
             style={{ "--modal-color": modal.color }}
             onClick={e => e.stopPropagation()}
           >
@@ -1011,11 +1095,6 @@ export default function KioskMainScreen({
             {/* Scrollable body */}
             <div className="kmodal-body">
               {modal.content}
-            </div>
-
-            {/* Footer close button */}
-            <div className="kmodal-footer">
-              <button className="kmodal-footer-btn" onClick={closeModal}>Close</button>
             </div>
           </div>
         </div>

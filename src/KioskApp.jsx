@@ -269,6 +269,11 @@ export default function KioskApp() {
       .then(r => { if (!r.ok) throw new Error(`announcements ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, announcements: data })))
       .catch(err => console.error("API load failed:", err));
+
+    fetch("/api/programs")
+      .then(r => { if (!r.ok) throw new Error(`programs ${r.status}`); return r.json(); })
+      .then(data => setAppData(p => ({ ...p, programs: data })))
+      .catch(err => console.error("Programs API load failed:", err));
   }, []);
 
   /* ── Inactivity timer ── */

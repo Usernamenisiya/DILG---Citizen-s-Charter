@@ -20,6 +20,23 @@ import ServiceFormEditor from "./ServiceFormEditor";
 import IssuanceFormEditor from "./IssuanceFormEditor";
 import { ServiceIcon } from "../ServiceIcon";
 
+function AdminFormModal({ open, title, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className="admin-form-overlay" onClick={onClose}>
+      <div className="admin-form-modal" onClick={e => e.stopPropagation()}>
+        <div className="admin-form-modal-head">
+          <div className="admin-form-modal-title">{title}</div>
+          <button type="button" className="a-btn a-btn-ghost a-btn-sm" onClick={onClose}>
+            <X size={14} className="btn-icon" /> Close
+          </button>
+        </div>
+        <div className="admin-form-modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ role = "super-admin", appData, onDataChange, onClose, defaultData }) {
   const isSuperAdmin = role === "super-admin";
   const canDelete = isSuperAdmin;
@@ -269,6 +286,56 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     } catch (e) {
       showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
     }
+  };
+
+  const parseYouTubeStartSeconds = rawValue => {
+    const value = String(rawValue || "").trim().toLowerCase();
+    if (!value) return 0;
+    if (/^\d+$/.test(value)) return Number(value);
+
+    const hours = (value.match(/(\d+)h/) || [])[1];
+    const minutes = (value.match(/(\d+)m/) || [])[1];
+    const seconds = (value.match(/(\d+)s/) || [])[1];
+    const total = (Number(hours || 0) * 3600) + (Number(minutes || 0) * 60) + Number(seconds || 0);
+    return Number.isFinite(total) ? total : 0;
+  };
+
+  const normalizeProgramVideoUrl = rawUrl => {
+    const input = String(rawUrl || "").trim();
+    if (!input) return "";
+
+    const withProtocol = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+
+    try {
+      const url = new URL(withProtocol);
+      const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+      const path = url.pathname;
+      let videoId = "";
+
+      if (host === "youtu.be") {
+        videoId = path.replace(/^\/+/, "").split("/")[0] || "";
+      } else if (host === "youtube.com" || host === "m.youtube.com") {
+        if (path === "/watch") {
+          videoId = url.searchParams.get("v") || "";
+        } else if (path.startsWith("/embed/")) {
+          videoId = path.replace("/embed/", "").split("/")[0] || "";
+        } else if (path.startsWith("/shorts/")) {
+          videoId = path.replace("/shorts/", "").split("/")[0] || "";
+        }
+      }
+
+      if (videoId) {
+        const startSeconds = parseYouTubeStartSeconds(
+          url.searchParams.get("t") || url.searchParams.get("start") || url.searchParams.get("time_continue")
+        );
+        const suffix = startSeconds > 0 ? `?start=${startSeconds}` : "";
+        return `https://www.youtube.com/embed/${videoId}${suffix}`;
+      }
+    } catch {
+      // Keep original URL for non-YouTube or malformed links.
+    }
+
+    return input;
   };
 
   const changeSuperAdminPin = async () => {
@@ -936,45 +1003,69 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     setProgramEditingIdx(idx);
   };
 
-  const saveProgram = () => {
+  const saveProgram = async () => {
+    const editingEntry = programEditingIdx >= 0 ? currentPrograms[programEditingIdx] : null;
     const title = String(programForm.title || "").trim();
-    const videoUrl = String(programForm.videoUrl || "").trim();
+    const videoUrl = normalizeProgramVideoUrl(programForm.videoUrl);
+    const description = String(programForm.description || "").trim();
+    const category = String(programForm.category || "").trim();
+    const uploadedDate = String(programForm.uploadedDate || new Date().toISOString().split("T")[0]).trim();
     if (!title || !videoUrl) {
       showStatus(setProgramStatus, "error", "✗ Program title and video URL are required.");
       return;
     }
 
-    const program = {
-      ...programForm,
-      id: programEditingIdx >= 0 && currentPrograms[programEditingIdx]?.id
-        ? currentPrograms[programEditingIdx].id
-        : `prog_${Date.now()}`,
-    };
-    const programs = [...currentPrograms];
-    if (programEditingIdx >= 0) {
-      programs[programEditingIdx] = program;
-    } else {
-      programs.push(program);
-    }
+    try {
+      const payload = {
+        title,
+        description,
+        videoUrl,
+        category,
+        uploadedDate,
+      };
 
-    onDataChange({
-      ...appData,
-      programs,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    setProgramEditingIdx(null);
-    setProgramForm({
-      title: "",
-      description: "",
-      videoUrl: "",
-      category: "",
-      uploadedDate: new Date().toISOString().split("T")[0],
-    });
-    setProgramStatus({ type: "success", msg: "✓ Program saved." });
+      let savedEntry = null;
+      if (editingEntry?.id) {
+        await callApi(`/api/programs/${editingEntry.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        savedEntry = { ...editingEntry, ...payload };
+      } else {
+        savedEntry = await callApi("/api/programs", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const programs = [...currentPrograms];
+      if (programEditingIdx >= 0) {
+        programs[programEditingIdx] = savedEntry;
+      } else {
+        programs.push(savedEntry);
+      }
+
+      onDataChange({
+        ...appData,
+        programs,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      setProgramEditingIdx(null);
+      setProgramForm({
+        title: "",
+        description: "",
+        videoUrl: "",
+        category: "",
+        uploadedDate: new Date().toISOString().split("T")[0],
+      });
+      setProgramStatus({ type: "success", msg: "✓ Program saved." });
+    } catch (e) {
+      showStatus(setProgramStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const deleteProgram = idx => {
+  const deleteProgram = async idx => {
     if (!canDelete) {
       showStatus(setProgramStatus, "error", "✗ Admin role cannot delete items.");
       return;
@@ -983,14 +1074,22 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     if (!prog) return;
     if (!window.confirm(`Delete program "${prog.title || prog.id}"?`)) return;
 
-    const programs = currentPrograms.filter((_, i) => i !== idx);
-    onDataChange({
-      ...appData,
-      programs,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    showStatus(setProgramStatus, "success", "✓ Program deleted.");
+    try {
+      if (prog.id) {
+        await callApi(`/api/programs/${prog.id}`, { method: "DELETE" });
+      }
+
+      const programs = currentPrograms.filter((_, i) => i !== idx);
+      onDataChange({
+        ...appData,
+        programs,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setProgramStatus, "success", "✓ Program deleted.");
+    } catch (e) {
+      showStatus(setProgramStatus, "error", `✗ ${e.message}`);
+    }
   };
 
   const checkUpdates = async () => {
@@ -1087,22 +1186,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const StatusMsg = ({ status }) => (status ? <div className={`a-status ${status.type}`}>{status.msg}</div> : null);
   const lockHint = !isSuperAdmin ? <span className="role-lock-hint"><Shield size={12} /> Super Admin only</span> : null;
-  const AdminFormModal = ({ open, title, onClose, children }) => {
-    if (!open) return null;
-    return (
-      <div className="admin-form-overlay" onClick={onClose}>
-        <div className="admin-form-modal" onClick={e => e.stopPropagation()}>
-          <div className="admin-form-modal-head">
-            <div className="admin-form-modal-title">{title}</div>
-            <button type="button" className="a-btn a-btn-ghost a-btn-sm" onClick={onClose}>
-              <X size={14} className="btn-icon" /> Close
-            </button>
-          </div>
-          <div className="admin-form-modal-body">{children}</div>
-        </div>
-      </div>
-    );
-  };
 
   // Scroll to the target feedback section after saving or adding
   useEffect(() => {
@@ -2289,9 +2372,11 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     className="a-input"
                     value={programForm.videoUrl}
                     onChange={e => setProgramForm(f => ({ ...f, videoUrl: e.target.value }))}
-                    placeholder="YouTube embed URL or video file URL"
+                    placeholder="YouTube link, embed URL, or direct video file URL"
                   />
-                  <small style={{ marginTop: 4, color: "#666" }}>YouTube format: https://www.youtube.com/embed/VIDEO_ID or direct video URL</small>
+                  <small style={{ marginTop: 4, color: "#666" }}>
+                    You can paste YouTube watch/share links (they are auto-converted to embed format).
+                  </small>
                 </div>
                 <div className="a-field">
                   <label className="a-label">Category</label>
