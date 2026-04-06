@@ -82,88 +82,64 @@ export default function KioskMainScreen({
   };
 
   function AnnouncementAttachmentPreview({ files }) {
-    const [selectedIndex, setSelectedIndex] = useState(0);
-
-    useEffect(() => {
-      setSelectedIndex(0);
-    }, [files]);
-
     if (!files.length) return null;
-
-    const selectedFile = files[selectedIndex] || files[0];
-    const selectedKind = getAnnouncementAttachmentKind(selectedFile);
-    const canPreviewInline = selectedKind === "image" || selectedKind === "pdf" || selectedKind === "text";
 
     return (
       <section className="announcement-modal-section announcement-preview-section">
         <div className="announcement-modal-heading">Attached Files</div>
-        <div className="announcement-preview-shell">
-          <div className="announcement-preview-viewer">
-            {selectedKind === "image" && (
-              <img
-                className="announcement-preview-media"
-                src={selectedFile.url}
-                alt={selectedFile.name || "Attachment preview"}
-              />
-            )}
+        <div className="announcement-files-list">
+          {files.map((file, idx) => {
+            const kind = getAnnouncementAttachmentKind(file);
+            const canPreviewInline = kind === "image" || kind === "pdf" || kind === "text";
 
-            {selectedKind === "pdf" && (
-              <iframe
-                className="announcement-preview-frame"
-                src={selectedFile.url}
-                title={selectedFile.name || "Attachment preview"}
-              />
-            )}
-
-            {selectedKind === "text" && (
-              <iframe
-                className="announcement-preview-frame"
-                src={selectedFile.url}
-                title={selectedFile.name || "Attachment preview"}
-              />
-            )}
-
-            {selectedKind === "other" && (
-              <div className="announcement-preview-fallback">
-                <strong>Preview not available for this file type.</strong>
-                <span>Use the open link below to view it in a new tab.</span>
-              </div>
-            )}
-          </div>
-
-          <div className="announcement-preview-sidebar">
-            <div className="announcement-preview-list">
-              {files.map((file, fileIdx) => {
-                const isActive = fileIdx === selectedIndex;
-                return (
-                  <button
-                    key={`${file.url}-${fileIdx}`}
-                    type="button"
-                    className={`announcement-preview-chip${isActive ? " is-active" : ""}`}
-                    onClick={() => setSelectedIndex(fileIdx)}
-                  >
-                    <span>{file.name || `Attachment ${fileIdx + 1}`}</span>
-                    <small>{getAnnouncementAttachmentKind(file).toUpperCase()}</small>
-                  </button>
+            const handleClick = () => {
+              if (kind === "image") {
+                openModal(
+                  file.name || `Image ${idx + 1}`,
+                  "#002C76",
+                  <div style={{ textAlign: "center" }}>
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      style={{ maxWidth: "100%", maxHeight: "600px", borderRadius: "8px" }}
+                    />
+                  </div>
                 );
-              })}
-            </div>
+              } else if (kind === "pdf" || kind === "text") {
+                openModal(
+                  file.name || `File ${idx + 1}`,
+                  "#002C76",
+                  <iframe
+                    src={file.url}
+                    style={{
+                      width: "100%",
+                      height: "600px",
+                      border: "none",
+                      borderRadius: "8px",
+                    }}
+                    title={file.name}
+                  />
+                );
+              } else {
+                // For other file types, open in new tab
+                window.open(file.url, "_blank");
+              }
+            };
 
-            <a
-              className="announcement-preview-open"
-              href={selectedFile.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open selected file
-            </a>
-
-            {!canPreviewInline && (
-              <div className="announcement-preview-note">
-                This kiosk can still open the file, but it cannot render it inline.
-              </div>
-            )}
-          </div>
+            return (
+              <button
+                key={`${file.url}-${idx}`}
+                type="button"
+                className="announcement-file-item"
+                onClick={handleClick}
+              >
+                <span className="announcement-file-name">{file.name || `Attachment ${idx + 1}`}</span>
+                <span className={`announcement-file-type announcement-file-type-${kind}`}>
+                  {kind.toUpperCase()}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
     );
