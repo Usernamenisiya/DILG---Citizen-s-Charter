@@ -8,6 +8,7 @@ const result = {
   internal_services: count("internal_services"),
   external_services: count("external_services"),
   issuances: count("issuances"),
+  programs: count("programs"),
   office_directory_entries: count("office_directory_entries"),
   feedback_content: count("feedback_content"),
   organizational_profile: count("organizational_profile"),
