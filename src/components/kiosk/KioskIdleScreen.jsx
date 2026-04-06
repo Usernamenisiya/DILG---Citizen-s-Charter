@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg"; 
+import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
 import idleVideo from "../../assets/video/samplevid.mp4";
 
@@ -45,6 +47,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
   }, [tickerItems]);
 
   const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
+  const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
 
   return (
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>
@@ -71,7 +74,10 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
               <path d="M18 3a1 1 0 0 0-1 .26L9.54 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h.57l1.24 3.38A1 1 0 0 0 7.75 19H9a1 1 0 0 0 .94-.66L11.35 15H11l-.01-.01L17 18.74A1 1 0 0 0 18 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-8.5 12H8.3l-1.1-3H10l.1.28zM17 17l-6.5-3.5v-5L17 5v12z"/>
               <path d="M20.5 8.5a1 1 0 0 0 0 7 4 4 0 0 0 0-7z"/>
             </svg>
-            <span>ANNOUNCEMENT</span>
+            <div className="idle-ticker-badge-text">
+              <span>ANNOUNCEMENT</span>
+              <span className="idle-ticker-hours">{officeHours}</span>
+            </div>
           </div>
           <div className="idle-ticker-track">
             <div
@@ -97,6 +103,9 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         <div className="tap-label">Pindutin para Magsimula</div>
       </div>
 
+      {/* ── CENTER TITLE ── */}
+      <div className="idle-center-title">Citizen's Charter & Information Kiosk</div>
+
       {/* ── FOOTER ── */}
       <div className="idle-footer">
         
@@ -109,18 +118,15 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
           <div className="idle-footer-text">
             <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>
             <div className="idle-footer-tagline">{settings.tagline}</div>
+            <div className="idle-footer-copyright">Copyright 2026 DILG Caraga. All rights reserved.</div>
             
           </div>
         </div>
         
-        {/* Center: Title */}
-        <div className="idle-footer-center">
-          <div className="idle-footer-title">Citizen's Charter & Information Kiosk</div>
-        </div>
-
         {/* Right: Invisible Spacer to force perfect centering */}
         <div className="idle-footer-right">
-          <div className="idle-footer-hours">{settings.hours}</div>
+          <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+          <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
         </div>
 
       </div>

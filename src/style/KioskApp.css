@@ -221,28 +221,39 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   white-space: normal;
 }
 
-
-
-/* ── CENTER SIDE: Kiosk Title (Perfectly Centered) ── */
-.idle-footer-center {
-  flex: 0 0 auto; /* Sizes exactly to the title's content */
-  text-align: center;
+.idle-footer-copyright {
+  font-family: var(--fb);
+  font-size: clamp(10px, 0.9vw, 12px);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: .03em;
+  white-space: normal;
 }
 
-.idle-footer-title {
-  font-family: var(--fd); 
-  font-size: clamp(24px, 2.5vw, 32px); 
-  font-weight: 800;
-  color: #fff; 
-  letter-spacing: .06em;
-  line-height: 1;
-  white-space: nowrap;
-}
+
 
 /* ── RIGHT SIDE: Invisible Spacer ── */
 .idle-footer-right {
   flex: 1; /* Matches the left side to perfectly balance the center item */
   text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.idle-footer-rictu-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+}
+
+.idle-footer-csu-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+  margin-left: 12px;
 }
 
 .idle-footer-hours{
@@ -274,10 +285,34 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   display: flex; align-items: center; gap: 10px;
   padding: 0 36px 0 20px;
   background: var(--red); flex-shrink: 0;
-  font-family: var(--fd); font-size: 50px; font-weight: 800;
-  letter-spacing: 0.13em; color: #fff;
-  text-transform: uppercase; white-space: nowrap;
+  color: #fff;
+  white-space: nowrap;
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
+}
+
+.idle-ticker-badge-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.05;
+  padding: 8px 0;
+}
+
+.idle-ticker-badge-text > span:first-child {
+  font-family: var(--fd);
+  font-size: 50px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.idle-ticker-hours {
+  font-family: var(--fb);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: rgba(255, 255, 255, 0.92);
+  margin-top: 4px;
 }
 .idle-ticker-track {
   flex: 1; overflow: hidden;
@@ -313,14 +348,38 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   background: rgba(255, 222, 21, 0.10);
   box-shadow: 0 0 32px rgba(255, 222, 21, 0.35), 0 0 64px rgba(255, 222, 21, 0.15);
 }
-.touchIcon { color: var(--gold); width: 100px; height: 100px; }
+.touchIcon {
+  color: #fff;
+  width: 100px;
+  height: 100px;
+  filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.78)) drop-shadow(0 2px 8px rgba(0,0,0,0.8));
+}
 .tap-label {
   font-family: var(--fd);
   font-size: 36px;
   font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   color: #fff;
-  text-shadow: 0 0 24px rgba(255, 222, 21, 0.8), 0 2px 8px rgba(0,0,0,0.8);
+  text-shadow: 0 0 24px rgba(247, 246, 243, 0.8), 0 2px 8px rgba(0,0,0,0.8);
   animation: blink 2.5s ease-in-out infinite;
+}
+
+.idle-center-title {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 1200px);
+  text-align: center;
+  font-family: var(--fd);
+  font-size: clamp(52px, 7vw, 110px);
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.78), 0 2px 8px rgba(0,0,0,0.8);
+  animation: blink 2.5s ease-in-out infinite;
+  z-index: 11;
+  pointer-events: none;
 }
 
 /* Idle seal — no longer needed as center element, hide it */
