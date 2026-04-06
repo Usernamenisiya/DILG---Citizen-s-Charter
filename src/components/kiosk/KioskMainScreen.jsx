@@ -27,6 +27,7 @@ export default function KioskMainScreen({
   inactBarRef,
   activeSection,
   onReturnToMenu,
+  onModalStateChange,
 }) {
   const parseOfficeContact = rawContact => {
     const text = String(rawContact || "").trim();
@@ -171,8 +172,14 @@ export default function KioskMainScreen({
   /* ── Modal state ── */
   const [modal, setModal] = useState(null); // { title, color, content: JSX }
 
-  const openModal = (title, color, content) => setModal({ title, color, content });
-  const closeModal = () => setModal(null);
+  const openModal = (title, color, content) => {
+    setModal({ title, color, content });
+    onModalStateChange?.(true);
+  };
+  const closeModal = () => {
+    setModal(null);
+    onModalStateChange?.(false);
+  };
 
   /* Auto-show scrollbar while scrolling, hide after idle */
   const contentRef = useRef(null);

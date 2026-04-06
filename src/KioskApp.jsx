@@ -176,6 +176,7 @@ export default function KioskApp() {
 
   // "profile" | "offices" | "feedback" | "issuances" | null
   const [modalSection, setModalSection] = useState(null);
+  const [mainScreenModalOpen, setMainScreenModalOpen] = useState(false);
 
   const logoTimerRef  = useRef(null);
   const inactTimerRef = useRef(null);
@@ -302,14 +303,14 @@ export default function KioskApp() {
     else clearInactivity();
   }, [screen, startInactivity, clearInactivity]);
 
-  /* ── Pause inactivity timer when modal is open ── */
+  /* ── Pause inactivity timer when modal or admin overlay is open ── */
   useEffect(() => {
-    if (modalSection !== null) {
+    if (modalSection !== null || showAdmin || mainScreenModalOpen) {
       clearInactivity();
     } else if (screen === "main" || screen === "menu") {
       startInactivity();
     }
-  }, [modalSection, screen, startInactivity, clearInactivity]);
+  }, [modalSection, showAdmin, mainScreenModalOpen, screen, startInactivity, clearInactivity]);
 
   const handleUserAction = useCallback(() => {
     if (screen === "main" || screen === "menu") startInactivity();
@@ -434,6 +435,7 @@ export default function KioskApp() {
           inactBarRef={inactBarRef}
           activeSection={activeSection}
           onReturnToMenu={returnToMenu}
+          onModalStateChange={setMainScreenModalOpen}
         />
       )}
 
