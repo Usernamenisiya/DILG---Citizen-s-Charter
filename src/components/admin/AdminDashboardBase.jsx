@@ -14,6 +14,7 @@ import {
   Shield,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import ServiceFormEditor from "./ServiceFormEditor";
 import IssuanceFormEditor from "./IssuanceFormEditor";
@@ -1006,6 +1007,22 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const StatusMsg = ({ status }) => (status ? <div className={`a-status ${status.type}`}>{status.msg}</div> : null);
   const lockHint = !isSuperAdmin ? <span className="role-lock-hint"><Shield size={12} /> Super Admin only</span> : null;
+  const AdminFormModal = ({ open, title, onClose, children }) => {
+    if (!open) return null;
+    return (
+      <div className="admin-form-overlay" onClick={onClose}>
+        <div className="admin-form-modal" onClick={e => e.stopPropagation()}>
+          <div className="admin-form-modal-head">
+            <div className="admin-form-modal-title">{title}</div>
+            <button type="button" className="a-btn a-btn-ghost a-btn-sm" onClick={onClose}>
+              <X size={14} className="btn-icon" /> Close
+            </button>
+          </div>
+          <div className="admin-form-modal-body">{children}</div>
+        </div>
+      </div>
+    );
+  };
 
   // Scroll to the target feedback section after saving or adding
   useEffect(() => {
@@ -1109,18 +1126,24 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               </div>
             </div>
           ) : (
-            <ServiceFormEditor
-              serviceType="internal"
-              service={editingIdx >= 0 ? appData.services[editingIdx] : null}
-              onBack={() => setEditingIdx(null)}
-              onSave={svc => {
-                const services = [...appData.services];
-                if (editingIdx >= 0) services[editingIdx] = svc;
-                else services.push(svc);
-                onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
-                setEditingIdx(null);
-              }}
-            />
+            <AdminFormModal
+              open={editingIdx !== null}
+              title={editingIdx >= 0 ? "Edit Service" : "Add New Service"}
+              onClose={() => setEditingIdx(null)}
+            >
+              <ServiceFormEditor
+                serviceType="internal"
+                service={editingIdx >= 0 ? appData.services[editingIdx] : null}
+                onBack={() => setEditingIdx(null)}
+                onSave={svc => {
+                  const services = [...appData.services];
+                  if (editingIdx >= 0) services[editingIdx] = svc;
+                  else services.push(svc);
+                  onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
+                  setEditingIdx(null);
+                }}
+              />
+            </AdminFormModal>
           )
         )}
 
@@ -1174,30 +1197,36 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               </div>
             </div>
           ) : (
-            <ServiceFormEditor
-              serviceType="external"
-              service={externalEditingIdx >= 0 ? currentExternalServices[externalEditingIdx] : null}
-              onBack={() => setExternalEditingIdx(null)}
-              onSave={svc => {
-                const externalServices = [...currentExternalServices];
-                if (externalEditingIdx >= 0) {
-                  externalServices[externalEditingIdx] = svc;
-                } else {
-                  externalServices.push({
-                    ...svc,
-                    id: svc.id || "ext_" + Date.now(),
-                    icon: svc.icon || currentExternalServices[0]?.icon || appData.services[0]?.icon || "",
+            <AdminFormModal
+              open={externalEditingIdx !== null}
+              title={externalEditingIdx >= 0 ? "Edit External Service" : "Add New External Service"}
+              onClose={() => setExternalEditingIdx(null)}
+            >
+              <ServiceFormEditor
+                serviceType="external"
+                service={externalEditingIdx >= 0 ? currentExternalServices[externalEditingIdx] : null}
+                onBack={() => setExternalEditingIdx(null)}
+                onSave={svc => {
+                  const externalServices = [...currentExternalServices];
+                  if (externalEditingIdx >= 0) {
+                    externalServices[externalEditingIdx] = svc;
+                  } else {
+                    externalServices.push({
+                      ...svc,
+                      id: svc.id || "ext_" + Date.now(),
+                      icon: svc.icon || currentExternalServices[0]?.icon || appData.services[0]?.icon || "",
+                    });
+                  }
+                  onDataChange({
+                    ...appData,
+                    externalServices,
+                    version: appData.version + 1,
+                    lastUpdated: new Date().toISOString(),
                   });
-                }
-                onDataChange({
-                  ...appData,
-                  externalServices,
-                  version: appData.version + 1,
-                  lastUpdated: new Date().toISOString(),
-                });
-                setExternalEditingIdx(null);
-              }}
-            />
+                  setExternalEditingIdx(null);
+                }}
+              />
+            </AdminFormModal>
           )
         )}
 
@@ -1272,43 +1301,49 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               </div>
             </div>
           ) : (
-            <IssuanceFormEditor
-              issuance={issuanceEditingIdx >= 0 ? currentIssuances.items?.[issuanceEditingIdx] : null}
-              onBack={() => setIssuanceEditingIdx(null)}
-              onSave={async issuance => {
-                try {
-                  const isEditing = issuanceEditingIdx >= 0;
-                  const url = isEditing ? `/api/issuances/${issuance.id}` : "/api/issuances";
-                  const method = isEditing ? "PUT" : "POST";
-                  const saved = await callApi(url, {
-                    method,
-                    body: JSON.stringify(issuance),
-                  });
+            <AdminFormModal
+              open={issuanceEditingIdx !== null}
+              title={issuanceEditingIdx >= 0 ? "Edit Issuance" : "Add New Issuance"}
+              onClose={() => setIssuanceEditingIdx(null)}
+            >
+              <IssuanceFormEditor
+                issuance={issuanceEditingIdx >= 0 ? currentIssuances.items?.[issuanceEditingIdx] : null}
+                onBack={() => setIssuanceEditingIdx(null)}
+                onSave={async issuance => {
+                  try {
+                    const isEditing = issuanceEditingIdx >= 0;
+                    const url = isEditing ? `/api/issuances/${issuance.id}` : "/api/issuances";
+                    const method = isEditing ? "PUT" : "POST";
+                    const saved = await callApi(url, {
+                      method,
+                      body: JSON.stringify(issuance),
+                    });
 
-                  const nextIssuance = !isEditing && saved?.id ? { ...issuance, id: saved.id } : issuance;
-                  const current = appData.policiesAndIssuances || defaultIssuances;
-                  const items = [...(current.items || [])];
-                  if (isEditing) items[issuanceEditingIdx] = nextIssuance;
-                  else items.push(nextIssuance);
+                    const nextIssuance = !isEditing && saved?.id ? { ...issuance, id: saved.id } : issuance;
+                    const current = appData.policiesAndIssuances || defaultIssuances;
+                    const items = [...(current.items || [])];
+                    if (isEditing) items[issuanceEditingIdx] = nextIssuance;
+                    else items.push(nextIssuance);
 
-                  onDataChange({
-                    ...appData,
-                    policiesAndIssuances: {
-                      ...current,
-                      title: issuanceMetaForm.title || current.title,
-                      subtitle: issuanceMetaForm.subtitle || current.subtitle,
-                      items,
-                    },
-                    version: appData.version + 1,
-                    lastUpdated: new Date().toISOString(),
-                  });
-                  setIssuanceEditingIdx(null);
-                  showStatus(setIssuanceStatus, "success", "✓ Issuance saved.");
-                } catch (e) {
-                  showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
-                }
-              }}
-            />
+                    onDataChange({
+                      ...appData,
+                      policiesAndIssuances: {
+                        ...current,
+                        title: issuanceMetaForm.title || current.title,
+                        subtitle: issuanceMetaForm.subtitle || current.subtitle,
+                        items,
+                      },
+                      version: appData.version + 1,
+                      lastUpdated: new Date().toISOString(),
+                    });
+                    setIssuanceEditingIdx(null);
+                    showStatus(setIssuanceStatus, "success", "✓ Issuance saved.");
+                  } catch (e) {
+                    showStatus(setIssuanceStatus, "error", `✗ ${e.message}`);
+                  }
+                }}
+              />
+            </AdminFormModal>
           )
         )}
 
@@ -1545,6 +1580,25 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             <StatusMsg status={announcementStatus} />
 
             {announcementEditingIdx !== null && (
+              <AdminFormModal
+                open={announcementEditingIdx !== null}
+                title={announcementEditingIdx >= 0 ? "Edit Announcement" : "Add New Announcement"}
+                onClose={() => {
+                  setAnnouncementEditingIdx(null);
+                  setAnnouncementForm({
+                    title: "",
+                    message: "",
+                    details: "",
+                    postedBy: "",
+                    where: "",
+                    postedOn: "",
+                    effectiveUntil: "",
+                    involvedParties: "",
+                    tickerDisplay: "message",
+                    attachmentsText: "",
+                  });
+                }}
+              >
               <div>
                 <div className="a-field">
                   <label className="a-label">Announcement Title</label>
@@ -1709,7 +1763,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     </span>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 0 }}>
                   <button className="a-btn a-btn-primary" onClick={saveAnnouncement}>Save Announcement</button>
                   <button
                     className="a-btn a-btn-ghost"
@@ -1733,6 +1787,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   </button>
                 </div>
               </div>
+              </AdminFormModal>
             )}
 
             {announcementEditingIdx === null && (
@@ -1789,7 +1844,11 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             <StatusMsg status={calendarStatus} />
 
             {calendarEditingIdx !== null ? (
-              <>
+              <AdminFormModal
+                open={calendarEditingIdx !== null}
+                title={calendarEditingIdx >= 0 ? "Edit Calendar Event" : "Add New Calendar Event"}
+                onClose={() => setCalendarEditingIdx(null)}
+              >
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">Event Title</label>
@@ -1968,11 +2027,11 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     onChange={e => setCalendarForm(f => ({ ...f, description: e.target.value }))}
                   />
                 </div>
-                <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 0 }}>
                   <button className="a-btn a-btn-primary" onClick={saveCalendarEvent}>Save Event</button>
                   <button className="a-btn a-btn-ghost" onClick={() => setCalendarEditingIdx(null)}>Cancel</button>
                 </div>
-              </>
+              </AdminFormModal>
             ) : (
               <>
                 <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={startAddCalendarEvent}>
@@ -2034,8 +2093,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             </div>
 
             {officeEditingIdx !== null && (
+              <AdminFormModal
+                open={officeEditingIdx !== null}
+                title={officeEditingIdx >= 0 ? "Edit Office Entry" : "Add Office Entry"}
+                onClose={() => setOfficeEditingIdx(null)}
+              >
               <div>
-                <div className="a-divider" />
                 <div className="a-field">
                   <label className="a-label">Office Name</label>
                   <input
@@ -2071,11 +2134,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     onChange={e => setOfficeForm(f => ({ ...f, contact: e.target.value }))}
                   />
                 </div>
-                <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 0 }}>
                   <button className="a-btn a-btn-primary" onClick={saveOfficeEntry}>Save Office Entry</button>
                   <button className="a-btn a-btn-ghost" onClick={() => setOfficeEditingIdx(null)}>Cancel</button>
                 </div>
               </div>
+              </AdminFormModal>
             )}
 
             <div className="svc-list">

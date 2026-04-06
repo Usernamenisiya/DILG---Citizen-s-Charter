@@ -69,6 +69,104 @@ export default function KioskMainScreen({
       .filter(Boolean);
   };
 
+  const getAnnouncementAttachmentKind = file => {
+    const mimeType = String(file?.mimeType || file?.type || "").toLowerCase();
+    const url = String(file?.url || "").toLowerCase();
+
+    if (mimeType.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)) return "image";
+    if (mimeType === "application/pdf" || url.endsWith(".pdf")) return "pdf";
+    if (mimeType.startsWith("text/") || /\.(txt|md|csv|json|xml)$/i.test(url)) return "text";
+    return "other";
+  };
+
+  function AnnouncementAttachmentPreview({ files }) {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    useEffect(() => {
+      setSelectedIndex(0);
+    }, [files]);
+
+    if (!files.length) return null;
+
+    const selectedFile = files[selectedIndex] || files[0];
+    const selectedKind = getAnnouncementAttachmentKind(selectedFile);
+    const canPreviewInline = selectedKind === "image" || selectedKind === "pdf" || selectedKind === "text";
+
+    return (
+      <section className="announcement-modal-section announcement-preview-section">
+        <div className="announcement-modal-heading">Attached Files</div>
+        <div className="announcement-preview-shell">
+          <div className="announcement-preview-viewer">
+            {selectedKind === "image" && (
+              <img
+                className="announcement-preview-media"
+                src={selectedFile.url}
+                alt={selectedFile.name || "Attachment preview"}
+              />
+            )}
+
+            {selectedKind === "pdf" && (
+              <iframe
+                className="announcement-preview-frame"
+                src={selectedFile.url}
+                title={selectedFile.name || "Attachment preview"}
+              />
+            )}
+
+            {selectedKind === "text" && (
+              <iframe
+                className="announcement-preview-frame"
+                src={selectedFile.url}
+                title={selectedFile.name || "Attachment preview"}
+              />
+            )}
+
+            {selectedKind === "other" && (
+              <div className="announcement-preview-fallback">
+                <strong>Preview not available for this file type.</strong>
+                <span>Use the open link below to view it in a new tab.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="announcement-preview-sidebar">
+            <div className="announcement-preview-list">
+              {files.map((file, fileIdx) => {
+                const isActive = fileIdx === selectedIndex;
+                return (
+                  <button
+                    key={`${file.url}-${fileIdx}`}
+                    type="button"
+                    className={`announcement-preview-chip${isActive ? " is-active" : ""}`}
+                    onClick={() => setSelectedIndex(fileIdx)}
+                  >
+                    <span>{file.name || `Attachment ${fileIdx + 1}`}</span>
+                    <small>{getAnnouncementAttachmentKind(file).toUpperCase()}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            <a
+              className="announcement-preview-open"
+              href={selectedFile.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open selected file
+            </a>
+
+            {!canPreviewInline && (
+              <div className="announcement-preview-note">
+                This kiosk can still open the file, but it cannot render it inline.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   /* ── Modal state ── */
   const [modal, setModal] = useState(null); // { title, color, content: JSX }
 
@@ -542,24 +640,7 @@ export default function KioskMainScreen({
                                 </section>
                               )}
 
-                              {!!files.length && (
-                                <section className="announcement-modal-section">
-                                  <div className="announcement-modal-heading">Attached Files</div>
-                                  <div className="announcement-file-list">
-                                    {files.map((file, fileIdx) => (
-                                      <a
-                                        key={`${file.url}-${fileIdx}`}
-                                        className="announcement-file-link"
-                                        href={file.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        {file.name}
-                                      </a>
-                                    ))}
-                                  </div>
-                                </section>
-                              )}
+                              {!!files.length && <AnnouncementAttachmentPreview files={files} />}
 
                               {!summary && !details && !postedBy && !where && !postedOn && !effectiveUntil && !involvedParties && !files.length && (
                                 <section className="announcement-modal-section">

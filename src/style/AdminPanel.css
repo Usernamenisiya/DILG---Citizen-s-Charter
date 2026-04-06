@@ -485,6 +485,58 @@
   background: rgba(255, 255, 255, 0.28);
 }
 
+.admin-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(2, 17, 49, 0.74);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.admin-form-modal {
+  width: min(1160px, 100%);
+  max-height: min(88vh, 920px);
+  background: #f5f9ff;
+  border: 1px solid rgba(99, 137, 214, 0.38);
+  border-radius: 14px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-form-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(121, 153, 222, 0.32);
+  background: linear-gradient(120deg, #f7fbff, #edf5ff);
+}
+
+.admin-form-modal-title {
+  font-family: var(--fd);
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f2f6f;
+  letter-spacing: .03em;
+}
+
+.admin-form-modal-body {
+  overflow: auto;
+  padding: 16px;
+}
+
+.admin-form-modal-body .admin-sub-content {
+  margin: 0;
+  box-shadow: none;
+}
+
 .icon-picker-overlay {
   position: fixed;
   inset: 0;
