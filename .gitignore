@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local SQLite runtime data (do not commit)
+my-custom-backend/app-data.db
+my-custom-backend/app-data.db-wal
+my-custom-backend/app-data.db-shm
