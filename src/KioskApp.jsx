@@ -414,7 +414,7 @@ export default function KioskApp() {
      RENDER
      ══════════════════════════════════════════════════════ */
   return (
-    <div className="kiosk-root" onClick={handleUserAction} onTouchStart={handleUserAction}>
+    <div className="kiosk-root" onClick={handleUserAction} onTouchStart={handleUserAction} onKeyDownCapture={handleUserAction}>
 
       {/* ── Idle screen ── */}
       {(screen === "idle" || idleHiding) && (
@@ -422,6 +422,7 @@ export default function KioskApp() {
           hiding={idleHiding}
           settings={s}
           announcements={announcements}
+          programs={programs}
           onShowMain={showMain}
         />
       )}

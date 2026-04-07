@@ -220,12 +220,32 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     setTimeout(() => setter(null), 5000);
   };
 
-  const currentIdleVideoOptions = (currentIdleVideos || [])
-    .map(video => ({
-      value: String(video?.videoUrl || "").trim(),
-      label: video?.title || "Idle Video",
-    }))
-    .filter(video => !!video.value);
+  const normalizeIdleVideoUrls = (settingsObj = {}) => {
+    const fromList = Array.isArray(settingsObj.idleVideoUrls)
+      ? settingsObj.idleVideoUrls.map(url => String(url || "").trim()).filter(Boolean)
+      : [];
+    if (fromList.length) return Array.from(new Set(fromList));
+    const single = String(settingsObj.idleVideoUrl || "").trim();
+    return single ? [single] : [];
+  };
+
+  const selectedIdleVideoUrls = normalizeIdleVideoUrls(settingsForm);
+
+  const toggleIdleVideoSelection = (videoUrl, checked) => {
+    const normalizedUrl = String(videoUrl || "").trim();
+    if (!normalizedUrl) return;
+    setSettingsForm(prev => {
+      const existing = normalizeIdleVideoUrls(prev);
+      const nextUrls = checked
+        ? Array.from(new Set([...existing, normalizedUrl]))
+        : existing.filter(url => url !== normalizedUrl);
+      return {
+        ...prev,
+        idleVideoUrls: nextUrls,
+        idleVideoUrl: nextUrls[0] || "",
+      };
+    });
+  };
 
   const loadIdleVideos = async () => {
     try {
@@ -1162,7 +1182,15 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
       const latestUploadedUrl = String(uploadedFiles[0]?.videoUrl || uploadedFiles[0]?.url || "").trim();
       if (latestUploadedUrl) {
-        setSettingsForm(prev => ({ ...prev, idleVideoUrl: latestUploadedUrl }));
+        setSettingsForm(prev => {
+          const existing = normalizeIdleVideoUrls(prev);
+          const nextUrls = existing.length ? existing : [latestUploadedUrl];
+          return {
+            ...prev,
+            idleVideoUrl: nextUrls[0] || "",
+            idleVideoUrls: nextUrls,
+          };
+        });
       }
       await loadIdleVideos();
       showStatus(setIdleVideosStatus, "success", `✓ Uploaded ${uploadedFiles.length} idle video${uploadedFiles.length > 1 ? "s" : ""}.`);
@@ -1172,9 +1200,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const saveIdleVideoSelection = async () => {
+    const normalizedSelected = normalizeIdleVideoUrls(settingsForm);
     const nextSettings = {
       ...appData.settings,
       ...settingsForm,
+      idleVideoUrls: normalizedSelected,
+      idleVideoUrl: normalizedSelected[0] || "",
       adminPin: appData.settings.adminPin,
       superAdminPin,
     };
@@ -1200,15 +1231,19 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
     try {
       await callApi(`/api/idle-videos/${id}`, { method: "DELETE" });
-      const isDeletedSelected = String(settingsForm.idleVideoUrl || "").trim() === String(
+      const deletedUrl = String(
         (currentIdleVideos.find(video => Number(video.id) === Number(id)) || {}).videoUrl || ""
       ).trim();
+      const currentSelection = normalizeIdleVideoUrls(settingsForm);
+      const nextSelection = currentSelection.filter(url => String(url || "").trim() !== deletedUrl);
+      const isDeletedSelected = nextSelection.length !== currentSelection.length;
 
       if (isDeletedSelected) {
         const nextSettings = {
           ...appData.settings,
           ...settingsForm,
-          idleVideoUrl: "",
+          idleVideoUrls: nextSelection,
+          idleVideoUrl: nextSelection[0] || "",
           adminPin: appData.settings.adminPin,
           superAdminPin,
         };
@@ -2555,16 +2590,17 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     You can paste YouTube watch/share links (they are auto-converted to embed format).
                   </small>
                   <div style={{ marginTop: 10 }}>
-                    <label className="a-label">Upload Video File</label>
-                    <input
-                      className="a-input"
-                      type="file"
-                      accept="video/*"
-                      onChange={e => {
-                        uploadProgramVideos(e.target.files);
-                        e.target.value = "";
-                      }}
-                    />
+                    <label className="a-file-input" style={{ marginTop: 10, display: "inline-flex", marginBottom: 0 }}>
+                      <Upload size={14} className="btn-icon" /> Upload Video File
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={e => {
+                          uploadProgramVideos(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
                     <small style={{ marginTop: 4, color: "#666" }}>
                       Uploaded video URL will auto-fill above.
                     </small>
@@ -2625,64 +2661,49 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
             <StatusMsg status={idleVideosStatus} />
 
             <div className="a-field settings-wide">
-              <label className="a-label">Upload Idle Video</label>
-              <input
-                className="a-input"
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={e => {
-                  uploadIdleVideos(e.target.files);
-                  e.target.value = "";
-                }}
-              />
+              <label className="a-file-input" style={{ display: "inline-flex", marginBottom: 8 }}>
+                <Upload size={14} className="btn-icon" /> Upload Idle Videos
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={e => {
+                    uploadIdleVideos(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
               <small style={{ marginTop: 4, color: "#666" }}>
                 Uploaded videos will appear in the list below.
               </small>
             </div>
 
-            <div className="a-field settings-wide" style={{ marginTop: 14 }}>
-              <label className="a-label">Selected Idle Video Source</label>
-              <select
-                className="a-input"
-                value={settingsForm.idleVideoUrl || ""}
-                onChange={e => setSettingsForm(f => ({ ...f, idleVideoUrl: e.target.value }))}
-              >
-                <option value="">Default built-in idle video</option>
-                {currentIdleVideoOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                <button className="a-btn a-btn-primary" onClick={saveIdleVideoSelection}>
-                  <Save size={14} className="btn-icon" /> Save Idle Video
-                </button>
-              </div>
-            </div>
-
             <div className="svc-list" style={{ marginTop: 16 }}>
               {(currentIdleVideos || []).map((video, idx) => (
-                <div key={`idle-video-${video.id || idx}`} className="svc-row">
-                  <div className="svc-row-info">
-                    <div className="svc-row-name">{video.title || `Idle Video ${idx + 1}`}</div>
-                    <div className="svc-row-meta">{video.videoUrl}</div>
-                    {video.uploadedDate && <div className="svc-row-meta">Uploaded: {video.uploadedDate}</div>}
-                    {String(settingsForm.idleVideoUrl || "").trim() === String(video.videoUrl || "").trim() && (
-                      <div className="svc-row-meta" style={{ color: "#0b2f7a", fontWeight: 700 }}>
-                        Currently selected
+                <div key={`idle-video-${video.id || idx}`} className="idle-video-list-row">
+                  <div className="idle-video-pick" title={video.title || `Idle Video ${idx + 1}`}>
+                    <input
+                      type="checkbox"
+                      className="idle-video-pick-checkbox"
+                      checked={selectedIdleVideoUrls.includes(String(video.videoUrl || "").trim())}
+                      onChange={e => toggleIdleVideoSelection(video.videoUrl, e.target.checked)}
+                    />
+                    <div className="idle-video-pick-content">
+                      <div className="idle-video-pick-head">
+                        <div className="idle-video-pick-title">{video.title || `Idle Video ${idx + 1}`}</div>
+                        {canDelete && (
+                          <button
+                            className="a-btn a-btn-danger a-btn-sm"
+                            onClick={() => deleteIdleVideo(video.id, video.title)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {!canDelete && lockHint}
                       </div>
-                    )}
-                  </div>
-                  <div className="svc-row-actions">
-                    {canDelete && (
-                      <button
-                        className="a-btn a-btn-danger a-btn-sm"
-                        onClick={() => deleteIdleVideo(video.id, video.title)}
-                      >
-                        Delete
-                      </button>
-                    )}
-                    {!canDelete && lockHint}
+                      <div className="idle-video-pick-meta">{video.videoUrl}</div>
+                      {video.uploadedDate && <div className="idle-video-pick-meta">Uploaded: {video.uploadedDate}</div>}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -2691,6 +2712,19 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   No idle videos uploaded yet. Add one above.
                 </div>
               )}
+            </div>
+
+            <div className="a-field settings-wide" style={{ marginTop: 14 }}>
+              <small style={{ marginTop: 6, color: "#666" }}>
+                {selectedIdleVideoUrls.length
+                  ? `${selectedIdleVideoUrls.length} video${selectedIdleVideoUrls.length > 1 ? "s" : ""} selected. They will play in order.`
+                  : "No videos selected. The default built-in idle video will be used."}
+              </small>
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <button className="a-btn a-btn-primary" onClick={saveIdleVideoSelection}>
+                  <Save size={14} className="btn-icon" /> Save Idle Video
+                </button>
+              </div>
             </div>
           </div>
         )}

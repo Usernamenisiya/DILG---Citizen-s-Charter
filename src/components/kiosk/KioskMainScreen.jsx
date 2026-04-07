@@ -1,7 +1,7 @@
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
-import istmsLogo from "../../assets/images/ISTMS_LOGO.png";
+import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 import { useEffect, useRef, useState } from "react";
@@ -36,6 +36,33 @@ export default function KioskMainScreen({
   serviceSearch,
   onServiceSearchChange,
 }) {
+  const loadYouTubeIframeAPI = () => {
+    if (typeof window === "undefined") return Promise.resolve(null);
+    if (window.YT?.Player) return Promise.resolve(window.YT);
+
+    if (!window.__kioskYouTubeApiPromise) {
+      window.__kioskYouTubeApiPromise = new Promise((resolve) => {
+        const existing = document.getElementById("youtube-iframe-api");
+        if (!existing) {
+          const script = document.createElement("script");
+          script.id = "youtube-iframe-api";
+          script.src = "https://www.youtube.com/iframe_api";
+          document.head.appendChild(script);
+        }
+
+        const previous = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+          if (typeof previous === "function") previous();
+          resolve(window.YT);
+        };
+
+        if (window.YT?.Player) resolve(window.YT);
+      });
+    }
+
+    return window.__kioskYouTubeApiPromise;
+  };
+
   const parseOfficeContact = rawContact => {
     const text = String(rawContact || "").trim();
     if (!text) return { mainLine: "", extension: "", raw: "" };
@@ -119,51 +146,186 @@ export default function KioskMainScreen({
     }
   };
 
-  function ProgramFullscreenPlayer({ title, isYouTube, playableUrl }) {
+  function ProgramFullscreenPlayer({ playlist, startIndex = 0, onTitleChange }) {
     const containerRef = useRef(null);
-    const autoplayUrl = isYouTube ? addAutoplayParam(playableUrl) : playableUrl;
+    const videoRef = useRef(null);
+    const playerRef = useRef(null);
+    const playerReadyRef = useRef(false);
+    const [currentIndex, setCurrentIndex] = useState(startIndex);
 
     useEffect(() => {
-      const container = containerRef.current;
-      if (!container) return;
-      const request = container.requestFullscreen || container.webkitRequestFullscreen || container.msRequestFullscreen;
-      if (typeof request === "function") {
-        Promise.resolve(request.call(container)).catch(() => {
-          // Ignore fullscreen rejection when browser blocks it.
-        });
+      setCurrentIndex(startIndex);
+    }, [startIndex]);
+
+    const currentProgram = playlist[currentIndex] || playlist[0] || null;
+    const currentTitle = currentProgram?.title || `Video ${currentIndex + 1}`;
+
+    useEffect(() => {
+      if (onTitleChange) {
+        onTitleChange(currentTitle);
       }
+    }, [currentTitle, onTitleChange]);
+    const { isYouTube, playableUrl } = getProgramVideoInfo(currentProgram?.videoUrl);
+    const autoplayUrl = isYouTube ? addAutoplayParam(playableUrl) : playableUrl;
+    const hasMultipleVideos = playlist.length > 1;
+    const isSingleVideo = playlist.length === 1;
+
+    const getYouTubeVideoId = (videoUrl) => {
+      const info = getProgramVideoInfo(videoUrl);
+      if (!info.playableUrl) return "";
+      try {
+        const url = new URL(info.playableUrl, window.location.origin);
+        return url.pathname.split("/").filter(Boolean).pop() || "";
+      } catch {
+        return "";
+      }
+    };
+
+    const goNext = () => {
+      if (isSingleVideo) {
+        if (isYouTube && playerRef.current) {
+          playerRef.current.seekTo(0, true);
+          playerRef.current.playVideo();
+        }
+        return;
+      }
+      setCurrentIndex(prev => (prev + 1) % playlist.length);
+    };
+
+    // Removed automatic fullscreen request to allow users to control fullscreen via video player
+    // and maintain ability to close the modal or exit via Escape key.
+
+    useEffect(() => {
+      return () => {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+          playerRef.current = null;
+          playerReadyRef.current = false;
+        }
+      };
     }, []);
 
+    useEffect(() => {
+      if (!isYouTube || !currentProgram) return undefined;
+
+      let cancelled = false;
+
+      loadYouTubeIframeAPI().then(YT => {
+        if (cancelled || !YT || !containerRef.current) return;
+        if (playerRef.current) {
+          const videoId = getYouTubeVideoId(currentProgram?.videoUrl);
+          if (videoId && playerReadyRef.current) {
+            playerRef.current.loadVideoById(videoId);
+          }
+          return;
+        }
+
+        playerRef.current = new YT.Player(containerRef.current, {
+          videoId: getYouTubeVideoId(currentProgram?.videoUrl),
+          playerVars: {
+            autoplay: 1,
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: event => {
+              playerReadyRef.current = true;
+              event.target.playVideo();
+            },
+            onStateChange: event => {
+              if (event.data === YT.PlayerState.ENDED) {
+                goNext();
+              }
+            },
+          },
+        });
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [currentIndex, currentProgram, isYouTube, playlist.length]);
+
+    useEffect(() => {
+      if (!isYouTube || !playerRef.current || !playerReadyRef.current || !currentProgram) return;
+      const videoId = getYouTubeVideoId(currentProgram.videoUrl);
+      if (videoId) {
+        playerRef.current.loadVideoById(videoId);
+      }
+    }, [currentIndex, currentProgram, isYouTube]);
+
     return (
-      <section className="programs-modal-section">
-        <div className="programs-video-header">
-          <div className="programs-modal-heading">Now Playing</div>
-          <div className="programs-video-kicker">Fullscreen mode launches on selection</div>
-        </div>
-        <div className="programs-video-container" ref={containerRef}>
-          {isYouTube ? (
-            <iframe
-              src={autoplayUrl}
-              width="100%"
-              height="620"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={title}
-              style={{ borderRadius: 8 }}
-            />
-          ) : (
-            <video
-              src={autoplayUrl}
-              width="100%"
-              height="620"
-              controls
-              autoPlay
-              style={{ borderRadius: 8, backgroundColor: "#000" }}
-            />
-          )}
-        </div>
-      </section>
+      <>
+        <section className="programs-modal-section">
+          <div className="programs-video-header">
+            <div className="programs-modal-heading">Now Playing</div>
+            <div className="programs-video-kicker">Use video controls to play or go fullscreen</div>
+          </div>
+          <div className="programs-video-container" ref={containerRef}>
+            {isYouTube ? (
+              <div style={{ width: "100%", height: 620 }} />
+            ) : (
+              <video
+                ref={videoRef}
+                src={autoplayUrl}
+                width="100%"
+                height="620"
+                controls
+                autoPlay
+                loop={isSingleVideo}
+                onEnded={goNext}
+                style={{ borderRadius: 8, backgroundColor: "#000" }}
+              />
+            )}
+          </div>
+          <div className="programs-video-footer">
+            <div className="programs-video-title">{currentTitle}</div>
+            {hasMultipleVideos && (
+              <div className="programs-video-count">
+                {currentIndex + 1} of {playlist.length}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {!!String(currentProgram?.description || "").trim() && (
+          <>
+            <div className="programs-modal-divider" role="separator" aria-hidden="true">
+              <span>About This Program</span>
+            </div>
+            <section className="programs-modal-section">
+              <div className="programs-modal-heading">Description</div>
+              <p className="modal-body-text">{String(currentProgram.description || "").trim()}</p>
+            </section>
+          </>
+        )}
+
+        {(!!String(currentProgram?.category || "").trim() || !!String(currentProgram?.uploadedDate || "").trim()) && (
+          <>
+            <div className="programs-modal-divider" role="separator" aria-hidden="true">
+              <span>Program Details</span>
+            </div>
+            <section className="programs-modal-section">
+              <div className="programs-meta-grid">
+                {!!String(currentProgram?.category || "").trim() && (
+                  <div className="programs-meta-item">
+                    <span>Category</span>
+                    <strong>{String(currentProgram.category || "").trim()}</strong>
+                  </div>
+                )}
+                {!!String(currentProgram?.uploadedDate || "").trim() && (
+                  <div className="programs-meta-item">
+                    <span>Uploaded</span>
+                    <strong>{String(currentProgram.uploadedDate || "").trim()}</strong>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </>
     );
   }
 
@@ -843,7 +1005,7 @@ export default function KioskMainScreen({
 
                 {!!(programs || []).length && (
                   <div className="programs-page-sub">
-                    Select a video to view full details and embedded content.
+                    Select a video to start the playlist. The next video will play automatically when one ends.
                   </div>
                 )}
 
@@ -862,56 +1024,19 @@ export default function KioskMainScreen({
                       <button
                         key={prog.id || idx}
                         className="programs-page-card"
-                        onClick={() =>
+                        onClick={() => {
+                          const handleTitleChange = (newTitle) => {
+                            setModal(prev => ({ ...prev, title: newTitle }));
+                          };
                           openModal(
                             title,
                             "#FFDE15",
                             <div className="programs-modal-content">
-                              <ProgramFullscreenPlayer
-                                title={title}
-                                isYouTube={isYouTube}
-                                playableUrl={playableUrl}
-                              />
-
-                              {!!description && (
-                                <>
-                                  <div className="programs-modal-divider" role="separator" aria-hidden="true">
-                                    <span>About This Program</span>
-                                  </div>
-                                  <section className="programs-modal-section">
-                                    <div className="programs-modal-heading">Description</div>
-                                    <p className="modal-body-text">{description}</p>
-                                  </section>
-                                </>
-                              )}
-
-                              {(category || prog.uploadedDate) && (
-                                <>
-                                  <div className="programs-modal-divider" role="separator" aria-hidden="true">
-                                    <span>Program Details</span>
-                                  </div>
-                                  <section className="programs-modal-section">
-                                    <div className="programs-meta-grid">
-                                      {!!category && (
-                                        <div className="programs-meta-item">
-                                          <span>Category</span>
-                                          <strong>{category}</strong>
-                                        </div>
-                                      )}
-                                      {!!prog.uploadedDate && (
-                                        <div className="programs-meta-item">
-                                          <span>Uploaded</span>
-                                          <strong>{prog.uploadedDate}</strong>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </section>
-                                </>
-                              )}
+                              <ProgramFullscreenPlayer playlist={programs || []} startIndex={idx} onTitleChange={handleTitleChange} />
                             </div>,
                             { size: "attachment" }
-                          )
-                        }
+                          );
+                        }}
                       >
                         <div className="programs-page-card-thumb">
                           <span className="programs-page-card-index">{String(idx + 1).padStart(2, "0")}</span>
@@ -1156,9 +1281,14 @@ export default function KioskMainScreen({
           </div>
 
           <div className="idle-footer-right">
-            <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
-            <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
-            <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+            <div className="idle-footer-powered-by">
+              <div className="idle-footer-powered-text">Powered by</div>
+              <div className="idle-footer-logos-group">
+                <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+                <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
+                <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+              </div>
+            </div>
           </div>
         </div>
       )}

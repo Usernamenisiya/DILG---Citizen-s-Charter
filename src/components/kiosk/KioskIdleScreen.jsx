@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg"; 
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
-import istmsLogo from "../../assets/images/ISTMS_LOGO.png";
+import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
 import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
@@ -49,7 +49,34 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
 
   const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
   const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
-  const idleVideoSource = String(settings.idleVideoUrl || "").trim() || fallbackIdleVideo;
+  
+  const [currentPlayingIndex, setCurrentPlayingIndex] = useState(0);
+
+  const selectedIdleVideoUrls = useMemo(() => {
+    const fromList = Array.isArray(settings.idleVideoUrls)
+      ? settings.idleVideoUrls.map(url => String(url || "").trim()).filter(Boolean)
+      : [];
+    if (fromList.length) return fromList;
+    const single = String(settings.idleVideoUrl || "").trim();
+    return single ? [single] : [];
+  }, [settings.idleVideoUrls, settings.idleVideoUrl]);
+
+  const videoPlaylist = selectedIdleVideoUrls.map(videoUrl => ({ videoUrl }));
+  
+  const currentPlayingVideo = videoPlaylist[currentPlayingIndex];
+  const idleVideoSource = currentPlayingVideo?.videoUrl
+    ? String(currentPlayingVideo.videoUrl || "").trim()
+    : fallbackIdleVideo;
+
+  useEffect(() => {
+    setCurrentPlayingIndex(0);
+  }, [selectedIdleVideoUrls.join("|")]);
+
+  const handleVideoEnded = () => {
+    if (videoPlaylist.length > 0) {
+      setCurrentPlayingIndex(prev => (prev + 1) % videoPlaylist.length);
+    }
+  };
 
   return (
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>
@@ -59,9 +86,10 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         className="idle-video-bg"
         src={idleVideoSource}
         autoPlay
-        loop
+        loop={videoPlaylist.length === 0}
         muted
         playsInline
+        onEnded={handleVideoEnded}
       />
 
       {/* Dark overlay so content stays readable */}
@@ -108,6 +136,8 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
       {/* ── CENTER TITLE ── */}
       <div className="idle-center-title">Citizen's Charter & Information Kiosk</div>
 
+      {/* ── CENTER TITLE ── */}
+
       {/* ── FOOTER ── */}
       <div className="idle-footer">
         
@@ -125,11 +155,16 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
           </div>
         </div>
         
-        {/* Right: Invisible Spacer to force perfect centering */}
+        {/* Right: Logos with Powered by */}
         <div className="idle-footer-right">
-          <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
-          <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
-          <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+          <div className="idle-footer-powered-by">
+            <div className="idle-footer-powered-text">Powered by</div>
+            <div className="idle-footer-logos-group">
+              <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+              <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
+              <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
+            </div>
+          </div>
         </div>
 
       </div>
