@@ -778,6 +778,15 @@
       "category": "Programs",
       "uploadedDate": "2026-04-06",
       "sortOrder": 1
+    },
+    {
+      "id": 2,
+      "title": "LGUSS Sample Video",
+      "description": "Sample local LGUSS video playback asset.",
+      "videoUrl": "/samplevideo.mp4",
+      "category": "Programs",
+      "uploadedDate": "2026-04-07",
+      "sortOrder": 2
     }
   ],
   "idle_videos": []

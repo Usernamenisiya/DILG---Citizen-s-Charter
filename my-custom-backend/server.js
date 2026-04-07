@@ -491,6 +491,31 @@ if (announcementCount.count === 0) {
   );
 }
 
+try {
+  const sampleVideoExists = db
+    .prepare("SELECT COUNT(*) AS count FROM programs WHERE videoUrl = ?")
+    .get("/samplevideo.mp4");
+
+  if (!sampleVideoExists.count) {
+    const currentMax = db
+      .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM programs")
+      .get();
+
+    db.prepare(
+      "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(
+      "LGUSS Sample Video",
+      "Sample local LGUSS video playback asset.",
+      "/samplevideo.mp4",
+      "Programs",
+      new Date().toISOString().split("T")[0],
+      Number(currentMax.maxSort || 0) + 1
+    );
+  }
+} catch (error) {
+  console.error("Programs migration error:", error);
+}
+
 app.get("/api/services/:type", (req, res) => {
   const type = req.params.type;
   if (type !== "internal" && type !== "external") {
