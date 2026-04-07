@@ -57,8 +57,20 @@ const NAV_STANDALONE = [
 ];
 
 const GRID_CARDS = [
-  { id: "internal",  label: "Internal Services",     color: "#002C76", span: "full" },
-  { id: "external",  label: "External Services",     color: "#C9282D", span: "full" },
+  {
+    id: "internal",
+    label: "Internal Services",
+    desc: "For DILG personnel",
+    color: "#002C76",
+    span: "full",
+  },
+  {
+    id: "external",
+    label: "External Services",
+    desc: "For citizens and partner clients",
+    color: "#C9282D",
+    span: "full",
+  },
   { id: "feedback",  label: "Feedback & Complaints", color: "#FFDE15", span: "half" },
   { id: "issuances", label: "Policies & Issuances",  color: "#FFDE15", span: "half" },
 ];
