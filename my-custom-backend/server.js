@@ -79,6 +79,14 @@ const uploadIdleVideos = multer({
 
 const dbPath = path.join(__dirname, "app-data.db");
 const db = new Database(dbPath);
+const seedSnapshotPath = path.join(__dirname, "seed-data.json");
+
+let seedSnapshot = null;
+try {
+  seedSnapshot = JSON.parse(fs.readFileSync(seedSnapshotPath, "utf8"));
+} catch {
+  seedSnapshot = null;
+}
 
 function safeJsonParse(text, fallback) {
   try {
@@ -103,6 +111,33 @@ function ensureSingleRow(tableName, insertSql, seedArgs) {
   if (row.count === 0) {
     db.prepare(insertSql).run(...seedArgs);
   }
+}
+
+function seedTableFromSnapshot(tableName) {
+  const rows = seedSnapshot?.[tableName];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return;
+  }
+
+  const rowCount = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get();
+  if (rowCount.count !== 0) {
+    return;
+  }
+
+  const columns = Object.keys(rows[0]);
+  if (columns.length === 0) {
+    return;
+  }
+
+  const insertSql = `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
+  const insertRow = db.prepare(insertSql);
+  const insertMany = db.transaction((items) => {
+    items.forEach((item) => {
+      insertRow.run(...columns.map((column) => item[column]));
+    });
+  });
+
+  insertMany(rows);
 }
 
 db.exec(`
@@ -338,6 +373,19 @@ try {
 } catch (error) {
   console.error("Settings migration error:", error);
 }
+
+seedTableFromSnapshot("internal_services");
+seedTableFromSnapshot("external_services");
+seedTableFromSnapshot("issuances");
+seedTableFromSnapshot("issuance_meta");
+seedTableFromSnapshot("kiosk_settings");
+seedTableFromSnapshot("feedback_content");
+seedTableFromSnapshot("organizational_profile");
+seedTableFromSnapshot("office_directory_meta");
+seedTableFromSnapshot("office_directory_entries");
+seedTableFromSnapshot("announcements");
+seedTableFromSnapshot("programs");
+seedTableFromSnapshot("idle_videos");
 
 ensureSingleRow(
   "feedback_content",

@@ -19,3 +19,9 @@ If you are developing a production application, we recommend using TypeScript wi
 ## npm init -y
 ## npm install better-sqlite3
 ## install sqlite viewer extension sa vscode
+
+## Local data sync
+
+The backend stores kiosk content in `my-custom-backend/app-data.db`, which is not committed to git. Fresh clones are auto-seeded from `my-custom-backend/seed-data.json` on backend startup when the local tables are empty.
+
+If you update the database on your machine and want to refresh the committed snapshot, run `node scripts/export-db-snapshot.cjs` from the repo root, then commit the updated `my-custom-backend/seed-data.json`.

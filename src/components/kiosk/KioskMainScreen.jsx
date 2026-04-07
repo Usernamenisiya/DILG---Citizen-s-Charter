@@ -1,6 +1,7 @@
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import istmsLogo from "../../assets/images/ISTMS_LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 import { useEffect, useRef, useState } from "react";
@@ -1156,6 +1157,7 @@ export default function KioskMainScreen({
 
           <div className="idle-footer-right">
             <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+            <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
             <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
           </div>
         </div>

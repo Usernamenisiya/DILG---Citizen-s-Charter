@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import istmsLogo from "../../assets/images/ISTMS_LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import EventsCalendarModal from "./modals/event_calendar_modal";
 import KeyOfficialsModal from "./modals/key_officials_modal";
@@ -307,6 +308,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
         <div className="idle-footer-right">
           <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+          <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
           <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
         </div>
       </div>

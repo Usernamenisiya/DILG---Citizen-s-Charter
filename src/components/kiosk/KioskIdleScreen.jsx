@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg"; 
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
+import istmsLogo from "../../assets/images/ISTMS_LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
 import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
@@ -127,6 +128,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         {/* Right: Invisible Spacer to force perfect centering */}
         <div className="idle-footer-right">
           <img src={rictuLogo} alt="RICTU Logo" className="idle-footer-rictu-logo" />
+          <img src={istmsLogo} alt="ISTMS Logo" className="idle-footer-istms-logo" />
           <img src={csuLogo} alt="CSU Logo" className="idle-footer-csu-logo" />
         </div>
 

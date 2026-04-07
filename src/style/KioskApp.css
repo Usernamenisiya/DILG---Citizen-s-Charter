@@ -248,6 +248,14 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
 }
 
+.idle-footer-istms-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+  margin-left: 12px;
+}
+
 .idle-footer-csu-logo {
   height: 80px;
   width: auto;
