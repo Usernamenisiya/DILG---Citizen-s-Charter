@@ -140,6 +140,76 @@ function seedTableFromSnapshot(tableName) {
   insertMany(rows);
 }
 
+function toDbTitleFromFilename(filename, fallbackTitle) {
+  const parsed = String(path.parse(filename || "").name || fallbackTitle || "").trim();
+  const withoutPrefix = parsed.replace(/^\d+-\d+-/, "");
+  const normalized = withoutPrefix.replace(/[_-]+/g, " ").trim();
+  return normalized || fallbackTitle;
+}
+
+function toIsoDateFromStatSafe(filePath) {
+  try {
+    return new Date(fs.statSync(filePath).mtime).toISOString().split("T")[0];
+  } catch {
+    return new Date().toISOString().split("T")[0];
+  }
+}
+
+function syncMediaTableFromUploads({
+  dirPath,
+  urlPrefix,
+  tableName,
+  insertSql,
+  fallbackTitle,
+  buildInsertArgs,
+}) {
+  const existingRows = db.prepare(`SELECT videoUrl FROM ${tableName}`).all();
+  const existingUrls = new Set(existingRows.map(row => String(row.videoUrl || "").trim()).filter(Boolean));
+  let sortOrder = Number(
+    (db.prepare(`SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM ${tableName}`).get() || {}).maxSort || 0
+  );
+  const insertStmt = db.prepare(insertSql);
+  let inserted = 0;
+
+  if (!fs.existsSync(dirPath)) return inserted;
+
+  const files = fs.readdirSync(dirPath).filter((filename) => {
+    const fullPath = path.join(dirPath, filename);
+    return fs.statSync(fullPath).isFile();
+  });
+
+  files.forEach((filename) => {
+    const fullPath = path.join(dirPath, filename);
+    const videoUrl = `${urlPrefix}/${filename}`;
+    if (existingUrls.has(videoUrl)) return;
+
+    sortOrder += 1;
+    const title = toDbTitleFromFilename(filename, fallbackTitle);
+    const uploadedDate = toIsoDateFromStatSafe(fullPath);
+    const args = buildInsertArgs({ title, videoUrl, uploadedDate, sortOrder });
+    insertStmt.run(...args);
+    existingUrls.add(videoUrl);
+    inserted += 1;
+  });
+
+  return inserted;
+}
+
+function ensureSelectedIdleVideo() {
+  const row = db.prepare("SELECT idleVideoUrl FROM kiosk_settings WHERE id = 1").get();
+  const current = String(row?.idleVideoUrl || "").trim();
+  if (current) return false;
+
+  const firstIdleVideo = db
+    .prepare("SELECT videoUrl FROM idle_videos ORDER BY sortOrder ASC, id ASC LIMIT 1")
+    .get();
+  const firstUrl = String(firstIdleVideo?.videoUrl || "").trim();
+  if (!firstUrl) return false;
+
+  db.prepare("UPDATE kiosk_settings SET idleVideoUrl = ? WHERE id = 1").run(firstUrl);
+  return true;
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS internal_services (
     id TEXT PRIMARY KEY,
@@ -514,6 +584,47 @@ try {
   }
 } catch (error) {
   console.error("Programs migration error:", error);
+}
+
+try {
+  const insertedIdle = syncMediaTableFromUploads({
+    dirPath: idleVideosUploadDir,
+    urlPrefix: "/uploads/idle-videos",
+    tableName: "idle_videos",
+    insertSql: "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)",
+    fallbackTitle: "Idle Video",
+    buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
+      title,
+      videoUrl,
+      uploadedDate,
+      sortOrder,
+    ],
+  });
+
+  const insertedPrograms = syncMediaTableFromUploads({
+    dirPath: programsUploadDir,
+    urlPrefix: "/uploads/programs",
+    tableName: "programs",
+    insertSql: "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)",
+    fallbackTitle: "Program Video",
+    buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
+      title,
+      "Imported from uploaded file.",
+      videoUrl,
+      "Programs",
+      uploadedDate,
+      sortOrder,
+    ],
+  });
+
+  const selectedIdleAssigned = ensureSelectedIdleVideo();
+  if (insertedIdle > 0 || insertedPrograms > 0 || selectedIdleAssigned) {
+    console.log(
+      `Media sync: +${insertedIdle} idle videos, +${insertedPrograms} programs${selectedIdleAssigned ? ", selected default idle video" : ""}.`
+    );
+  }
+} catch (error) {
+  console.error("Media sync error:", error);
 }
 
 app.get("/api/services/:type", (req, res) => {
