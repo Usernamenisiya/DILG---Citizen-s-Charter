@@ -69,7 +69,7 @@ const tx = db.transaction(() => {
     db.prepare(
       `UPDATE kiosk_settings
        SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?,
-           perPage = ?, resetTimer = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
+           perPage = ?, resetTimer = ?, superAdminPin = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
        WHERE id = 1`
     ).run(
       data.settings.kioskTitle || "Citizen's Charter Information Kiosk",
@@ -79,6 +79,7 @@ const tx = db.transaction(() => {
       data.settings.hours || "",
       Number(data.settings.perPage || 9),
       Number(data.settings.resetTimer || 60),
+      data.settings.superAdminPin || "0000",
       data.settings.adminPin || "0000",
       data.settings.updateUrl || "",
       data.settings.autoCheckUpdates ? 1 : 0
@@ -165,6 +166,28 @@ const tx = db.transaction(() => {
 
   db.prepare("DELETE FROM external_services").run();
   (data.externalServices || []).forEach((svc) => insertService("external_services", svc));
+
+  if (Array.isArray(data.calendarEvents)) {
+    db.prepare("DELETE FROM calendar_events").run();
+    const insertCalendarEvent = db.prepare(
+      `INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    data.calendarEvents.forEach((event, index) => {
+      insertCalendarEvent.run(
+        event.id || `evt_${Date.now()}_${index}`,
+        event.title || "",
+        event.date || "",
+        event.time || "",
+        event.location || "",
+        event.office || "",
+        event.category || "internal",
+        event.description || "",
+        JSON.stringify(Array.isArray(event.attendees) ? event.attendees : []),
+        index + 1
+      );
+    });
+  }
 });
 
 tx();

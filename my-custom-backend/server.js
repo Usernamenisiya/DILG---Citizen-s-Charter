@@ -113,6 +113,26 @@ function ensureSingleRow(tableName, insertSql, seedArgs) {
   }
 }
 
+function normalizeIdleVideoUrlList(value) {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.map(item => String(item || "").trim()).filter(Boolean)));
+  }
+
+  const text = String(value || "").trim();
+  if (!text) return [];
+
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return Array.from(new Set(parsed.map(item => String(item || "").trim()).filter(Boolean)));
+    }
+  } catch {
+    // Ignore invalid JSON and fall back to a single URL.
+  }
+
+  return [text];
+}
+
 function seedTableFromSnapshot(tableName) {
   const rows = seedSnapshot?.[tableName];
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -140,6 +160,271 @@ function seedTableFromSnapshot(tableName) {
   insertMany(rows);
 }
 
+function calendarEventRowToDto(row) {
+  return {
+    id: row.eventId || `evt_${row.id}`,
+    title: row.title || "",
+    date: row.date || "",
+    time: row.time || "",
+    location: row.location || "",
+    office: row.office || "",
+    category: row.category || "internal",
+    description: row.description || "",
+    attendees: safeJsonParse(row.attendees, []),
+    sortOrder: row.sortOrder || 0,
+  };
+}
+
+function restoreDatabaseFromSnapshot() {
+  if (!seedSnapshot) {
+    throw new Error("Seed snapshot not available.");
+  }
+
+  const tablesInOrder = [
+    "internal_services",
+    "external_services",
+    "issuances",
+    "issuance_meta",
+    "kiosk_settings",
+    "feedback_content",
+    "organizational_profile",
+    "office_directory_meta",
+    "office_directory_entries",
+    "announcements",
+    "programs",
+    "idle_videos",
+    "calendar_events",
+  ];
+
+  db.transaction(() => {
+    tablesInOrder.forEach((tableName) => {
+      db.prepare(`DELETE FROM ${tableName}`).run();
+    });
+
+    tablesInOrder.forEach((tableName) => seedTableFromSnapshot(tableName));
+    db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
+    db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
+  })();
+}
+
+function importKioskDataToDatabase(payload, options = {}) {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const preservePins = !!options.preservePins;
+  const currentPins = options.currentPins || {};
+
+  const tx = db.transaction(() => {
+    const settings = data.settings || {};
+    const nextSuperAdminPin = preservePins
+      ? (currentPins.superAdminPin || "0000")
+      : String(settings.superAdminPin || "0000");
+    const nextAdminPin = preservePins
+      ? (currentPins.adminPin || "1111")
+      : String(settings.adminPin || "1111");
+    const importedIdleVideoUrls = normalizeIdleVideoUrlList(settings.idleVideoUrls);
+    const importedIdleVideoUrl = String(settings.idleVideoUrl || importedIdleVideoUrls[0] || "").trim();
+
+    db.prepare(`
+      UPDATE kiosk_settings
+      SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?, idleVideoUrl = ?, idleVideoUrls = ?,
+          perPage = ?, resetTimer = ?, superAdminPin = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
+      WHERE id = 1
+    `).run(
+      String(settings.kioskTitle || "Citizen's Charter Information Kiosk"),
+      String(settings.office || ""),
+      String(settings.address || ""),
+      String(settings.tagline || ""),
+      String(settings.hours || ""),
+      importedIdleVideoUrl,
+      JSON.stringify(importedIdleVideoUrls),
+      Math.max(9, Number(settings.perPage) || 9),
+      Number.isFinite(Number(settings.resetTimer)) ? Number(settings.resetTimer) : 60,
+      nextSuperAdminPin,
+      nextAdminPin,
+      String(settings.updateUrl || ""),
+      settings.autoCheckUpdates ? 1 : 0
+    );
+
+    const feedback = data.feedbackAndComplaints || {};
+    db.prepare(`
+      UPDATE feedback_content
+      SET title = ?, email = ?, telephone = ?, sections = ?
+      WHERE id = 1
+    `).run(
+      String(feedback.title || "Feedback and Complaints Mechanism"),
+      String(feedback.contact?.email || ""),
+      String(feedback.contact?.telephone || ""),
+      JSON.stringify(Array.isArray(feedback.sections) ? feedback.sections : [])
+    );
+
+    const profile = data.organizationalProfile || {};
+    db.prepare(`
+      UPDATE organizational_profile
+      SET title = ?, mandate = ?, mission = ?, vision = ?,
+          pledgeIntro = ?, pledgeServiceCommitment = ?, pbest = ?,
+          pledgeOfficeHours = ?, pledgeClosing = ?
+      WHERE id = 1
+    `).run(
+      String(profile.title || "Mandate, Mission, Vision and Service Pledge"),
+      String(profile.mandate || ""),
+      String(profile.mission || ""),
+      String(profile.vision || ""),
+      String(profile.servicePledge?.intro || ""),
+      String(profile.servicePledge?.serviceCommitment || ""),
+      JSON.stringify(Array.isArray(profile.servicePledge?.pbest) ? profile.servicePledge.pbest : []),
+      String(profile.servicePledge?.officeHoursCommitment || ""),
+      String(profile.servicePledge?.closing || "")
+    );
+
+    const officeDirectory = data.officeDirectory || {};
+    db.prepare("UPDATE office_directory_meta SET title = ?, region = ? WHERE id = 1").run(
+      String(officeDirectory.title || "List of Offices"),
+      String(officeDirectory.region || "")
+    );
+
+    db.prepare("DELETE FROM office_directory_entries").run();
+    const insertOffice = db.prepare(
+      "INSERT INTO office_directory_entries (office, address, contact, type, sortOrder) VALUES (?, ?, ?, ?, ?)"
+    );
+    (Array.isArray(officeDirectory.entries) ? officeDirectory.entries : []).forEach((entry, index) => {
+      insertOffice.run(
+        String(entry?.office || ""),
+        String(entry?.address || ""),
+        String(entry?.contact || ""),
+        String(entry?.type || "office"),
+        index + 1
+      );
+    });
+
+    const issuanceMeta = data.policiesAndIssuances || {};
+    db.prepare("UPDATE issuance_meta SET title = ?, subtitle = ? WHERE id = 1").run(
+      String(issuanceMeta.title || "Policies and Issuances"),
+      String(issuanceMeta.subtitle || "Compliance references and deadlines")
+    );
+
+    db.prepare("DELETE FROM issuances").run();
+    const insertIssuance = db.prepare(`
+      INSERT INTO issuances (id, title, circularNo, subject, date, coverage, effectivity, supersedes, approvingAuthority, highlights, deadlines)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    (Array.isArray(issuanceMeta.items) ? issuanceMeta.items : []).forEach((item, index) => {
+      insertIssuance.run(
+        String(item?.id || `iss_${Date.now()}_${index}`),
+        String(item?.title || ""),
+        String(item?.circularNo || ""),
+        String(item?.subject || ""),
+        String(item?.date || ""),
+        String(item?.coverage || ""),
+        String(item?.effectivity || ""),
+        String(item?.supersedes || ""),
+        String(item?.approvingAuthority || ""),
+        JSON.stringify(Array.isArray(item?.highlights) ? item.highlights : []),
+        JSON.stringify(Array.isArray(item?.deadlines) ? item.deadlines : [])
+      );
+    });
+
+    const insertServiceTable = (tableName, services) => {
+      db.prepare(`DELETE FROM ${tableName}`).run();
+      const insertService = db.prepare(`
+        INSERT INTO ${tableName} (id, icon, classification, label, description, processingTime, fees, whoMayAvail, office, requirements, steps)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      (Array.isArray(services) ? services : []).forEach((service, index) => {
+        insertService.run(
+          String(service?.id || `svc_${Date.now()}_${index}`),
+          String(service?.icon || ""),
+          String(service?.classification || "Simple"),
+          String(service?.label || "Unnamed Service"),
+          String(service?.description || service?.desc || ""),
+          String(service?.processingTime || ""),
+          String(service?.fees || "None"),
+          String(service?.whoMayAvail || service?.who || ""),
+          String(service?.office || ""),
+          JSON.stringify(Array.isArray(service?.requirements) ? service.requirements : []),
+          JSON.stringify(Array.isArray(service?.steps) ? service.steps : [])
+        );
+      });
+    };
+
+    insertServiceTable("internal_services", data.services);
+    insertServiceTable("external_services", data.externalServices);
+
+    db.prepare("DELETE FROM announcements").run();
+    const insertAnnouncement = db.prepare(
+      "INSERT INTO announcements (title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    (Array.isArray(data.announcements) ? data.announcements : []).forEach((item, index) => {
+      insertAnnouncement.run(
+        String(item?.title || ""),
+        String(item?.message || ""),
+        String(item?.details || ""),
+        String(item?.postedBy || ""),
+        String(item?.where || item?.announcementWhere || ""),
+        String(item?.postedOn || ""),
+        String(item?.effectiveUntil || ""),
+        String(item?.involvedParties || ""),
+        item?.tickerDisplay === "title" ? "title" : "message",
+        JSON.stringify(Array.isArray(item?.attachments) ? item.attachments : []),
+        index + 1
+      );
+    });
+
+    db.prepare("DELETE FROM programs").run();
+    const insertProgram = db.prepare(
+      "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)"
+    );
+    (Array.isArray(data.programs) ? data.programs : []).forEach((item, index) => {
+      insertProgram.run(
+        String(item?.title || ""),
+        String(item?.description || ""),
+        String(item?.videoUrl || ""),
+        String(item?.category || ""),
+        String(item?.uploadedDate || ""),
+        index + 1
+      );
+    });
+
+    if (Object.prototype.hasOwnProperty.call(data, "idleVideos")) {
+      db.prepare("DELETE FROM idle_videos").run();
+      const insertIdleVideo = db.prepare(
+        "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)"
+      );
+      (Array.isArray(data.idleVideos) ? data.idleVideos : []).forEach((item, index) => {
+        insertIdleVideo.run(
+          String(item?.title || ""),
+          String(item?.videoUrl || ""),
+          String(item?.uploadedDate || ""),
+          index + 1
+        );
+      });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "calendarEvents")) {
+      db.prepare("DELETE FROM calendar_events").run();
+      const insertCalendarEvent = db.prepare(
+        "INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      );
+      (Array.isArray(data.calendarEvents) ? data.calendarEvents : []).forEach((item, index) => {
+        insertCalendarEvent.run(
+          String(item?.id || `evt_${Date.now()}_${index}`),
+          String(item?.title || ""),
+          String(item?.date || ""),
+          String(item?.time || ""),
+          String(item?.location || ""),
+          String(item?.office || ""),
+          String(item?.category || "internal"),
+          String(item?.description || ""),
+          JSON.stringify(Array.isArray(item?.attendees) ? item.attendees : []),
+          index + 1
+        );
+      });
+    }
+
+    ensureSelectedIdleVideo();
+  });
+
+  tx();
+}
+
 function toDbTitleFromFilename(filename, fallbackTitle) {
   const parsed = String(path.parse(filename || "").name || fallbackTitle || "").trim();
   const withoutPrefix = parsed.replace(/^\d+-\d+-/, "");
@@ -153,6 +438,79 @@ function toIsoDateFromStatSafe(filePath) {
   } catch {
     return new Date().toISOString().split("T")[0];
   }
+}
+
+function slugifyForId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "holiday";
+}
+
+function normalizeYear(inputYear) {
+  const parsed = Number(inputYear);
+  const current = new Date().getFullYear();
+  if (!Number.isFinite(parsed) || parsed < 2000 || parsed > current + 5) {
+    return current;
+  }
+  return Math.trunc(parsed);
+}
+
+function unfoldIcsLines(text) {
+  return String(text || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .reduce((lines, line) => {
+      if (/^[ \t]/.test(line) && lines.length) {
+        lines[lines.length - 1] += line.slice(1);
+      } else {
+        lines.push(line);
+      }
+      return lines;
+    }, []);
+}
+
+function parseGoogleHolidayIcs(text) {
+  const lines = unfoldIcsLines(text);
+  const events = [];
+  let current = null;
+
+  for (const line of lines) {
+    if (line === "BEGIN:VEVENT") {
+      current = {};
+      continue;
+    }
+    if (line === "END:VEVENT") {
+      if (current?.date && current?.title) {
+        events.push(current);
+      }
+      current = null;
+      continue;
+    }
+    if (!current) continue;
+
+    if (line.startsWith("SUMMARY:")) {
+      current.title = line.slice("SUMMARY:".length).trim();
+      continue;
+    }
+    if (line.startsWith("DTSTART")) {
+      const match = line.match(/:(\d{8})/);
+      if (match) {
+        current.date = `${match[1].slice(0, 4)}-${match[1].slice(4, 6)}-${match[1].slice(6, 8)}`;
+      }
+      continue;
+    }
+    if (line.startsWith("DESCRIPTION:")) {
+      current.description = line.slice("DESCRIPTION:".length).trim();
+      continue;
+    }
+    if (line.startsWith("CATEGORIES:")) {
+      current.categories = line.slice("CATEGORIES:".length).trim();
+    }
+  }
+
+  return events;
 }
 
 function syncMediaTableFromUploads({
@@ -196,9 +554,20 @@ function syncMediaTableFromUploads({
 }
 
 function ensureSelectedIdleVideo() {
-  const row = db.prepare("SELECT idleVideoUrl FROM kiosk_settings WHERE id = 1").get();
-  const current = String(row?.idleVideoUrl || "").trim();
-  if (current) return false;
+  const row = db.prepare("SELECT idleVideoUrl, idleVideoUrls FROM kiosk_settings WHERE id = 1").get();
+  const currentList = normalizeIdleVideoUrlList(row?.idleVideoUrls);
+  const currentSingle = String(row?.idleVideoUrl || "").trim();
+  if (currentList.length) {
+    if (!currentSingle || currentSingle !== currentList[0]) {
+      db.prepare("UPDATE kiosk_settings SET idleVideoUrl = ?, idleVideoUrls = ? WHERE id = 1").run(currentList[0], JSON.stringify(currentList));
+    }
+    return false;
+  }
+
+  if (currentSingle) {
+    db.prepare("UPDATE kiosk_settings SET idleVideoUrls = ? WHERE id = 1").run(JSON.stringify([currentSingle]));
+    return false;
+  }
 
   const firstIdleVideo = db
     .prepare("SELECT videoUrl FROM idle_videos ORDER BY sortOrder ASC, id ASC LIMIT 1")
@@ -206,7 +575,7 @@ function ensureSelectedIdleVideo() {
   const firstUrl = String(firstIdleVideo?.videoUrl || "").trim();
   if (!firstUrl) return false;
 
-  db.prepare("UPDATE kiosk_settings SET idleVideoUrl = ? WHERE id = 1").run(firstUrl);
+  db.prepare("UPDATE kiosk_settings SET idleVideoUrl = ?, idleVideoUrls = ? WHERE id = 1").run(firstUrl, JSON.stringify([firstUrl]));
   return true;
 }
 
@@ -267,8 +636,10 @@ db.exec(`
     tagline TEXT NOT NULL,
     hours TEXT NOT NULL,
     idleVideoUrl TEXT NOT NULL DEFAULT '',
+    idleVideoUrls TEXT NOT NULL DEFAULT '[]',
     perPage INTEGER NOT NULL,
     resetTimer INTEGER NOT NULL,
+    superAdminPin TEXT NOT NULL,
     adminPin TEXT NOT NULL,
     updateUrl TEXT NOT NULL,
     autoCheckUpdates INTEGER NOT NULL DEFAULT 0
@@ -342,6 +713,20 @@ db.exec(`
     uploadedDate TEXT,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS calendar_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    eventId TEXT UNIQUE,
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    time TEXT,
+    location TEXT,
+    office TEXT,
+    category TEXT,
+    description TEXT,
+    attendees TEXT,
+    sortOrder INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Migration: Add type column if it doesn't exist
@@ -408,7 +793,7 @@ ensureSingleRow(
 
 ensureSingleRow(
   "kiosk_settings",
-  "INSERT INTO kiosk_settings (id, kioskTitle, office, address, tagline, hours, idleVideoUrl, perPage, resetTimer, adminPin, updateUrl, autoCheckUpdates) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "INSERT INTO kiosk_settings (id, kioskTitle, office, address, tagline, hours, idleVideoUrl, idleVideoUrls, perPage, resetTimer, superAdminPin, adminPin, updateUrl, autoCheckUpdates) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   [
     "Citizen's Charter Information Kiosk",
     "DILG Region XIII (Caraga)",
@@ -416,9 +801,11 @@ ensureSingleRow(
     "Matino, Mahusay at Maaasahan",
     "Monday to Friday, 8:00 AM - 5:00 PM",
     "",
+    JSON.stringify([]),
     9,
     60,
     "0000",
+    "1111",
     "",
     0,
   ]
@@ -437,12 +824,35 @@ db.prepare(
 try {
   const settingsColumns = db.prepare("PRAGMA table_info(kiosk_settings)").all();
   const hasIdleVideoUrlColumn = settingsColumns.some(col => col.name === "idleVideoUrl");
+  const hasIdleVideoUrlsColumn = settingsColumns.some(col => col.name === "idleVideoUrls");
+  const hasSuperAdminPinColumn = settingsColumns.some(col => col.name === "superAdminPin");
   if (!hasIdleVideoUrlColumn) {
     db.prepare("ALTER TABLE kiosk_settings ADD COLUMN idleVideoUrl TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!hasIdleVideoUrlsColumn) {
+    db.prepare("ALTER TABLE kiosk_settings ADD COLUMN idleVideoUrls TEXT NOT NULL DEFAULT '[]'").run();
+  }
+  if (!hasSuperAdminPinColumn) {
+    db.prepare("ALTER TABLE kiosk_settings ADD COLUMN superAdminPin TEXT NOT NULL DEFAULT '0000'").run();
   }
 } catch (error) {
   console.error("Settings migration error:", error);
 }
+
+try {
+  const settingsRow = db.prepare("SELECT idleVideoUrl, idleVideoUrls FROM kiosk_settings WHERE id = 1").get();
+  if (settingsRow) {
+    const normalizedList = normalizeIdleVideoUrlList(settingsRow.idleVideoUrls);
+    const fallbackSingle = String(settingsRow.idleVideoUrl || "").trim();
+    const nextList = normalizedList.length ? normalizedList : (fallbackSingle ? [fallbackSingle] : []);
+    db.prepare("UPDATE kiosk_settings SET idleVideoUrls = ? WHERE id = 1").run(JSON.stringify(nextList));
+  }
+} catch (error) {
+  console.error("Idle video settings migration error:", error);
+}
+
+db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
+db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
 
 seedTableFromSnapshot("internal_services");
 seedTableFromSnapshot("external_services");
@@ -456,6 +866,7 @@ seedTableFromSnapshot("office_directory_entries");
 seedTableFromSnapshot("announcements");
 seedTableFromSnapshot("programs");
 seedTableFromSnapshot("idle_videos");
+seedTableFromSnapshot("calendar_events");
 
 ensureSingleRow(
   "feedback_content",
@@ -869,15 +1280,19 @@ app.get("/api/settings", (req, res) => {
     if (!s) {
       return res.status(404).json({ error: "Settings not found." });
     }
+    const idleVideoUrls = normalizeIdleVideoUrlList(s.idleVideoUrls);
+    const normalizedIdleVideoUrl = idleVideoUrls[0] || String(s.idleVideoUrl || "").trim();
     res.json({
       kioskTitle: s.kioskTitle,
       office: s.office,
       address: s.address,
       tagline: s.tagline,
       hours: s.hours,
-      idleVideoUrl: s.idleVideoUrl || "",
+      idleVideoUrl: normalizedIdleVideoUrl,
+      idleVideoUrls,
       perPage: s.perPage,
       resetTimer: s.resetTimer,
+      superAdminPin: s.superAdminPin || "0000",
       adminPin: s.adminPin,
       updateUrl: s.updateUrl,
       autoCheckUpdates: !!s.autoCheckUpdates,
@@ -891,11 +1306,13 @@ app.get("/api/settings", (req, res) => {
 app.put("/api/settings", (req, res) => {
   const s = req.body || {};
   const perPage = Math.max(9, Number(s.perPage) || 9);
+  const idleVideoUrls = normalizeIdleVideoUrlList(s.idleVideoUrls);
+  const idleVideoUrl = String(s.idleVideoUrl || idleVideoUrls[0] || "").trim();
   try {
     db.prepare(`
       UPDATE kiosk_settings
-      SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?, idleVideoUrl = ?,
-          perPage = ?, resetTimer = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
+      SET kioskTitle = ?, office = ?, address = ?, tagline = ?, hours = ?, idleVideoUrl = ?, idleVideoUrls = ?,
+          perPage = ?, resetTimer = ?, superAdminPin = ?, adminPin = ?, updateUrl = ?, autoCheckUpdates = ?
       WHERE id = 1
     `).run(
       s.kioskTitle || "Citizen's Charter Information Kiosk",
@@ -903,10 +1320,12 @@ app.put("/api/settings", (req, res) => {
       s.address || "",
       s.tagline || "",
       s.hours || "",
-      s.idleVideoUrl || "",
+      idleVideoUrl,
+      JSON.stringify(idleVideoUrls),
       perPage,
       Number.isFinite(Number(s.resetTimer)) ? Number(s.resetTimer) : 60,
-      s.adminPin || "0000",
+      s.superAdminPin || "0000",
+      s.adminPin || "1111",
       s.updateUrl || "",
       s.autoCheckUpdates ? 1 : 0
     );
@@ -1230,7 +1649,14 @@ app.delete("/api/idle-videos/:id", (req, res) => {
       return res.status(404).json({ error: "Idle video not found." });
     }
 
-    db.prepare("UPDATE kiosk_settings SET idleVideoUrl = '' WHERE id = 1 AND idleVideoUrl = ?").run(existing.videoUrl || "");
+    const existingUrl = String(existing.videoUrl || "").trim();
+    const settingsRow = db.prepare("SELECT idleVideoUrl, idleVideoUrls FROM kiosk_settings WHERE id = 1").get();
+    const currentSelection = normalizeIdleVideoUrlList(settingsRow?.idleVideoUrls || settingsRow?.idleVideoUrl);
+    const nextSelection = currentSelection.filter(url => url !== existingUrl);
+    db.prepare("UPDATE kiosk_settings SET idleVideoUrl = ?, idleVideoUrls = ? WHERE id = 1").run(
+      nextSelection[0] || "",
+      JSON.stringify(nextSelection)
+    );
     res.json({ message: "Idle video deleted successfully." });
   } catch (error) {
     console.error("Error deleting idle video:", error);
@@ -1347,6 +1773,244 @@ app.delete("/api/announcements/:id", (req, res) => {
   } catch (error) {
     console.error("Error deleting announcement:", error);
     res.status(500).json({ error: "Failed to delete announcement." });
+  }
+});
+
+app.get("/api/calendar-events", (req, res) => {
+  try {
+    const events = db
+      .prepare("SELECT id, eventId, title, date, time, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
+      .all();
+    res.json(events.map(calendarEventRowToDto));
+  } catch (error) {
+    console.error("Error fetching calendar events:", error);
+    res.status(500).json({ error: "Failed to fetch calendar events." });
+  }
+});
+
+app.post("/api/calendar-events", (req, res) => {
+  const body = req.body || {};
+  const title = String(body.title || "").trim();
+  const date = String(body.date || "").trim();
+  if (!title || !date) {
+    return res.status(400).json({ error: "Event title and date are required." });
+  }
+
+  try {
+    const currentMax = db.prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM calendar_events").get();
+    const eventId = String(body.id || `evt_${Date.now()}`).trim();
+    db.prepare(`
+      INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      eventId,
+      title,
+      date,
+      String(body.time || "").trim(),
+      String(body.location || "").trim(),
+      String(body.office || "").trim(),
+      String(body.category || "internal").trim() || "internal",
+      String(body.description || "").trim(),
+      JSON.stringify(Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : []),
+      Number(currentMax.maxSort || 0) + 1
+    );
+
+    res.status(201).json({
+      id: eventId,
+      title,
+      date,
+      time: String(body.time || "").trim(),
+      location: String(body.location || "").trim(),
+      office: String(body.office || "").trim(),
+      category: String(body.category || "internal").trim() || "internal",
+      description: String(body.description || "").trim(),
+      attendees: Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : [],
+    });
+  } catch (error) {
+    console.error("Error creating calendar event:", error);
+    res.status(500).json({ error: "Failed to create calendar event." });
+  }
+});
+
+app.put("/api/calendar-events/:id", (req, res) => {
+  const eventId = String(req.params.id || "").trim();
+  const body = req.body || {};
+  const title = String(body.title || "").trim();
+  const date = String(body.date || "").trim();
+  if (!title || !date) {
+    return res.status(400).json({ error: "Event title and date are required." });
+  }
+
+  try {
+    const info = db.prepare(`
+      UPDATE calendar_events
+      SET title = ?, date = ?, time = ?, location = ?, office = ?, category = ?, description = ?, attendees = ?
+      WHERE eventId = ?
+    `).run(
+      title,
+      date,
+      String(body.time || "").trim(),
+      String(body.location || "").trim(),
+      String(body.office || "").trim(),
+      String(body.category || "internal").trim() || "internal",
+      String(body.description || "").trim(),
+      JSON.stringify(Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : []),
+      eventId
+    );
+
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Calendar event not found." });
+    }
+
+    res.json({
+      id: eventId,
+      title,
+      date,
+      time: String(body.time || "").trim(),
+      location: String(body.location || "").trim(),
+      office: String(body.office || "").trim(),
+      category: String(body.category || "internal").trim() || "internal",
+      description: String(body.description || "").trim(),
+      attendees: Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : [],
+    });
+  } catch (error) {
+    console.error("Error updating calendar event:", error);
+    res.status(500).json({ error: "Failed to update calendar event." });
+  }
+});
+
+app.delete("/api/calendar-events/:id", (req, res) => {
+  const eventId = String(req.params.id || "").trim();
+  try {
+    const info = db.prepare("DELETE FROM calendar_events WHERE eventId = ?").run(eventId);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: "Calendar event not found." });
+    }
+    res.json({ message: "Calendar event deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting calendar event:", error);
+    res.status(500).json({ error: "Failed to delete calendar event." });
+  }
+});
+
+app.post("/api/calendar-events/sync-holidays", async (req, res) => {
+  const year = normalizeYear(req.body?.year);
+  const replaceExisting = req.body?.replaceExisting !== false;
+
+  try {
+    const response = await fetch("https://calendar.google.com/calendar/ical/en.philippines%23holiday%40group.v.calendar.google.com/public/basic.ics");
+    if (!response.ok) {
+      return res.status(502).json({ error: `Google holiday calendar request failed (${response.status}).` });
+    }
+
+    const holidayText = await response.text();
+    const holidays = parseGoogleHolidayIcs(holidayText).filter((holiday) => {
+      return String(holiday.date || "").startsWith(`${year}-`);
+    });
+    const tx = db.transaction(() => {
+      if (replaceExisting) {
+        db.prepare("DELETE FROM calendar_events WHERE eventId LIKE ?").run(`ph-holiday-${year}-%`);
+      }
+
+      const maxSort = db.prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM calendar_events").get();
+      let sortOrder = Number(maxSort?.maxSort || 0);
+      let inserted = 0;
+      let updated = 0;
+
+      const upsertHoliday = db.prepare(`
+        INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(eventId)
+        DO UPDATE SET
+          title = excluded.title,
+          date = excluded.date,
+          time = excluded.time,
+          location = excluded.location,
+          office = excluded.office,
+          category = excluded.category,
+          description = excluded.description,
+          attendees = excluded.attendees,
+          sortOrder = excluded.sortOrder
+      `);
+
+      holidays.forEach((holiday) => {
+        const holidayDate = String(holiday?.date || "").trim();
+        const holidayTitle = String(holiday?.title || "Holiday").trim();
+        if (!holidayDate || !holidayTitle) return;
+
+        const eventId = `ph-holiday-${holidayDate}-${slugifyForId(holidayTitle)}`;
+        const exists = db.prepare("SELECT 1 FROM calendar_events WHERE eventId = ?").get(eventId);
+        sortOrder += 1;
+
+        const description = holiday.description
+          ? String(holiday.description)
+          : "Holiday from Google Calendar.";
+
+        upsertHoliday.run(
+          eventId,
+          holidayTitle,
+          holidayDate,
+          "Whole Day",
+          "Philippines",
+          "National Holiday",
+          "holiday",
+          description,
+          JSON.stringify([]),
+          sortOrder
+        );
+
+        if (exists) updated += 1;
+        else inserted += 1;
+      });
+
+      return { inserted, updated, total: holidays.length };
+    });
+
+    const result = tx();
+    const syncedEvents = db
+      .prepare("SELECT id, eventId, title, date, time, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
+      .all()
+      .map(calendarEventRowToDto);
+
+    res.json({
+      message: `Holiday sync complete from Google Calendar for ${year}.`,
+      year,
+      ...result,
+      events: syncedEvents,
+    });
+  } catch (error) {
+    console.error("Error syncing holidays:", error);
+    res.status(500).json({ error: "Failed to sync holidays." });
+  }
+});
+
+app.post("/api/reset-data", (req, res) => {
+  try {
+    restoreDatabaseFromSnapshot();
+    res.json({ message: "Factory defaults restored successfully." });
+  } catch (error) {
+    console.error("Error restoring factory defaults:", error);
+    res.status(500).json({ error: "Failed to restore factory defaults." });
+  }
+});
+
+app.post("/api/data/import", (req, res) => {
+  const payload = req.body?.data;
+  const preservePins = req.body?.preservePins !== false;
+  if (!payload || typeof payload !== "object") {
+    return res.status(400).json({ error: "Invalid import payload." });
+  }
+
+  try {
+    const currentPins = db.prepare("SELECT superAdminPin, adminPin FROM kiosk_settings WHERE id = 1").get() || {};
+    importKioskDataToDatabase(payload, {
+      preservePins,
+      currentPins,
+    });
+    res.json({ message: "Data imported successfully." });
+  } catch (error) {
+    console.error("Error importing data:", error);
+    res.status(500).json({ error: "Failed to import data." });
   }
 });
 

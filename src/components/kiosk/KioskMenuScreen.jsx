@@ -93,7 +93,7 @@ function NavItem({ id, label, color, onClick }) {
   );
 }
 
-export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef }) {
+export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef, onUserActivity }) {
   const [clockTime, setClockTime]             = useState("");
   const [clockDate, setClockDate]             = useState("");
   const [drawerOpen, setDrawerOpen]           = useState(false);
@@ -187,12 +187,12 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
       {/* ── Events Calendar Modal ── */}
       {showCalendar && (
-        <EventsCalendarModal onClose={() => setShowCalendar(false)} events={calendarEvents} />
+        <EventsCalendarModal onClose={() => setShowCalendar(false)} events={calendarEvents} onInteract={onUserActivity} />
       )}
 
       {/* ── Key Officials Modal ── */}
       {showKeyOfficials && ( // ← FIXED
-        <KeyOfficialsModal onClose={() => setShowKeyOfficials(false)} />
+        <KeyOfficialsModal onClose={() => setShowKeyOfficials(false)} onInteract={onUserActivity} />
       )}
 
       {/* ══ FULL-WIDTH LAYOUT: topbar + content ══ */}

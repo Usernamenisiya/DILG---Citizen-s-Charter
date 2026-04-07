@@ -83,10 +83,11 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
 
       {/* ── VIDEO BACKGROUND ── */}
       <video
+        key={idleVideoSource}
         className="idle-video-bg"
         src={idleVideoSource}
         autoPlay
-        loop={videoPlaylist.length === 0}
+        loop={videoPlaylist.length <= 1}
         muted
         playsInline
         onEnded={handleVideoEnded}
@@ -139,7 +140,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
       {/* ── CENTER TITLE ── */}
 
       {/* ── FOOTER ── */}
-      <div className="idle-footer">
+      <div className="idle-footer idle-footer--transparent">
         
         {/* Left: Logos + Dept Name + Tagline */}
         <div className="idle-footer-left">

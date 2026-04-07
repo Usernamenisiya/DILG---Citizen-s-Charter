@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./style/KioskApp.css";
-import { KIOSK_DEFAULT_DATA } from "./data/kioskDefaultData";
-import { loadData, saveData } from "./utils/kioskStorage";
 import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
 import KioskMenuScreen from "./components/kiosk/KioskMenuScreen";
@@ -10,6 +8,36 @@ import KioskMainScreen from "./components/kiosk/KioskMainScreen";
 // ── Extracted modal components ──
 import ProfileModal from "./components/kiosk/modals/mmv_modal";
 import OfficesModal from "./components/kiosk/modals/list_of_offices_modal";
+
+function createEmptyAppData() {
+  return {
+    version: 1,
+    lastUpdated: "",
+    settings: {
+      kioskTitle: "",
+      office: "",
+      address: "",
+      tagline: "",
+      hours: "",
+      idleVideoUrl: "",
+      perPage: 9,
+      resetTimer: 60,
+      superAdminPin: "0000",
+      adminPin: "1111",
+      updateUrl: "",
+      autoCheckUpdates: false,
+    },
+    feedbackAndComplaints: null,
+    officeDirectory: null,
+    organizationalProfile: null,
+    policiesAndIssuances: null,
+    calendarEvents: [],
+    announcements: [],
+    programs: [],
+    services: [],
+    externalServices: [],
+  };
+}
 
 
 /* ══════════════════════════════════════════════════════
@@ -163,7 +191,7 @@ function KioskModal({
    MAIN APP
    ══════════════════════════════════════════════════════ */
 export default function KioskApp() {
-  const [appData, setAppData]               = useState(() => loadData(KIOSK_DEFAULT_DATA));
+  const [appData, setAppData]               = useState(() => createEmptyAppData());
   const [screen, setScreen]                 = useState("idle");
   const [activeSection, setActiveSection]   = useState(null);
   const [idleHiding, setIdleHiding]         = useState(false);
@@ -185,30 +213,8 @@ export default function KioskApp() {
 
   const s = appData.settings;
 
-  useEffect(() => {
-    const hasSuperAdminPin = typeof appData.settings?.superAdminPin === "string" && appData.settings.superAdminPin.length === 4;
-    const hasAdminPin = typeof appData.settings?.adminPin === "string" && appData.settings.adminPin.length === 4;
-    const shouldNormalizeAdmin = !hasAdminPin || appData.settings.adminPin === "0000";
-
-    if (!hasSuperAdminPin || shouldNormalizeAdmin) {
-      setAppData(prev => {
-        const next = {
-          ...prev,
-          settings: {
-            ...prev.settings,
-            superAdminPin: hasSuperAdminPin ? prev.settings.superAdminPin : "0000",
-            adminPin: shouldNormalizeAdmin ? "1111" : prev.settings.adminPin,
-          },
-        };
-        saveData(next);
-        return next;
-      });
-    }
-  }, [appData.settings]);
-
   const handleDataChange = useCallback(newData => {
     setAppData(newData);
-    saveData(newData);
   }, []);
 
   /* ── Clock ── */
@@ -256,7 +262,13 @@ export default function KioskApp() {
 
     fetch("/api/feedback")
       .then(r => { if (!r.ok) throw new Error(`feedback ${r.status}`); return r.json(); })
-      .then(data => setAppData(p => ({ ...p, feedbackAndComplaints: data })));
+      .then(data => setAppData(p => ({ ...p, feedbackAndComplaints: data })))
+      .catch(err => console.error("Feedback API load failed:", err));
+
+    fetch("/api/calendar-events")
+      .then(r => { if (!r.ok) throw new Error(`calendar-events ${r.status}`); return r.json(); })
+      .then(data => setAppData(p => ({ ...p, calendarEvents: Array.isArray(data) ? data : [] })))
+      .catch(err => console.error("Calendar events API load failed:", err));
 
     fetch("/api/offices")
       .then(r => { if (!r.ok) throw new Error(`offices ${r.status}`); return r.json(); })
@@ -361,13 +373,25 @@ export default function KioskApp() {
   /* ── Derived data ── */
   const SERVICES_PER_PAGE      = Math.max(9, Number(s.perPage) || 9);
   const services               = appData.services               || [];
-  const externalServices       = appData.externalServices       || KIOSK_DEFAULT_DATA.externalServices || [];
-  const feedbackAndComplaints  = appData.feedbackAndComplaints  || KIOSK_DEFAULT_DATA.feedbackAndComplaints;
-  const officeDirectory        = appData.officeDirectory        || KIOSK_DEFAULT_DATA.officeDirectory;
-  const organizationalProfile  = appData.organizationalProfile  || KIOSK_DEFAULT_DATA.organizationalProfile;
-  const policiesAndIssuances   = appData.policiesAndIssuances   || KIOSK_DEFAULT_DATA.policiesAndIssuances;
+  const externalServices       = appData.externalServices       || [];
+  const feedbackAndComplaints  = appData.feedbackAndComplaints  || { title: "", contact: { email: "", telephone: "" }, sections: [] };
+  const officeDirectory        = appData.officeDirectory        || { title: "", region: "", entries: [] };
+  const organizationalProfile  = appData.organizationalProfile  || {
+    title: "",
+    mandate: "",
+    mission: "",
+    vision: "",
+    servicePledge: {
+      intro: "",
+      serviceCommitment: "",
+      pbest: [],
+      officeHoursCommitment: "",
+      closing: "",
+    },
+  };
+  const policiesAndIssuances   = appData.policiesAndIssuances   || { title: "", subtitle: "", items: [] };
   const announcements          = appData.announcements          || [];
-  const programs               = appData.programs               || KIOSK_DEFAULT_DATA.programs || [];
+  const programs               = appData.programs               || [];
 
   const servicesForSection = activeSection === "external" ? externalServices : services;
   const serviceSearchQuery = serviceSearch.trim().toLowerCase();
@@ -436,6 +460,7 @@ export default function KioskApp() {
           calendarEvents={appData.calendarEvents}
           onSelectSection={selectSection}
           inactBarRef={inactBarRef}
+          onUserActivity={handleUserAction}
         />
       )}
 
@@ -507,7 +532,6 @@ export default function KioskApp() {
           appData={appData}
           onDataChange={handleDataChange}
           onClose={() => setShowAdmin(false)}
-          defaultData={KIOSK_DEFAULT_DATA}
         />
       )}
     </div>

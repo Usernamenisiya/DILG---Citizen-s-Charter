@@ -45,102 +45,6 @@ function getMonthCells(year, month) {
   return out;
 }
 
-function buildSampleEvents() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const nextMonthDate = new Date(y, m + 1, 1);
-  const y2 = nextMonthDate.getFullYear();
-  const m2 = nextMonthDate.getMonth();
-
-  const events = {};
-  const push = (year, month, day, item) => {
-    const key = toKey(year, month, day);
-    if (!events[key]) events[key] = [];
-    events[key].push(item);
-  };
-
-  push(y, m, 4, {
-    id: "ev-1",
-    title: "Citizen Service Frontline Briefing",
-    time: "9:00 AM - 10:30 AM",
-    location: "Regional Conference Hall",
-    attendees: "Regional Office Directors, Frontline Coordinators",
-    category: "internal",
-    office: "Regional Director Office",
-    description: "Frontline teams align on service updates, queue handling, and citizen support protocols.",
-  });
-  push(y, m, 9, {
-    id: "ev-2",
-    title: "Barangay Documentation Assistance",
-    time: "1:30 PM - 4:00 PM",
-    location: "Public Service Desk",
-    attendees: "Barangay Service Officers, Public Assistance Team",
-    category: "external",
-    office: "Customer Assistance Unit",
-    description: "Assistance day for documentary requirements and step-by-step filing guidance.",
-  });
-  push(y, m, 14, {
-    id: "ev-3",
-    title: "Submission Deadline: Monthly Compliance Report",
-    time: "Until 5:00 PM",
-    location: "Online Submission Portal",
-    category: "deadline",
-    office: "Monitoring and Evaluation Division",
-    description: "All covered offices must submit required compliance attachments before cutoff.",
-  });
-  push(y, m, 14, {
-    id: "ev-4",
-    title: "Civil Registry Coordination Meeting",
-    time: "2:00 PM - 3:30 PM",
-    location: "Meeting Room 2",
-    category: "internal",
-    office: "LG Capability Development Division",
-    description: "Coordination with support units for upcoming local registry assistance programs.",
-  });
-  push(y, m, 21, {
-    id: "ev-5",
-    title: "Public Consultation on Local Governance Programs",
-    time: "10:00 AM - 12:00 PM",
-    location: "Main Lobby Forum Area",
-    category: "external",
-    office: "Public Affairs and Communication",
-    description: "Open consultation for citizens regarding service improvements and outreach initiatives.",
-  });
-  push(y, m, 29, {
-    id: "ev-6",
-    title: "Special Non-Working Holiday",
-    time: "Whole Day",
-    location: "All Offices",
-    category: "holiday",
-    office: "DILG Region XIII",
-    description: "Office operations follow holiday schedule. Emergency support lines remain available.",
-  });
-
-  push(y2, m2, 3, {
-    id: "ev-7",
-    title: "Inter-Office Service Standards Workshop",
-    time: "9:00 AM - 11:30 AM",
-    location: "Training Room A",
-    category: "internal",
-    office: "Human Resource Development",
-    description: "Workshop focused on standardizing service touchpoints and processing updates.",
-  });
-  push(y2, m2, 8, {
-    id: "ev-8",
-    title: "External Services Info Day",
-    time: "8:30 AM - 3:00 PM",
-    location: "Ground Floor Help Desk",
-    category: "external",
-    office: "Citizen Engagement Unit",
-    description: "Walk-in orientation for service requirements and expected processing timelines.",
-  });
-
-  return events;
-}
-
-const EVENTS = buildSampleEvents();
-
 function formatLongDate(year, month, day) {
   return `${MONTHS[month]} ${day}, ${year}`;
 }
@@ -227,7 +131,7 @@ function EventDetail({ event, onBack }) {
   );
 }
 
-export default function EventsCalendarModal({ onClose, events = null }) {
+export default function EventsCalendarModal({ onClose, events = null, onInteract }) {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -254,7 +158,7 @@ export default function EventsCalendarModal({ onClose, events = null }) {
   };
 
   const eventsMap = useMemo(() => {
-    if (events == null) return buildSampleEvents();
+    if (events == null) return {};
     const map = {};
     events.forEach((event) => {
       const date = String(event?.date || "");
@@ -310,8 +214,18 @@ export default function EventsCalendarModal({ onClose, events = null }) {
   };
 
   return (
-    <div className="kmodal-backdrop" onClick={onClose}>
-      <div className={`kmodal-box kcal-box${isExpanded ? " kcal-box--expanded" : ""}`} style={{ "--modal-color": "#002C76" }} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="kmodal-backdrop"
+      onClick={onClose}
+      onClickCapture={onInteract}
+      onTouchStartCapture={onInteract}
+    >
+      <div
+        className={`kmodal-box kcal-box${isExpanded ? " kcal-box--expanded" : ""}`}
+        style={{ "--modal-color": "#002C76" }}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <div className="kmodal-header">
           <div className="kmodal-header-stripe" />
           <div className="kmodal-title">Calendar and Events</div>

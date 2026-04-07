@@ -37,28 +37,28 @@ function AdminFormModal({ open, title, onClose, children }) {
   );
 }
 
-export default function AdminDashboard({ role = "super-admin", appData, onDataChange, onClose, defaultData }) {
+export default function AdminDashboard({ role = "super-admin", appData, onDataChange, onClose }) {
   const isSuperAdmin = role === "super-admin";
   const canDelete = isSuperAdmin;
   const superAdminPin = appData.settings.superAdminPin || "0000";
   const adminPin = appData.settings.adminPin || "1111";
-  const defaultFeedback = appData.feedbackAndComplaints || defaultData.feedbackAndComplaints || {
+  const defaultFeedback = appData.feedbackAndComplaints || {
     title: "Feedback and Complaints Mechanism",
     contact: { email: "", telephone: "" },
     sections: [],
   };
-  const defaultIssuances = appData.policiesAndIssuances || defaultData.policiesAndIssuances || {
+  const defaultIssuances = appData.policiesAndIssuances || {
     title: "Policies and Issuances",
     subtitle: "Compliance references and deadlines",
     items: [],
   };
-  const defaultOfficeDirectory = appData.officeDirectory || defaultData.officeDirectory || {
+  const defaultOfficeDirectory = appData.officeDirectory || {
     title: "List of Offices",
     region: "",
     entries: [],
   };
-  const defaultExternalServices = appData.externalServices || defaultData.externalServices || [];
-  const defaultProfile = appData.organizationalProfile || defaultData.organizationalProfile || {
+  const defaultExternalServices = appData.externalServices || [];
+  const defaultProfile = appData.organizationalProfile || {
     title: "Mandate, Mission, Vision and Service Pledge",
     mandate: "",
     mission: "",
@@ -75,8 +75,8 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const currentExternalServices = appData.externalServices || defaultExternalServices;
   const currentOfficeDirectory = appData.officeDirectory || defaultOfficeDirectory;
   const currentAnnouncements = appData.announcements || [];
-  const currentCalendarEvents = appData.calendarEvents || defaultData.calendarEvents || [];
-  const currentPrograms = appData.programs || defaultData.programs || [];
+  const currentCalendarEvents = appData.calendarEvents || [];
+  const currentPrograms = appData.programs || [];
 
   const [activeTab, setActiveTab] = useState("services");
   const [editingIdx, setEditingIdx] = useState(null);
@@ -100,6 +100,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     description: "",
   });
   const [calendarStatus, setCalendarStatus] = useState(null);
+  const [holidaySyncYear, setHolidaySyncYear] = useState(String(new Date().getFullYear()));
   const [programForm, setProgramForm] = useState({
     title: "",
     description: "",
@@ -979,7 +980,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     setCalendarEditingIdx(idx);
   };
 
-  const saveCalendarEvent = () => {
+  const saveCalendarEvent = async () => {
     const title = String(calendarForm.title || "").trim();
     const date = String(calendarForm.date || "").trim();
     if (!title || !date) {
@@ -997,24 +998,38 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         ? currentCalendarEvents[calendarEditingIdx].id
         : `evt_${Date.now()}`,
     };
-    const calendarEvents = [...currentCalendarEvents];
-    if (calendarEditingIdx >= 0) {
-      calendarEvents[calendarEditingIdx] = event;
-    } else {
-      calendarEvents.push(event);
-    }
+    try {
+      const savedEvent = calendarEditingIdx >= 0
+        ? await callApi(`/api/calendar-events/${event.id}`, {
+          method: "PUT",
+          body: JSON.stringify(event),
+        })
+        : await callApi("/api/calendar-events", {
+          method: "POST",
+          body: JSON.stringify(event),
+        });
 
-    onDataChange({
-      ...appData,
-      calendarEvents,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    setCalendarEditingIdx(null);
-    setCalendarStatus({ type: "success", msg: "✓ Calendar event saved." });
+      const calendarEvents = [...currentCalendarEvents];
+      if (calendarEditingIdx >= 0) {
+        calendarEvents[calendarEditingIdx] = savedEvent || event;
+      } else {
+        calendarEvents.push(savedEvent || event);
+      }
+
+      onDataChange({
+        ...appData,
+        calendarEvents,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      setCalendarEditingIdx(null);
+      setCalendarStatus({ type: "success", msg: "✓ Calendar event saved." });
+    } catch (e) {
+      showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
+    }
   };
 
-  const deleteCalendarEvent = idx => {
+  const deleteCalendarEvent = async idx => {
     if (!canDelete) {
       showStatus(setCalendarStatus, "error", "✗ Admin role cannot delete items.");
       return;
@@ -1023,14 +1038,51 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     if (!entry) return;
     if (!window.confirm(`Delete event "${entry.title || entry.id}"?`)) return;
 
-    const calendarEvents = currentCalendarEvents.filter((_, i) => i !== idx);
-    onDataChange({
-      ...appData,
-      calendarEvents,
-      version: appData.version + 1,
-      lastUpdated: new Date().toISOString(),
-    });
-    showStatus(setCalendarStatus, "success", "✓ Calendar event deleted.");
+    try {
+      await callApi(`/api/calendar-events/${entry.id}`, { method: "DELETE" });
+      const calendarEvents = currentCalendarEvents.filter((_, i) => i !== idx);
+      onDataChange({
+        ...appData,
+        calendarEvents,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setCalendarStatus, "success", "✓ Calendar event deleted.");
+    } catch (e) {
+      showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const syncPhilippineHolidays = async () => {
+    const parsedYear = Number(holidaySyncYear);
+    if (!Number.isFinite(parsedYear) || parsedYear < 2000 || parsedYear > new Date().getFullYear() + 5) {
+      showStatus(setCalendarStatus, "error", "✗ Enter a valid year.");
+      return;
+    }
+
+    try {
+      const result = await callApi("/api/calendar-events/sync-holidays", {
+        method: "POST",
+        body: JSON.stringify({ year: parsedYear, replaceExisting: true }),
+      });
+
+      const nextEvents = Array.isArray(result?.events)
+        ? result.events
+        : await callApi("/api/calendar-events");
+
+      onDataChange({
+        ...appData,
+        calendarEvents: Array.isArray(nextEvents) ? nextEvents : [],
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+
+      const inserted = Number(result?.inserted || 0);
+      const updated = Number(result?.updated || 0);
+      showStatus(setCalendarStatus, "success", `✓ Synced holidays: ${inserted} added, ${updated} updated.`);
+    } catch (e) {
+      showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
+    }
   };
 
   const startEditProgram = idx => {
@@ -1216,6 +1268,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         body: JSON.stringify(nextSettings),
       });
       onDataChange({ ...appData, settings: nextSettings });
+      setSettingsForm(nextSettings);
       showStatus(setIdleVideosStatus, "success", "✓ Idle screen video selection saved.");
     } catch (e) {
       showStatus(setIdleVideosStatus, "error", `✗ ${e.message}`);
@@ -1312,27 +1365,53 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
   };
 
-  const applyUpdate = () => {
+  const applyUpdate = async () => {
     if (!pendingUpdate) return;
     const pin = appData.settings.adminPin;
+    const superPin = appData.settings.superAdminPin;
     const newData = {
       ...appData,
       services: pendingUpdate.services || appData.services,
       externalServices: pendingUpdate.externalServices || appData.externalServices,
+      announcements: pendingUpdate.announcements || appData.announcements,
+      calendarEvents: pendingUpdate.calendarEvents || appData.calendarEvents,
+      programs: pendingUpdate.programs || appData.programs,
+      idleVideos: currentIdleVideos,
+      feedbackAndComplaints: pendingUpdate.feedbackAndComplaints || appData.feedbackAndComplaints,
       organizationalProfile: pendingUpdate.organizationalProfile || appData.organizationalProfile,
       officeDirectory: pendingUpdate.officeDirectory || appData.officeDirectory,
       policiesAndIssuances: pendingUpdate.policiesAndIssuances || appData.policiesAndIssuances,
       version: pendingUpdate.version,
       lastUpdated: new Date().toISOString(),
     };
-    if (pendingUpdate.settings) newData.settings = { ...pendingUpdate.settings, adminPin: pin };
-    onDataChange(newData);
-    setPendingUpdate(null);
-    showStatus(setUpdateStatus, "success", "✓ Update applied! Now at version " + pendingUpdate.version + ".");
+    if (pendingUpdate.settings) {
+      newData.settings = {
+        ...pendingUpdate.settings,
+        adminPin: pin,
+        superAdminPin: superPin,
+      };
+    }
+
+    try {
+      await callApi("/api/data/import", {
+        method: "POST",
+        body: JSON.stringify({ data: newData, preservePins: true }),
+      });
+      onDataChange(newData);
+      setPendingUpdate(null);
+      showStatus(setUpdateStatus, "success", "✓ Update applied! Now at version " + pendingUpdate.version + ".");
+      window.location.reload();
+    } catch (e) {
+      showStatus(setUpdateStatus, "error", `✗ ${e.message}`);
+    }
   };
 
   const exportBackup = () => {
-    const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
+    const backupPayload = {
+      ...appData,
+      idleVideos: currentIdleVideos,
+    };
+    const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "dilg-kiosk-backup.json";
@@ -1340,7 +1419,10 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const exportUpdateFile = () => {
-    const d = JSON.parse(JSON.stringify(appData));
+    const d = JSON.parse(JSON.stringify({
+      ...appData,
+      idleVideos: currentIdleVideos,
+    }));
     delete d.settings.adminPin;
     const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -1349,21 +1431,41 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     a.click();
   };
 
-  const importData = jsonStr => {
+  const importData = async jsonStr => {
     try {
       const data = JSON.parse(jsonStr);
       if (!data.services || !data.settings) throw new Error("Invalid backup format.");
-      onDataChange({ ...data, settings: { ...data.settings, adminPin: appData.settings.adminPin } });
+      const imported = {
+        ...data,
+        idleVideos: Array.isArray(data.idleVideos) ? data.idleVideos : currentIdleVideos,
+        settings: {
+          ...data.settings,
+          adminPin: appData.settings.adminPin,
+          superAdminPin: appData.settings.superAdminPin,
+        },
+      };
+      await callApi("/api/data/import", {
+        method: "POST",
+        body: JSON.stringify({ data: imported, preservePins: true }),
+      });
+      onDataChange(imported);
       showStatus(setBackupStatus, "success", "✓ Imported! " + data.services.length + " services loaded.");
+      window.location.reload();
     } catch (e) {
       showStatus(setBackupStatus, "error", "✗ Import failed: " + e.message);
     }
   };
 
   const confirmReset = () => {
-    if (!window.confirm("Reset ALL data to factory defaults? PIN resets to 0000.")) return;
-    onDataChange(JSON.parse(JSON.stringify(defaultData)));
-    showStatus(setBackupStatus, "success", "✓ Reset to defaults complete.");
+    if (!window.confirm("Reset ALL data to factory defaults? PINs reset to their database defaults.")) return;
+    callApi("/api/reset-data", { method: "POST" })
+      .then(() => {
+        showStatus(setBackupStatus, "success", "✓ Reset to defaults complete.");
+        window.location.reload();
+      })
+      .catch((e) => {
+        showStatus(setBackupStatus, "error", `✗ ${e.message}`);
+      });
   };
 
   const navItems = [
@@ -2201,7 +2303,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         {activeTab === "calendar-events" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">Calendar Events</div>
-            <div className="admin-tab-sub">Add, edit, or remove events shown in the kiosk calendar.</div>
+            <div className="admin-tab-sub">Add, edit, or remove events shown in the kiosk calendar. Holidays can be synced from Google Calendar.</div>
             <StatusMsg status={calendarStatus} />
 
             {calendarEditingIdx !== null ? (
@@ -2395,9 +2497,25 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               </AdminFormModal>
             ) : (
               <>
-                <button className="a-btn a-btn-success" style={{ marginBottom: 18 }} onClick={startAddCalendarEvent}>
-                  + Add New Event
-                </button>
+                <div style={{ display: "flex", gap: 10, alignItems: "end", marginBottom: 18, flexWrap: "wrap" }}>
+                  <button className="a-btn a-btn-success" onClick={startAddCalendarEvent}>
+                    + Add New Event
+                  </button>
+                  <div className="a-field" style={{ minWidth: 140, marginBottom: 0 }}>
+                    <label className="a-label">Holiday Year</label>
+                    <input
+                      className="a-input"
+                      type="number"
+                      min="2000"
+                      max={String(new Date().getFullYear() + 5)}
+                      value={holidaySyncYear}
+                      onChange={e => setHolidaySyncYear(e.target.value)}
+                    />
+                  </div>
+                  <button className="a-btn a-btn-primary" onClick={syncPhilippineHolidays}>
+                    Sync Google Holidays
+                  </button>
+                </div>
                 <div className="svc-list">
                   {currentCalendarEvents.map((item, idx) => (
                     <div key={item.id || idx} className="svc-row">

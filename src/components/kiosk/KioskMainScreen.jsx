@@ -474,6 +474,7 @@ export default function KioskMainScreen({
 
   const isInternalSection = activeSection === "internal";
   const isExternalSection = activeSection === "external";
+  const isProgramsSection = activeSection === "Programs";
 
   return (
     <div className={`main-screen${visible ? " visible" : ""}`}>
@@ -496,7 +497,7 @@ export default function KioskMainScreen({
       </header>
 
 
-      <div className={`screen-bar${isInternalSection || isExternalSection ? " screen-bar--transparent" : ""}`}>
+      <div className={`screen-bar${isInternalSection || isExternalSection || isProgramsSection ? " screen-bar--transparent" : ""}`}>
         {currentService ? (
           <>
             <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</button>
@@ -1262,7 +1263,7 @@ export default function KioskMainScreen({
         </div>
       </div>
 
-      {!currentService && (isInternalSection || isExternalSection) && (
+      {!currentService && (isInternalSection || isExternalSection || isProgramsSection) && (
         <div className="idle-footer idle-footer--transparent">
           <div className="idle-footer-left">
             <div className="idle-footer-logos">
@@ -1276,9 +1277,11 @@ export default function KioskMainScreen({
             </div>
           </div>
 
-          <div className="svc-footer-page-info">
-            Page <span>{currentPage + 1}</span> of <span>{totalPages}</span>
-          </div>
+          {(isInternalSection || isExternalSection) && (
+            <div className="svc-footer-page-info">
+              Page <span>{currentPage + 1}</span> of <span>{totalPages}</span>
+            </div>
+          )}
 
           <div className="idle-footer-right">
             <div className="idle-footer-powered-by">

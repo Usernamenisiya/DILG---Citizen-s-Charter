@@ -1,13 +1,15 @@
 import { useState } from "react";
 import orgChart from "../../../assets/images/Organizational Chart.jpg";
 
-export default function KeyOfficialsModal({ onClose }) {
+export default function KeyOfficialsModal({ onClose, onInteract }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   return (
     <div
       className="kmodal-backdrop"
       onClick={!isFullscreen ? onClose : undefined}
+      onClickCapture={onInteract}
+      onTouchStartCapture={onInteract}
       style={isFullscreen ? { alignItems: "stretch", padding: 0 } : {}}
     >
       <div
@@ -26,6 +28,7 @@ export default function KeyOfficialsModal({ onClose }) {
           } : {}),
         }}
         onClick={e => e.stopPropagation()}
+        onTouchStart={e => e.stopPropagation()}
       >
         {/* ── Header ── */}
         <div className="kmodal-header" style={{ flexShrink: 0 }}>

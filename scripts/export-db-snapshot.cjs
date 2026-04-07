@@ -19,6 +19,7 @@ const tables = [
   "announcements",
   "programs",
   "idle_videos",
+  "calendar_events",
 ];
 
 const db = new Database(dbPath, { readonly: true });

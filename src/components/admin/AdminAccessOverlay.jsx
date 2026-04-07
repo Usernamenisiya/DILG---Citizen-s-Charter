@@ -4,7 +4,7 @@ import AdminDashboard from "./AdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import "../../style/AdminPanel.css";
 
-export default function AdminAccessOverlay({ appData, onDataChange, onClose, defaultData }) {
+export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
@@ -115,14 +115,12 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose, def
             appData={appData}
             onDataChange={onDataChange}
             onClose={onClose}
-            defaultData={defaultData}
           />
         ) : (
           <AdminDashboard
             appData={appData}
             onDataChange={onDataChange}
             onClose={onClose}
-            defaultData={defaultData}
           />
         )
       )}
