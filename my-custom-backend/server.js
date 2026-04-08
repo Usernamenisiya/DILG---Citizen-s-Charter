@@ -19,6 +19,19 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
+// Trigger a generic realtime refresh after successful write requests.
+app.use((req, res, next) => {
+  const shouldTrack = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+  if (shouldTrack) {
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        scheduleDataChangeBroadcast(`api-write:${req.method} ${req.path}`);
+      }
+    });
+  }
+  next();
+});
+
 const uploadsRoot = path.join(__dirname, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
@@ -145,6 +158,23 @@ function scheduleDataChangeBroadcast(reason = "db-file-changed") {
     broadcastDataChanged(reason);
   }, 150);
 }
+
+let lastDbMtimeMs = 0;
+try {
+  const initialStat = fs.statSync(dbPath);
+  lastDbMtimeMs = Number(initialStat.mtimeMs || 0);
+} catch {
+  lastDbMtimeMs = 0;
+}
+
+fs.watchFile(dbPath, { interval: 500 }, (current, previous) => {
+  const currentMtimeMs = Number(current.mtimeMs || 0);
+  const previousMtimeMs = Number(previous.mtimeMs || 0);
+  if (currentMtimeMs && currentMtimeMs !== previousMtimeMs && currentMtimeMs > lastDbMtimeMs) {
+    lastDbMtimeMs = currentMtimeMs;
+    scheduleDataChangeBroadcast();
+  }
+});
 
 function serviceRowToDto(row) {
   return {
@@ -2106,23 +2136,6 @@ app.post("/api/idle-videos/upload", (req, res) => {
       return res.status(400).json({ error: message });
     }
 
-
-  let lastDbMtimeMs = 0;
-  try {
-    const initialStat = fs.statSync(dbPath);
-    lastDbMtimeMs = Number(initialStat.mtimeMs || 0);
-  } catch {
-    lastDbMtimeMs = 0;
-  }
-
-  fs.watchFile(dbPath, { interval: 500 }, (current, previous) => {
-    const currentMtimeMs = Number(current.mtimeMs || 0);
-    const previousMtimeMs = Number(previous.mtimeMs || 0);
-    if (currentMtimeMs && currentMtimeMs !== previousMtimeMs && currentMtimeMs > lastDbMtimeMs) {
-      lastDbMtimeMs = currentMtimeMs;
-      scheduleDataChangeBroadcast();
-    }
-  });
     try {
       const files = Array.isArray(req.files) ? req.files : [];
       if (!files.length) {
