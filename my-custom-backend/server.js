@@ -4,8 +4,16 @@ const Database = require("better-sqlite3");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
 const port = 3000;
 
 app.use(cors());
@@ -94,6 +102,48 @@ function safeJsonParse(text, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function getAnnouncementsPayload() {
+  const announcements = db
+    .prepare("SELECT id, title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder FROM announcements ORDER BY sortOrder ASC, id ASC")
+    .all();
+
+  return announcements.map(item => ({
+    ...item,
+    title: item.title || "",
+    details: item.details || "",
+    postedBy: item.postedBy || "",
+    where: item.announcementWhere || "",
+    postedOn: item.postedOn || "",
+    effectiveUntil: item.effectiveUntil || "",
+    involvedParties: item.involvedParties || "",
+    tickerDisplay: item.tickerDisplay === "title" ? "title" : "message",
+    attachments: safeJsonParse(item.attachments, []),
+  }));
+}
+
+function broadcastAnnouncementsChanged() {
+  io.emit("announcements:changed", {
+    announcements: getAnnouncementsPayload(),
+    timestamp: new Date().toISOString(),
+  });
+}
+
+let dataChangeBroadcastTimer = null;
+
+function broadcastDataChanged(reason = "data-updated") {
+  io.emit("kiosk:data-changed", {
+    reason,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+function scheduleDataChangeBroadcast(reason = "db-file-changed") {
+  clearTimeout(dataChangeBroadcastTimer);
+  dataChangeBroadcastTimer = setTimeout(() => {
+    broadcastDataChanged(reason);
+  }, 150);
 }
 
 function serviceRowToDto(row) {
@@ -1666,23 +1716,7 @@ app.delete("/api/idle-videos/:id", (req, res) => {
 
 app.get("/api/announcements", (req, res) => {
   try {
-    const announcements = db
-      .prepare("SELECT id, title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder FROM announcements ORDER BY sortOrder ASC, id ASC")
-      .all();
-    res.json(
-      announcements.map(item => ({
-        ...item,
-        title: item.title || "",
-        details: item.details || "",
-        postedBy: item.postedBy || "",
-        where: item.announcementWhere || "",
-        postedOn: item.postedOn || "",
-        effectiveUntil: item.effectiveUntil || "",
-        involvedParties: item.involvedParties || "",
-        tickerDisplay: item.tickerDisplay === "title" ? "title" : "message",
-        attachments: safeJsonParse(item.attachments, []),
-      }))
-    );
+    res.json(getAnnouncementsPayload());
   } catch (error) {
     console.error("Error fetching announcements:", error);
     res.status(500).json({ error: "Failed to fetch announcements." });
@@ -1714,6 +1748,7 @@ app.post("/api/announcements", (req, res) => {
     const saved = db
       .prepare("SELECT id, title, message, details, postedBy, announcementWhere, postedOn, effectiveUntil, involvedParties, tickerDisplay, attachments, sortOrder FROM announcements WHERE id = ?")
       .get(info.lastInsertRowid);
+    broadcastAnnouncementsChanged();
     res.status(201).json({
       ...saved,
       title: saved.title || "",
@@ -1755,6 +1790,7 @@ app.put("/api/announcements/:id", (req, res) => {
     if (info.changes === 0) {
       return res.status(404).json({ error: "Announcement not found." });
     }
+    broadcastAnnouncementsChanged();
     res.json({ message: "Announcement updated successfully." });
   } catch (error) {
     console.error("Error updating announcement:", error);
@@ -1769,6 +1805,7 @@ app.delete("/api/announcements/:id", (req, res) => {
     if (info.changes === 0) {
       return res.status(404).json({ error: "Announcement not found." });
     }
+    broadcastAnnouncementsChanged();
     res.json({ message: "Announcement deleted successfully." });
   } catch (error) {
     console.error("Error deleting announcement:", error);
@@ -1893,7 +1930,7 @@ app.delete("/api/calendar-events/:id", (req, res) => {
   }
 });
 
-app.post("/api/calendar-events/sync-holidays", async (req, res) => {
+const syncPhilippineHolidaysHandler = async (req, res) => {
   const year = normalizeYear(req.body?.year);
   const replaceExisting = req.body?.replaceExisting !== false;
 
@@ -1982,11 +2019,15 @@ app.post("/api/calendar-events/sync-holidays", async (req, res) => {
     console.error("Error syncing holidays:", error);
     res.status(500).json({ error: "Failed to sync holidays." });
   }
-});
+};
+
+app.post("/api/calendar-events/sync-holidays", syncPhilippineHolidaysHandler);
+app.post("/calendar-events/sync-holidays", syncPhilippineHolidaysHandler);
 
 app.post("/api/reset-data", (req, res) => {
   try {
     restoreDatabaseFromSnapshot();
+    broadcastAnnouncementsChanged();
     res.json({ message: "Factory defaults restored successfully." });
   } catch (error) {
     console.error("Error restoring factory defaults:", error);
@@ -2007,6 +2048,7 @@ app.post("/api/data/import", (req, res) => {
       preservePins,
       currentPins,
     });
+    broadcastAnnouncementsChanged();
     res.json({ message: "Data imported successfully." });
   } catch (error) {
     console.error("Error importing data:", error);
@@ -2014,7 +2056,7 @@ app.post("/api/data/import", (req, res) => {
   }
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
 
@@ -2064,6 +2106,23 @@ app.post("/api/idle-videos/upload", (req, res) => {
       return res.status(400).json({ error: message });
     }
 
+
+  let lastDbMtimeMs = 0;
+  try {
+    const initialStat = fs.statSync(dbPath);
+    lastDbMtimeMs = Number(initialStat.mtimeMs || 0);
+  } catch {
+    lastDbMtimeMs = 0;
+  }
+
+  fs.watchFile(dbPath, { interval: 500 }, (current, previous) => {
+    const currentMtimeMs = Number(current.mtimeMs || 0);
+    const previousMtimeMs = Number(previous.mtimeMs || 0);
+    if (currentMtimeMs && currentMtimeMs !== previousMtimeMs && currentMtimeMs > lastDbMtimeMs) {
+      lastDbMtimeMs = currentMtimeMs;
+      scheduleDataChangeBroadcast();
+    }
+  });
     try {
       const files = Array.isArray(req.files) ? req.files : [];
       if (!files.length) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import "./style/KioskApp.css";
 import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
@@ -217,25 +218,11 @@ export default function KioskApp() {
     setAppData(newData);
   }, []);
 
-  /* ── Clock ── */
-  useEffect(() => {
-    const tick = () => {
-      const n      = new Date();
-      const days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      setClockTime(`${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`);
-      setClockDate(`${days[n.getDay()]}, ${months[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  /* ── API fetches ── */
-  useEffect(() => {
+  const loadAllData = useCallback(() => {
     fetch("/api/settings")
       .then(r => { if (!r.ok) throw new Error(`settings ${r.status}`); return r.json(); })
-      .then(data => setAppData(p => ({ ...p, settings: { ...p.settings, ...data } })));
+      .then(data => setAppData(p => ({ ...p, settings: { ...p.settings, ...data } })))
+      .catch(err => console.error("Settings API load failed:", err));
 
     fetch("/api/services/internal")
       .then(r => { if (!r.ok) throw new Error(`internal ${r.status}`); return r.json(); })
@@ -255,7 +242,7 @@ export default function KioskApp() {
         ...p,
         policiesAndIssuances: {
           ...p.policiesAndIssuances,
-          title:    data.title    || p.policiesAndIssuances?.title,
+          title: data.title || p.policiesAndIssuances?.title,
           subtitle: data.subtitle || p.policiesAndIssuances?.subtitle,
         },
       })));
@@ -288,6 +275,50 @@ export default function KioskApp() {
       .then(data => setAppData(p => ({ ...p, programs: data })))
       .catch(err => console.error("Programs API load failed:", err));
   }, []);
+
+  /* ── Clock ── */
+  useEffect(() => {
+    const tick = () => {
+      const n      = new Date();
+      const days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      setClockTime(`${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`);
+      setClockDate(`${days[n.getDay()]}, ${months[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  /* ── API fetches ── */
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
+
+  useEffect(() => {
+    const socket = io({
+      transports: import.meta.env.DEV ? ["polling"] : ["websocket", "polling"],
+    });
+
+    socket.on("kiosk:data-changed", () => {
+      loadAllData();
+    });
+
+    socket.on("announcements:changed", payload => {
+      if (Array.isArray(payload?.announcements)) {
+        setAppData(previous => ({
+          ...previous,
+          announcements: payload.announcements,
+        }));
+      }
+    });
+
+    return () => {
+      socket.off("kiosk:data-changed");
+      socket.off("announcements:changed");
+      socket.disconnect();
+    };
+  }, [loadAllData]);
 
   /* ── Inactivity timer ── */
   const startInactivity = useCallback(() => {

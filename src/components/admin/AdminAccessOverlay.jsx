@@ -1,67 +1,64 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Eraser, Lock, Shield, User, X } from "lucide-react";
+import { ArrowLeft, Eye, Lock, Shield, User, X } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import "../../style/AdminPanel.css";
 
 export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
   const [selectedRole, setSelectedRole] = useState(null);
-  const [pinInput, setPinInput] = useState("");
-  const [pinError, setPinError] = useState("");
-  const [pinErrorAnim, setPinErrorAnim] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
-  const superAdminPin = appData.settings.superAdminPin || "0000";
-  const adminPin = appData.settings.adminPin || "1111";
-  const expectedPin = selectedRole === "super-admin" ? superAdminPin : adminPin;
+  const superAdminPassword = appData.settings.superAdminPin || "0000";
+  const adminPassword = appData.settings.adminPin || "1111";
+  const expectedPassword = selectedRole === "super-admin" ? superAdminPassword : adminPassword;
 
-  const resetPinState = () => {
-    setPinInput("");
-    setPinError("");
-    setPinErrorAnim(false);
+  const resetAuthState = () => {
+    setPasswordInput("");
+    setPasswordError("");
+    setShowPassword(false);
   };
+
+  const getHoldToShowHandlers = setter => ({
+    onMouseDown: e => {
+      e.preventDefault();
+      setter(true);
+    },
+    onMouseUp: () => setter(false),
+    onMouseLeave: () => setter(false),
+    onTouchStart: () => setter(true),
+    onTouchEnd: () => setter(false),
+    onTouchCancel: () => setter(false),
+    onBlur: () => setter(false),
+  });
 
   const chooseRole = role => {
     setSelectedRole(role);
-    resetPinState();
+    resetAuthState();
   };
 
   const backToRoleSelect = () => {
     setSelectedRole(null);
-    resetPinState();
+    resetAuthState();
   };
 
-  const pinKey = d => {
+  const submitPassword = e => {
+    e.preventDefault();
     if (!selectedRole) return;
-    if (pinInput.length >= 4) return;
-    const next = pinInput + d;
-    setPinInput(next);
-    if (next.length === 4) {
-      if (next === expectedPin) {
-        setTimeout(() => setAuthenticated(true), 150);
-      } else {
-        setPinError("Incorrect PIN. Try again.");
-        setPinErrorAnim(true);
-        setTimeout(() => {
-          setPinInput("");
-          setPinError("");
-          setPinErrorAnim(false);
-        }, 700);
-      }
+    if (passwordInput === expectedPassword) {
+      setAuthenticated(true);
+      return;
     }
-  };
 
-  const pinDel = () => setPinInput(p => p.slice(0, -1));
+    setPasswordError("Incorrect password. Try again.");
+    setPasswordInput("");
+  };
 
   useEffect(() => {
-    const handler = e => {
-      if (authenticated || !selectedRole) return;
-      if (e.key >= "0" && e.key <= "9") pinKey(e.key);
-      else if (e.key === "Backspace") pinDel();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  });
+    if (selectedRole) setPasswordError("");
+  }, [passwordInput, selectedRole]);
 
   return (
     <div className="admin-overlay">
@@ -85,23 +82,33 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
           ) : (
             <>
               <div className="pin-title">{selectedRole === "super-admin" ? "Super Admin" : "Admin"} Access</div>
-              <div className="pin-sub">Enter your 4-digit PIN to continue</div>
-              <div className="pin-dots">
-                {[0, 1, 2, 3].map(i => (
-                  <div key={i} className={`pin-dot${i < pinInput.length ? " filled" : ""}${pinErrorAnim ? " error" : ""}`} />
-                ))}
-              </div>
-              <div className="pin-pad">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map(d => (
-                  <button key={d} className="pin-btn" onClick={() => pinKey(d)}>{d}</button>
-                ))}
-                <button className="pin-btn zero" onClick={() => pinKey("0")}>0</button>
-                <button className="pin-btn erase" onClick={pinDel} aria-label="Delete digit" title="Delete">
-                  <Eraser size={28} strokeWidth={2.4} />
-                  <span className="pin-erase-label">DEL</span>
-                </button>
-              </div>
-              <div className="pin-err">{pinError}</div>
+              <div className="pin-sub">Enter your password to continue</div>
+              <form onSubmit={submitPassword} style={{ width: "100%", maxWidth: 360 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    className="a-input"
+                    style={{ flex: 1 }}
+                    type={showPassword ? "text" : "password"}
+                    value={passwordInput}
+                    onChange={e => setPasswordInput(e.target.value)}
+                    placeholder="Password"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    aria-label="Hold to show password"
+                    title="Hold to show password"
+                    {...getHoldToShowHandlers(setShowPassword)}
+                  >
+                    <Eye size={16} className="btn-icon" />
+                  </button>
+                </div>
+                <div className="pin-err">{passwordError}</div>
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                  <button className="a-btn a-btn-primary" type="submit">Access Dashboard</button>
+                </div>
+              </form>
               <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
                 <button className="pin-cancel" onClick={backToRoleSelect}><ArrowLeft size={14} className="btn-icon" /> Back</button>
                 <button className="pin-cancel" onClick={onClose}><X size={14} className="btn-icon" /> Cancel</button>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   CheckCircle2,
   Download,
+  Eye,
   FolderOpen,
   KeyRound,
   LogOut,
@@ -40,8 +41,8 @@ function AdminFormModal({ open, title, onClose, children }) {
 export default function AdminDashboard({ role = "super-admin", appData, onDataChange, onClose }) {
   const isSuperAdmin = role === "super-admin";
   const canDelete = isSuperAdmin;
-  const superAdminPin = appData.settings.superAdminPin || "0000";
-  const adminPin = appData.settings.adminPin || "1111";
+  const superAdminPin = String(appData.settings.superAdminPin ?? "0000");
+  const adminPin = String(appData.settings.adminPin ?? "1111");
   const defaultFeedback = appData.feedbackAndComplaints || {
     title: "Feedback and Complaints Mechanism",
     contact: { email: "", telephone: "" },
@@ -132,9 +133,26 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [newPin, setNewPin] = useState("");
   const [adminOldPin, setAdminOldPin] = useState("");
   const [adminNewPin, setAdminNewPin] = useState("");
+  const [showOldPin, setShowOldPin] = useState(false);
+  const [showNewPin, setShowNewPin] = useState(false);
+  const [showAdminOldPin, setShowAdminOldPin] = useState(false);
+  const [showAdminNewPin, setShowAdminNewPin] = useState(false);
   const [officeMetaForm, setOfficeMetaForm] = useState({
     title: defaultOfficeDirectory.title || "List of Offices",
     region: defaultOfficeDirectory.region || "",
+  });
+
+  const getHoldToShowHandlers = setter => ({
+    onMouseDown: e => {
+      e.preventDefault();
+      setter(true);
+    },
+    onMouseUp: () => setter(false),
+    onMouseLeave: () => setter(false),
+    onTouchStart: () => setter(true),
+    onTouchEnd: () => setter(false),
+    onTouchCancel: () => setter(false),
+    onBlur: () => setter(false),
   });
   const [officeForm, setOfficeForm] = useState({ office: "", address: "", contact: "", type: "office" });
   const [settingsStatus, setSettingsStatus] = useState(null);
@@ -383,15 +401,15 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const changeSuperAdminPin = async () => {
     if (!isSuperAdmin) {
-      showStatus(setSettingsStatus, "error", "✗ Only Super Admin can change the Super Admin PIN.");
+      showStatus(setSettingsStatus, "error", "✗ Only Super Admin can change the Super Admin password.");
       return;
     }
-    if (oldPin !== superAdminPin) {
-      showStatus(setSettingsStatus, "error", "✗ Current PIN is incorrect.");
+    if (String(oldPin) !== superAdminPin) {
+      showStatus(setSettingsStatus, "error", "✗ Current password is incorrect.");
       return;
     }
-    if (!/^\d{4}$/.test(newPin)) {
-      showStatus(setSettingsStatus, "error", "✗ New PIN must be exactly 4 digits.");
+    if (String(newPin || "").length < 4) {
+      showStatus(setSettingsStatus, "error", "✗ New password must be at least 4 characters.");
       return;
     }
     const nextSettings = {
@@ -407,7 +425,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       onDataChange({ ...appData, settings: nextSettings });
       setOldPin("");
       setNewPin("");
-      showStatus(setSettingsStatus, "success", "✓ Super Admin PIN changed successfully.");
+      showStatus(setSettingsStatus, "success", "✓ Super Admin password changed successfully.");
     } catch (e) {
       showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
     }
@@ -417,12 +435,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     const currentValue = isSuperAdmin ? adminOldPin : oldPin;
     const nextValue = isSuperAdmin ? adminNewPin : newPin;
 
-    if (currentValue !== adminPin) {
-      showStatus(setSettingsStatus, "error", "✗ Current Admin PIN is incorrect.");
+    if (String(currentValue) !== adminPin) {
+      showStatus(setSettingsStatus, "error", "✗ Current Admin password is incorrect.");
       return;
     }
-    if (!/^\d{4}$/.test(nextValue)) {
-      showStatus(setSettingsStatus, "error", "✗ New Admin PIN must be exactly 4 digits.");
+    if (String(nextValue || "").length < 4) {
+      showStatus(setSettingsStatus, "error", "✗ New Admin password must be at least 4 characters.");
       return;
     }
     const nextSettings = {
@@ -443,7 +461,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         setOldPin("");
         setNewPin("");
       }
-      showStatus(setSettingsStatus, "success", "✓ Admin PIN changed successfully.");
+      showStatus(setSettingsStatus, "success", "✓ Admin password changed successfully.");
     } catch (e) {
       showStatus(setSettingsStatus, "error", `✗ ${e.message}`);
     }
@@ -1061,10 +1079,20 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
 
     try {
-      const result = await callApi("/api/calendar-events/sync-holidays", {
-        method: "POST",
-        body: JSON.stringify({ year: parsedYear, replaceExisting: true }),
-      });
+      let result;
+      try {
+        result = await callApi("/api/calendar-events/sync-holidays", {
+          method: "POST",
+          body: JSON.stringify({ year: parsedYear, replaceExisting: true }),
+        });
+      } catch (primaryError) {
+        // Some deployments rewrite API prefixes differently.
+        if (!String(primaryError?.message || "").includes("404")) throw primaryError;
+        result = await callApi("/calendar-events/sync-holidays", {
+          method: "POST",
+          body: JSON.stringify({ year: parsedYear, replaceExisting: true }),
+        });
+      }
 
       const nextEvents = Array.isArray(result?.events)
         ? result.events
@@ -1457,7 +1485,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const confirmReset = () => {
-    if (!window.confirm("Reset ALL data to factory defaults? PINs reset to their database defaults.")) return;
+    if (!window.confirm("Reset ALL data to factory defaults? Admin passwords reset to their database defaults.")) return;
     callApi("/api/reset-data", { method: "POST" })
       .then(() => {
         showStatus(setBackupStatus, "success", "✓ Reset to defaults complete.");
@@ -1813,7 +1841,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         {activeTab === "settings" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">Settings</div>
-            <div className="admin-tab-sub">Configure kiosk display text, timers, and admin PIN.</div>
+            <div className="admin-tab-sub">Configure kiosk display text, timers, and admin passwords.</div>
             <StatusMsg status={settingsStatus} />
             <div className="settings-grid">
               {[
@@ -1858,33 +1886,67 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
             <div className="a-divider" />
             <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
-              {isSuperAdmin ? "Change Super Admin PIN" : "Change Admin PIN"}
+              {isSuperAdmin ? "Change Super Admin Password" : "Change Admin Password"}
             </div>
             <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 14 }}>
               {isSuperAdmin ? (
                 <>
-                  Default Super Admin PIN is <strong style={{ color: "#194fb7" }}>0000</strong>.
+                  Default Super Admin password is <strong style={{ color: "#194fb7" }}>0000</strong>. Change this immediately.
                 </>
               ) : (
                 <>
-                  Default Admin PIN is <strong style={{ color: "#194fb7" }}>1111</strong>.
+                  Default Admin password is <strong style={{ color: "#194fb7" }}>1111</strong>. Change this immediately.
                 </>
               )}
             </div>
             <div className="a-row">
               <div className="a-field">
-                <label className="a-label">Current PIN</label>
-                <input className="a-input" type="password" maxLength={4} value={oldPin} onChange={e => setOldPin(e.target.value)} />
+                <label className="a-label">Current Password</label>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    className="a-input"
+                    style={{ flex: 1 }}
+                    type={showOldPin ? "text" : "password"}
+                    value={oldPin}
+                    onChange={e => setOldPin(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    aria-label="Hold to show current password"
+                    title="Hold to show current password"
+                    {...getHoldToShowHandlers(setShowOldPin)}
+                  >
+                    <Eye size={16} className="btn-icon" />
+                  </button>
+                </div>
               </div>
               <div className="a-field">
-                <label className="a-label">New PIN (4 digits)</label>
-                <input className="a-input" type="password" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value)} />
+                <label className="a-label">New Password (minimum 4 chars)</label>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    className="a-input"
+                    style={{ flex: 1 }}
+                    type={showNewPin ? "text" : "password"}
+                    value={newPin}
+                    onChange={e => setNewPin(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    aria-label="Hold to show new password"
+                    title="Hold to show new password"
+                    {...getHoldToShowHandlers(setShowNewPin)}
+                  >
+                    <Eye size={16} className="btn-icon" />
+                  </button>
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="a-btn a-btn-primary" onClick={saveSettings}><Save size={14} className="btn-icon" /> Save Settings</button>
               <button className="a-btn a-btn-ghost" onClick={isSuperAdmin ? changeSuperAdminPin : changeAdminPin}>
-                <KeyRound size={14} className="btn-icon" /> Change {isSuperAdmin ? "Super Admin" : "Admin"} PIN
+                <KeyRound size={14} className="btn-icon" /> Change {isSuperAdmin ? "Super Admin" : "Admin"} Password
               </button>
             </div>
 
@@ -1892,32 +1954,54 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               <>
                 <div className="a-divider" />
                 <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
-                  Change Admin PIN
+                  Change Admin Password (Managed by Super Admin)
                 </div>
                 <div className="a-row">
                   <div className="a-field">
-                    <label className="a-label">Current Admin PIN</label>
-                    <input
-                      className="a-input"
-                      type="password"
-                      maxLength={4}
-                      value={adminOldPin}
-                      onChange={e => setAdminOldPin(e.target.value)}
-                    />
+                    <label className="a-label">Current Admin Password</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        className="a-input"
+                        style={{ flex: 1 }}
+                        type={showAdminOldPin ? "text" : "password"}
+                        value={adminOldPin}
+                        onChange={e => setAdminOldPin(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost"
+                        aria-label="Hold to show current admin password"
+                        title="Hold to show current admin password"
+                        {...getHoldToShowHandlers(setShowAdminOldPin)}
+                      >
+                        <Eye size={16} className="btn-icon" />
+                      </button>
+                    </div>
                   </div>
                   <div className="a-field">
-                    <label className="a-label">New Admin PIN (4 digits)</label>
-                    <input
-                      className="a-input"
-                      type="password"
-                      maxLength={4}
-                      value={adminNewPin}
-                      onChange={e => setAdminNewPin(e.target.value)}
-                    />
+                    <label className="a-label">New Admin Password (minimum 4 chars)</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        className="a-input"
+                        style={{ flex: 1 }}
+                        type={showAdminNewPin ? "text" : "password"}
+                        value={adminNewPin}
+                        onChange={e => setAdminNewPin(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost"
+                        aria-label="Hold to show new admin password"
+                        title="Hold to show new admin password"
+                        {...getHoldToShowHandlers(setShowAdminNewPin)}
+                      >
+                        <Eye size={16} className="btn-icon" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button className="a-btn a-btn-ghost" onClick={changeAdminPin}><KeyRound size={14} className="btn-icon" /> Change Admin PIN</button>
+                  <button className="a-btn a-btn-ghost" onClick={changeAdminPin}><KeyRound size={14} className="btn-icon" /> Change Admin Password</button>
                 </div>
               </>
             )}
@@ -3004,7 +3088,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         {activeTab === "backup" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">Backup & Restore</div>
-            <div className="admin-tab-sub">Export all data or restore from a previous backup. PIN is never exported.</div>
+            <div className="admin-tab-sub">Export all data or restore from a previous backup. Passwords are never exported.</div>
             <StatusMsg status={backupStatus} />
             {!isSuperAdmin && (
               <div className="a-status info">Only Super Admin can export, import, or reset kiosk data.</div>
