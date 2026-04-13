@@ -1619,6 +1619,57 @@ app.post("/api/programs", (req, res) => {
   }
 });
 
+app.put("/api/programs/reorder", (req, res) => {
+  const orderedIdsRaw = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : [];
+  const orderedIds = orderedIdsRaw.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
+
+  if (!orderedIds.length || orderedIds.length !== orderedIdsRaw.length) {
+    return res.status(400).json({ error: "A valid orderedIds list is required." });
+  }
+
+  if (new Set(orderedIds).size !== orderedIds.length) {
+    return res.status(400).json({ error: "orderedIds must not contain duplicates." });
+  }
+
+  try {
+    const existingIds = db.prepare("SELECT id FROM programs").all().map(row => Number(row.id));
+    if (existingIds.length !== orderedIds.length) {
+      return res.status(400).json({ error: "orderedIds must include all programs." });
+    }
+
+    const orderedIdSet = new Set(orderedIds);
+    if (existingIds.some(id => !orderedIdSet.has(id))) {
+      return res.status(400).json({ error: "orderedIds contains invalid program ids." });
+    }
+
+    const updateSortOrder = db.prepare("UPDATE programs SET sortOrder = ? WHERE id = ?");
+    const reorderProgramsTx = db.transaction((ids) => {
+      ids.forEach((id, index) => {
+        updateSortOrder.run(index + 1, id);
+      });
+    });
+
+    reorderProgramsTx(orderedIds);
+
+    const programs = db
+      .prepare("SELECT id, title, description, videoUrl, category, uploadedDate, sortOrder FROM programs ORDER BY sortOrder ASC, id ASC")
+      .all();
+
+    res.json(
+      programs.map(program => ({
+        ...program,
+        title: program.title || "",
+        description: program.description || "",
+        category: program.category || "",
+        uploadedDate: program.uploadedDate || "",
+      }))
+    );
+  } catch (error) {
+    console.error("Error reordering programs:", error);
+    res.status(500).json({ error: "Failed to reorder programs." });
+  }
+});
+
 app.put("/api/programs/:id", (req, res) => {
   const id = Number(req.params.id);
   const title = String(req.body?.title || "").trim();

@@ -5,6 +5,7 @@ import {
   Download,
   Eye,
   FolderOpen,
+  GripVertical,
   KeyRound,
   LogOut,
   MapPin,
@@ -201,6 +202,8 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     uploadedDate: new Date().toISOString().split("T")[0],
   });
   const [programStatus, setProgramStatus] = useState(null);
+  const [draggingProgramIdx, setDraggingProgramIdx] = useState(null);
+  const [dragOverProgramIdx, setDragOverProgramIdx] = useState(null);
   const [idleVideosStatus, setIdleVideosStatus] = useState(null);
   const [currentIdleVideos, setCurrentIdleVideos] = useState([]);
   const [keyOfficialsStatus, setKeyOfficialsStatus] = useState(null);
@@ -1592,6 +1595,73 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
   };
 
+  const reorderPrograms = async (fromIdx, toIdx) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    const nextPrograms = [...currentPrograms];
+    if (fromIdx >= nextPrograms.length || toIdx >= nextPrograms.length) return;
+
+    const [movedProgram] = nextPrograms.splice(fromIdx, 1);
+    nextPrograms.splice(toIdx, 0, movedProgram);
+
+    onDataChange({
+      ...appData,
+      programs: nextPrograms,
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+
+    const orderedIds = nextPrograms.map(item => Number(item?.id)).filter(id => Number.isInteger(id) && id > 0);
+    if (orderedIds.length !== nextPrograms.length) {
+      showStatus(setProgramStatus, "info", "ⓘ Order updated locally only. Save unsaved program entries first to persist order.");
+      return;
+    }
+
+    try {
+      const savedOrder = await callApi("/api/programs/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ orderedIds }),
+      });
+
+      onDataChange({
+        ...appData,
+        programs: Array.isArray(savedOrder) ? savedOrder : nextPrograms,
+        version: appData.version + 1,
+        lastUpdated: new Date().toISOString(),
+      });
+      showStatus(setProgramStatus, "success", "✓ Program order updated.");
+    } catch (e) {
+      showStatus(setProgramStatus, "error", "✗ Unable to save order to server. Local order changed, but persistent order was not updated.");
+    }
+  };
+
+  const handleProgramDragStart = (idx, event) => {
+    if (!canDelete) return;
+    setDraggingProgramIdx(idx);
+    setDragOverProgramIdx(idx);
+    if (event?.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(idx));
+    }
+  };
+
+  const handleProgramDragEnter = idx => {
+    if (!canDelete || draggingProgramIdx === null || draggingProgramIdx === idx) return;
+    setDragOverProgramIdx(idx);
+  };
+
+  const handleProgramDrop = async idx => {
+    if (!canDelete || draggingProgramIdx === null) return;
+    const fromIdx = draggingProgramIdx;
+    setDraggingProgramIdx(null);
+    setDragOverProgramIdx(null);
+    await reorderPrograms(fromIdx, idx);
+  };
+
+  const handleProgramDragEnd = () => {
+    setDraggingProgramIdx(null);
+    setDragOverProgramIdx(null);
+  };
+
   const checkUpdates = async () => {
     if (!updateUrl.trim()) {
       showStatus(setUpdateStatus, "error", "✗ Please enter an update URL first.");
@@ -2965,7 +3035,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         {activeTab === "programs" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">LGUSS Programs</div>
-            <div className="admin-tab-sub">Manage LGUSS-only videos and programs shown in the LGUSS section on the kiosk.</div>
+            <div className="admin-tab-sub">Manage LGUSS-only videos and programs shown in the LGUSS section on the kiosk. Drag items to rearrange display order.</div>
             <StatusMsg status={programStatus} />
 
             <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
@@ -3058,7 +3128,28 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
             <div className="svc-list">
               {(currentPrograms || []).map((prog, idx) => (
-                <div key={`prog-${prog.id || idx}`} className="svc-row">
+                <div
+                  key={`prog-${prog.id || idx}`}
+                  className={`svc-row program-row${draggingProgramIdx === idx ? " dragging" : ""}${dragOverProgramIdx === idx && draggingProgramIdx !== idx ? " drag-over" : ""}`}
+                  draggable={canDelete}
+                  onDragStart={event => handleProgramDragStart(idx, event)}
+                  onDragEnter={() => handleProgramDragEnter(idx)}
+                  onDragOver={event => {
+                    if (!canDelete) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={event => {
+                    event.preventDefault();
+                    handleProgramDrop(idx);
+                  }}
+                  onDragEnd={handleProgramDragEnd}
+                >
+                  {canDelete && (
+                    <div className="program-drag-handle" aria-hidden="true" title="Drag to reorder">
+                      <GripVertical size={16} />
+                    </div>
+                  )}
                   <div className="svc-row-info">
                     <div className="svc-row-name">{prog.title || "Untitled Program"}</div>
                     {prog.category && <div className="svc-row-meta">{prog.category}</div>}

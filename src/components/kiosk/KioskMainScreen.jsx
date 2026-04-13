@@ -149,9 +149,12 @@ export default function KioskMainScreen({
 
   function ProgramFullscreenPlayer({ playlist, startIndex = 0, onTitleChange }) {
     const containerRef = useRef(null);
+    const youtubeHostRef = useRef(null);
     const videoRef = useRef(null);
     const playerRef = useRef(null);
     const playerReadyRef = useRef(false);
+    const youtubeAutoplayRetryRef = useRef(null);
+    const shouldRestoreFullscreenRef = useRef(false);
     const [currentIndex, setCurrentIndex] = useState(startIndex);
 
     useEffect(() => {
@@ -182,7 +185,28 @@ export default function KioskMainScreen({
       }
     };
 
-    const goNext = () => {
+    const promoteFullscreenToContainer = async () => {
+      if (typeof document === "undefined") return false;
+      const fullscreenElement = document.fullscreenElement;
+      if (!fullscreenElement) return false;
+      if (fullscreenElement === containerRef.current) return true;
+      if (!containerRef.current?.requestFullscreen) return false;
+
+      try {
+        await containerRef.current.requestFullscreen();
+        return document.fullscreenElement === containerRef.current;
+      } catch {
+        return false;
+      }
+    };
+
+    const goNext = async () => {
+      const hadFullscreen = typeof document !== "undefined" && !!document.fullscreenElement;
+      if (hadFullscreen) {
+        const promoted = await promoteFullscreenToContainer();
+        shouldRestoreFullscreenRef.current = !promoted;
+      }
+
       if (isSingleVideo) {
         if (isYouTube && playerRef.current) {
           playerRef.current.seekTo(0, true);
@@ -193,11 +217,36 @@ export default function KioskMainScreen({
       setCurrentIndex(prev => (prev + 1) % playlist.length);
     };
 
+    const restoreFullscreenIfNeeded = async () => {
+      if (!shouldRestoreFullscreenRef.current) return;
+      if (typeof document === "undefined") return;
+      if (document.fullscreenElement === containerRef.current) {
+        shouldRestoreFullscreenRef.current = false;
+        return;
+      }
+      if (!containerRef.current?.requestFullscreen) {
+        shouldRestoreFullscreenRef.current = false;
+        return;
+      }
+
+      try {
+        await containerRef.current.requestFullscreen();
+      } catch {
+        // Ignore failures; fullscreen requests can be restricted by runtime policy.
+      } finally {
+        shouldRestoreFullscreenRef.current = false;
+      }
+    };
+
     // Removed automatic fullscreen request to allow users to control fullscreen via video player
     // and maintain ability to close the modal or exit via Escape key.
 
     useEffect(() => {
       return () => {
+        if (youtubeAutoplayRetryRef.current) {
+          clearTimeout(youtubeAutoplayRetryRef.current);
+          youtubeAutoplayRetryRef.current = null;
+        }
         if (playerRef.current) {
           playerRef.current.destroy();
           playerRef.current = null;
@@ -211,17 +260,42 @@ export default function KioskMainScreen({
 
       let cancelled = false;
 
+      const scheduleAutoplayRetry = () => {
+        if (youtubeAutoplayRetryRef.current) {
+          clearTimeout(youtubeAutoplayRetryRef.current);
+        }
+
+        youtubeAutoplayRetryRef.current = setTimeout(() => {
+          if (!playerRef.current || !playerReadyRef.current) return;
+          try {
+            const state = playerRef.current.getPlayerState?.();
+            if (state !== 1 && state !== 3) {
+              // Browsers may block unmuted autoplay for iframe media. Fallback to muted autoplay to keep playlist looping.
+              playerRef.current.mute?.();
+              playerRef.current.playVideo?.();
+            }
+          } catch {
+            // Ignore player state read errors from transient iframe lifecycle timing.
+          }
+        }, 1200);
+      };
+
       loadYouTubeIframeAPI().then(YT => {
-        if (cancelled || !YT || !containerRef.current) return;
+        if (cancelled || !YT || !youtubeHostRef.current) return;
         if (playerRef.current) {
           const videoId = getYouTubeVideoId(currentProgram?.videoUrl);
           if (videoId && playerReadyRef.current) {
             playerRef.current.loadVideoById(videoId);
+            playerRef.current.playVideo?.();
+            scheduleAutoplayRetry();
+            setTimeout(() => {
+              restoreFullscreenIfNeeded();
+            }, 80);
           }
           return;
         }
 
-        playerRef.current = new YT.Player(containerRef.current, {
+        playerRef.current = new YT.Player(youtubeHostRef.current, {
           videoId: getYouTubeVideoId(currentProgram?.videoUrl),
           playerVars: {
             autoplay: 1,
@@ -236,6 +310,10 @@ export default function KioskMainScreen({
             onReady: event => {
               playerReadyRef.current = true;
               event.target.playVideo();
+              scheduleAutoplayRetry();
+              setTimeout(() => {
+                restoreFullscreenIfNeeded();
+              }, 80);
             },
             onStateChange: event => {
               if (event.data === YT.PlayerState.ENDED) {
@@ -248,6 +326,10 @@ export default function KioskMainScreen({
 
       return () => {
         cancelled = true;
+        if (youtubeAutoplayRetryRef.current) {
+          clearTimeout(youtubeAutoplayRetryRef.current);
+          youtubeAutoplayRetryRef.current = null;
+        }
       };
     }, [currentIndex, currentProgram, isYouTube, playlist.length]);
 
@@ -268,7 +350,7 @@ export default function KioskMainScreen({
           </div>
           <div className="programs-video-container" ref={containerRef}>
             {isYouTube ? (
-              <div style={{ width: "100%", height: 620 }} />
+              <div ref={youtubeHostRef} style={{ width: "100%", height: 620 }} />
             ) : (
               <video
                 ref={videoRef}
@@ -277,6 +359,11 @@ export default function KioskMainScreen({
                 height="620"
                 controls
                 autoPlay
+                onLoadedMetadata={() => {
+                  setTimeout(() => {
+                    restoreFullscreenIfNeeded();
+                  }, 80);
+                }}
                 onEnded={goNext}
                 style={{ borderRadius: 8, backgroundColor: "#000" }}
               />
