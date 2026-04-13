@@ -23,6 +23,14 @@ import {
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
+const getAnnouncementDisplayMs = (text) => {
+  const messageLength = String(text || "").trim().length;
+  const minMs = 9000;
+  const maxMs = 46000;
+  const msPerCharacter = 85;
+  return Math.min(maxMs, Math.max(minMs, minMs + (messageLength * msPerCharacter)));
+};
+
 /* ─── Icons ─── */
 const ICONS = {
   calendar:      <CalendarDays      size={32} strokeWidth={2} />,
@@ -127,16 +135,18 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
 
   useEffect(() => {
     if (tickerItems.length <= 1) return undefined;
-    const id = setInterval(() => {
+    const currentAnnouncement = tickerItems[announcementIndex] || "";
+    const id = setTimeout(() => {
       setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, 7000);
-    return () => clearInterval(id);
-  }, [tickerItems.length]);
+    }, getAnnouncementDisplayMs(currentAnnouncement));
+    return () => clearTimeout(id);
+  }, [tickerItems, announcementIndex]);
 
   const announcement =
     tickerItems[announcementIndex] ||
     String(settings.announcement || "").trim() ||
     DEFAULT_ANNOUNCEMENT;
+  const announcementDisplayMs = getAnnouncementDisplayMs(announcement);
 
   useEffect(() => {
     const tick = () => {
@@ -233,6 +243,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
               <div
                 key={`menu-announcement-${announcementIndex}`}
                 className="mnav-ticker-inner"
+                style={{ animationDuration: `${announcementDisplayMs}ms` }}
               >
                 <span>{announcement}</span>
                 <span className="mnav-ticker-sep">◆</span>

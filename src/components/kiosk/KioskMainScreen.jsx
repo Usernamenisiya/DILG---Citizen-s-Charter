@@ -449,7 +449,6 @@ export default function KioskMainScreen({
         <div className="announcement-files-list">
           {files.map((file, idx) => {
             const kind = getAnnouncementAttachmentKind(file);
-            const canPreviewInline = kind === "image" || kind === "pdf" || kind === "text";
 
             const handleClick = () => {
               if (kind === "image") {
@@ -1093,7 +1092,6 @@ export default function KioskMainScreen({
                     const title = prog.title || `Video ${idx + 1}`;
                     const description = String(prog.description || "").trim();
                     const category = String(prog.category || "").trim();
-                    const { isYouTube, playableUrl } = getProgramVideoInfo(prog.videoUrl);
 
                     return (
                       <button

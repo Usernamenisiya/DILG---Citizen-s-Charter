@@ -307,10 +307,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
 
     // Calculate the position relative to the container
-    const elementRect = element.getBoundingClientRect();
-    const containerRect = scrollContainer.getBoundingClientRect();
     const elementTop = element.offsetTop;
-    const containerScrollTop = scrollContainer.scrollTop;
     
     // Scroll to center the element in the visible container
     const targetScroll = elementTop - (scrollContainer.clientHeight / 2) + (element.clientHeight / 2);
@@ -1629,7 +1626,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         lastUpdated: new Date().toISOString(),
       });
       showStatus(setProgramStatus, "success", "✓ Program order updated.");
-    } catch (e) {
+    } catch {
       showStatus(setProgramStatus, "error", "✗ Unable to save order to server. Local order changed, but persistent order was not updated.");
     }
   };

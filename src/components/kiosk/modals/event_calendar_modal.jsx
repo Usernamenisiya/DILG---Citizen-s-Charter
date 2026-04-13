@@ -58,11 +58,6 @@ function normalizeAttendees(attendees) {
     .filter(Boolean);
 }
 
-function formatAttendeesSummary(attendees) {
-  const parts = normalizeAttendees(attendees);
-  return parts.join(" • ");
-}
-
 function renderAttendeesDetail(attendees) {
   const parts = normalizeAttendees(attendees);
   return parts.length ? (

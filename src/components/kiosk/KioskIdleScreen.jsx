@@ -10,6 +10,14 @@ import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
+const getAnnouncementDisplayMs = (text) => {
+  const messageLength = String(text || "").trim().length;
+  const minMs = 9000;
+  const maxMs = 46000;
+  const msPerCharacter = 85;
+  return Math.min(maxMs, Math.max(minMs, minMs + (messageLength * msPerCharacter)));
+};
+
 export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain, onLgrrcLogoClick }) {
   const tickerItems = useMemo(() => {
     const fromList = (announcements || [])
@@ -41,13 +49,15 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
 
   useEffect(() => {
     if (tickerItems.length <= 1) return undefined;
-    const id = setInterval(() => {
+    const currentAnnouncement = tickerItems[announcementIndex] || "";
+    const id = setTimeout(() => {
       setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, 10000);
-    return () => clearInterval(id);
-  }, [tickerItems]);
+    }, getAnnouncementDisplayMs(currentAnnouncement));
+    return () => clearTimeout(id);
+  }, [tickerItems, announcementIndex]);
 
   const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
+  const announcementDisplayMs = getAnnouncementDisplayMs(announcement);
   const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
   
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(0);
@@ -114,6 +124,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
             <div
               key={`idle-announcement-${announcementIndex}`}
               className="idle-ticker-inner"
+              style={{ animationDuration: `${announcementDisplayMs}ms` }}
             >
               <span>{announcement}</span>
               <span className="idle-ticker-sep">◆</span>
