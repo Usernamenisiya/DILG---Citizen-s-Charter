@@ -312,6 +312,49 @@ function deleteUploadedIdleVideoFile(videoUrl) {
   }
 }
 
+function extractAttachmentUrls(value) {
+  const raw = Array.isArray(value) ? value : safeJsonParse(value, []);
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item) => {
+      if (typeof item === "string") return String(item).trim();
+      return String(item?.url || "").trim();
+    })
+    .filter(Boolean);
+}
+
+function collectAllAnnouncementAttachmentUrls() {
+  const rows = db.prepare("SELECT attachments FROM announcements").all();
+  const usedUrls = new Set();
+  rows.forEach((row) => {
+    extractAttachmentUrls(row?.attachments).forEach((url) => usedUrls.add(url));
+  });
+  return usedUrls;
+}
+
+function deleteAnnouncementAttachmentFileIfUnused(fileUrl) {
+  const value = String(fileUrl || "").trim();
+  if (!value.startsWith("/uploads/announcements/")) return;
+
+  const usedUrls = collectAllAnnouncementAttachmentUrls();
+  if (usedUrls.has(value)) return;
+
+  const fileName = path.basename(value);
+  if (!fileName) return;
+
+  const absolutePath = path.join(announcementsUploadDir, fileName);
+  if (!absolutePath.startsWith(announcementsUploadDir)) return;
+
+  try {
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  } catch (error) {
+    console.error("Error deleting announcement attachment file:", error);
+  }
+}
+
 function seedTableFromSnapshot(tableName) {
   const rows = seedSnapshot?.[tableName];
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -1919,12 +1962,28 @@ app.put("/api/announcements/:id", (req, res) => {
   }
 
   try {
+    const existing = db
+      .prepare("SELECT attachments FROM announcements WHERE id = ?")
+      .get(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Announcement not found." });
+    }
+
+    const previousAttachmentUrls = new Set(extractAttachmentUrls(existing.attachments));
+    const nextAttachmentUrls = new Set(extractAttachmentUrls(attachments));
     const info = db
       .prepare("UPDATE announcements SET title = ?, message = ?, details = ?, postedBy = ?, announcementWhere = ?, postedOn = ?, effectiveUntil = ?, involvedParties = ?, tickerDisplay = ?, attachments = ? WHERE id = ?")
       .run(title, message, details, postedBy, where, postedOn, effectiveUntil, involvedParties, tickerDisplay, JSON.stringify(attachments), id);
     if (info.changes === 0) {
       return res.status(404).json({ error: "Announcement not found." });
     }
+
+    previousAttachmentUrls.forEach((url) => {
+      if (!nextAttachmentUrls.has(url)) {
+        deleteAnnouncementAttachmentFileIfUnused(url);
+      }
+    });
+
     broadcastAnnouncementsChanged();
     res.json({ message: "Announcement updated successfully." });
   } catch (error) {
@@ -1936,10 +1995,21 @@ app.put("/api/announcements/:id", (req, res) => {
 app.delete("/api/announcements/:id", (req, res) => {
   const id = Number(req.params.id);
   try {
+    const existing = db
+      .prepare("SELECT attachments FROM announcements WHERE id = ?")
+      .get(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Announcement not found." });
+    }
+
+    const attachmentUrls = extractAttachmentUrls(existing.attachments);
     const info = db.prepare("DELETE FROM announcements WHERE id = ?").run(id);
     if (info.changes === 0) {
       return res.status(404).json({ error: "Announcement not found." });
     }
+
+    attachmentUrls.forEach((url) => deleteAnnouncementAttachmentFileIfUnused(url));
+
     broadcastAnnouncementsChanged();
     res.json({ message: "Announcement deleted successfully." });
   } catch (error) {
