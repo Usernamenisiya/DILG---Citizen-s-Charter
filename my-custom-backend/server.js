@@ -36,9 +36,11 @@ const uploadsRoot = path.join(__dirname, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
 const idleVideosUploadDir = path.join(uploadsRoot, "idle-videos");
+const keyOfficialsUploadDir = path.join(uploadsRoot, "key-officials");
 fs.mkdirSync(announcementsUploadDir, { recursive: true });
 fs.mkdirSync(programsUploadDir, { recursive: true });
 fs.mkdirSync(idleVideosUploadDir, { recursive: true });
+fs.mkdirSync(keyOfficialsUploadDir, { recursive: true });
 app.use("/uploads", express.static(uploadsRoot));
 
 const announcementUploadStorage = multer.diskStorage({
@@ -71,6 +73,16 @@ const idleVideoUploadStorage = multer.diskStorage({
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
   },
 });
+const keyOfficialsUploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, keyOfficialsUploadDir),
+  filename: (_req, file, cb) => {
+    const safeBase = String(path.parse(file.originalname || "key-officials").name)
+      .replace(/[^a-zA-Z0-9-_]/g, "_")
+      .slice(0, 60) || "key-officials";
+    const safeExt = String(path.extname(file.originalname || "") || "").replace(/[^.a-zA-Z0-9]/g, "") || ".jpg";
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeBase}${safeExt}`);
+  },
+});
 
 const uploadAnnouncementFiles = multer({ storage: announcementUploadStorage });
 const uploadProgramVideos = multer({
@@ -95,6 +107,18 @@ const uploadIdleVideos = multer({
       return;
     }
     cb(new Error("Only video files are allowed."));
+  },
+});
+const uploadKeyOfficialsImage = multer({
+  storage: keyOfficialsUploadStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const mimeType = String(file.mimetype || "").toLowerCase();
+    if (mimeType.startsWith("image/")) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Only image files are allowed."));
   },
 });
 
@@ -213,6 +237,43 @@ function normalizeIdleVideoUrlList(value) {
   return [text];
 }
 
+function resolveDefaultKeyOfficialsImageUrl() {
+  const targetFileName = "organizational-chart.jpg";
+  const targetPath = path.join(keyOfficialsUploadDir, targetFileName);
+
+  try {
+    if (!fs.existsSync(targetPath)) {
+      const sourcePath = path.join(__dirname, "..", "src", "assets", "images", "Organizational Chart.jpg");
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, targetPath);
+      }
+    }
+  } catch (error) {
+    console.error("Key officials image migration error:", error);
+  }
+
+  return fs.existsSync(targetPath) ? `/uploads/key-officials/${targetFileName}` : "";
+}
+
+function deleteOldKeyOfficialsUpload(uploadUrl) {
+  const value = String(uploadUrl || "").trim();
+  if (!value.startsWith("/uploads/key-officials/")) return;
+
+  const fileName = path.basename(value);
+  if (!fileName || fileName === "organizational-chart.jpg") return;
+
+  const absolutePath = path.join(keyOfficialsUploadDir, fileName);
+  if (!absolutePath.startsWith(keyOfficialsUploadDir)) return;
+
+  try {
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  } catch (error) {
+    console.error("Error cleaning up old key officials image:", error);
+  }
+}
+
 function seedTableFromSnapshot(tableName) {
   const rows = seedSnapshot?.[tableName];
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -285,6 +346,15 @@ function restoreDatabaseFromSnapshot() {
     db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
     db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
   })();
+}
+
+function upsertDefaultKeyOfficialsRow() {
+  const defaultImageUrl = resolveDefaultKeyOfficialsImageUrl();
+  ensureSingleRow(
+    "key_officials",
+    "INSERT INTO key_officials (id, title, imageUrl, updatedAt) VALUES (1, ?, ?, ?)",
+    ["Key Officials", defaultImageUrl, new Date().toISOString()]
+  );
 }
 
 function importKioskDataToDatabase(payload, options = {}) {
@@ -497,6 +567,21 @@ function importKioskDataToDatabase(payload, options = {}) {
           index + 1
         );
       });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "keyOfficials") && data.keyOfficials && typeof data.keyOfficials === "object") {
+      const nextTitle = String(data.keyOfficials.title || "Key Officials").trim() || "Key Officials";
+      const nextImageUrl = String(data.keyOfficials.imageUrl || "").trim();
+      if (nextImageUrl) {
+        db.prepare(`
+          INSERT INTO key_officials (id, title, imageUrl, updatedAt)
+          VALUES (1, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            imageUrl = excluded.imageUrl,
+            updatedAt = excluded.updatedAt
+        `).run(nextTitle, nextImageUrl, new Date().toISOString());
+      }
     }
 
     ensureSelectedIdleVideo();
@@ -807,6 +892,13 @@ db.exec(`
     attendees TEXT,
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS key_officials (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    title TEXT NOT NULL,
+    imageUrl TEXT NOT NULL,
+    updatedAt TEXT
+  );
 `);
 
 // Migration: Add type column if it doesn't exist
@@ -943,139 +1035,9 @@ seedTableFromSnapshot("feedback_content");
 seedTableFromSnapshot("organizational_profile");
 seedTableFromSnapshot("office_directory_meta");
 seedTableFromSnapshot("office_directory_entries");
-seedTableFromSnapshot("announcements");
 seedTableFromSnapshot("programs");
 seedTableFromSnapshot("idle_videos");
-seedTableFromSnapshot("calendar_events");
-
-ensureSingleRow(
-  "feedback_content",
-  "INSERT INTO feedback_content (id, title, email, telephone, sections) VALUES (1, ?, ?, ?, ?)",
-  [
-    "Feedback and Complaints Mechanism",
-    "paccrecords@gmail.com",
-    "(02) 8925-0343",
-    JSON.stringify([
-      {
-        heading: "How to send feedback?",
-        paragraphs: [
-          "Accomplish the Client Satisfaction Survey form after receiving your requested service from our action officers.",
-          "For other concerns, you may send an e-mail at paccrecords@gmail.com or call the telephone number (02) 8925-0343.",
-        ],
-      },
-      {
-        heading: "How feedback is processed?",
-        paragraphs: [
-          "Feedback on our services are immediately attended to by the concerned action officer.",
-          "Other feedback and concerns are endorsed by the Public Assistance and Complaints Center (PACC) to the appropriate office. Upon receiving the reply from the concerned office/personnel, the client will be informed via e-mail/phone call/letter.",
-        ],
-      },
-      {
-        heading: "How to file complaint?",
-        paragraphs: [
-          "For walk-ins at the Central Office: Accomplish the Client's Complaint Form available at the DILG Helpdesk at the Ground Floor, DILG-NAPOLCOM Center, EDSA cor. Quezon Avenue, West Triangle, Quezon City (Central Office).",
-          "For walk-ins at the Regional, Provincial, and Field Offices: Approach the Desk Officer of the Day and accomplish the Client's Complaint Form.",
-          "Online: Send an e-mail to paccrecords@gmail.com and provide the required details below.",
-        ],
-        items: [
-          "Name (optional) and contact number of the complainant",
-          "Narrative/details of the complaint",
-          "Name of the office/LGU and/or official being complained",
-        ],
-      },
-      {
-        heading: "How complaints are processed?",
-        paragraphs: [
-          "All complaints received will be reviewed by the PACC or the Desk Officer of the Day and endorsed to the concerned office for a reply or an appropriate action.",
-          "The PACC or the DILG Regional Office will provide feedback to the complainant via e-mail/letter.",
-        ],
-      },
-    ]),
-  ]
-);
-
-ensureSingleRow(
-  "organizational_profile",
-  "INSERT INTO organizational_profile (id, title, mandate, mission, vision, pledgeIntro, pledgeServiceCommitment, pbest, pledgeOfficeHours, pledgeClosing) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  [
-    "Mandate, Mission, Vision and Service Pledge",
-    "To promote peace and order, ensure public safety and further strengthen local government capability aimed towards the effective delivery of basic services to the citizenry.",
-    "The Department shall ensure peace and order, public safety and security, uphold excellence in local governance and enable resilient and inclusive communities.",
-    "A highly trusted Department and Partner in nurturing local governments and sustaining peaceful, safe, progressive, resilient, and inclusive communities towards a comfortable and secure life for Filipinos by 2040.",
-    "We in the DILG, imbued with the core values of Integrity, Commitment, Teamwork and Responsiveness, commit to formulate sound policies on strengthening local government capacities, performing oversight function over LGUs, and providing rewards and incentives.",
-    "We pledge to provide effective technical and administrative services through professionalized corps of civil servants to promote excellence in local governance specifically in the areas of PBEST:",
-    JSON.stringify([
-      "Peace and Order",
-      "Business-Friendliness and Competitiveness",
-      "Environment-Protection and Climate Change Adaptation",
-      "Socially Protective and Safe Communities",
-      "Transparency and Accountability",
-    ]),
-    "We commit to attend to clients who are within the premises of the office prior to the end of official working hours and during lunch break.",
-    "We commit to consistently demonstrate a \"Matino, Mahusay at Maaasahang Kagawaran para sa Mapagkalinga at Maunlad na Pamahalaang Lokal\".",
-  ]
-);
-
-ensureSingleRow(
-  "office_directory_meta",
-  "INSERT INTO office_directory_meta (id, title, region) VALUES (1, ?, ?)",
-  ["List of Offices", "Region XIII (Caraga Region)"]
-);
-
-const officeCount = db.prepare("SELECT COUNT(*) AS count FROM office_directory_entries").get();
-if (officeCount.count === 0) {
-  const insertOffice = db.prepare(
-    "INSERT INTO office_directory_entries (office, address, contact, sortOrder) VALUES (?, ?, ?, ?)"
-  );
-
-  const seedOffices = [
-    ["Office of the Regional Director", "Brgy. Libertad, Butuan City, Agusan del Norte", "8876-3454 loc. 8301"],
-    ["Finance and Administrative Division", "", "8876-3454 loc. 8303"],
-    ["Local Government Capability Development Division", "", "8876-3454 loc. 8304"],
-    ["Local Government Monitoring and Evaluation Division", "", "8876-3454 loc. 8305"],
-    ["Agusan del Norte", "Matimco Bldg., J.C. Aquino Ave., Libertad, Butuan City, Agusan del Norte", "8876-3454 loc. 8311"],
-    ["Agusan del Sur", "Municipality of Prosperidad Hall, National Highway, Prosperidad City, Agusan del Sur", "8876-3454 loc. 8321"],
-    ["Dinagat Islands", "Brgy. Cuarinta, San Jose, Dinagat Islands", "8876-3454 loc. 8331"],
-    ["Surigao del Norte", "City Hall Compound, Surigao City, Surigao del Norte", "8876-3454 loc. 8341"],
-    ["Surigao del Sur", "Lianga, Surigao del Sur", "8876-3454 loc. 8351"],
-  ];
-
-  seedOffices.forEach((entry, index) => {
-    insertOffice.run(entry[0], entry[1], entry[2], index + 1);
-  });
-}
-
-const announcementCount = db.prepare("SELECT COUNT(*) AS count FROM announcements").get();
-if (announcementCount.count === 0) {
-  db.prepare("INSERT INTO announcements (message, sortOrder) VALUES (?, 1)").run(
-    "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service."
-  );
-}
-
-try {
-  const sampleVideoExists = db
-    .prepare("SELECT COUNT(*) AS count FROM programs WHERE videoUrl = ?")
-    .get("/samplevideo.mp4");
-
-  if (!sampleVideoExists.count) {
-    const currentMax = db
-      .prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM programs")
-      .get();
-
-    db.prepare(
-      "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(
-      "LGUSS Sample Video",
-      "Sample local LGUSS video playback asset.",
-      "/samplevideo.mp4",
-      "Programs",
-      new Date().toISOString().split("T")[0],
-      Number(currentMax.maxSort || 0) + 1
-    );
-  }
-} catch (error) {
-  console.error("Programs migration error:", error);
-}
+upsertDefaultKeyOfficialsRow();
 
 try {
   const insertedIdle = syncMediaTableFromUploads({
@@ -1753,6 +1715,51 @@ app.get("/api/announcements", (req, res) => {
   }
 });
 
+app.get("/api/key-officials", (_req, res) => {
+  try {
+    const row = db
+      .prepare("SELECT title, imageUrl, updatedAt FROM key_officials WHERE id = 1")
+      .get();
+    const fallbackUrl = resolveDefaultKeyOfficialsImageUrl();
+    res.json({
+      title: String(row?.title || "Key Officials"),
+      imageUrl: String(row?.imageUrl || fallbackUrl || ""),
+      updatedAt: String(row?.updatedAt || ""),
+    });
+  } catch (error) {
+    console.error("Error fetching key officials data:", error);
+    res.status(500).json({ error: "Failed to fetch key officials data." });
+  }
+});
+
+app.put("/api/key-officials", (req, res) => {
+  try {
+    const title = String(req.body?.title || "Key Officials").trim() || "Key Officials";
+    const imageUrl = String(req.body?.imageUrl || "").trim();
+    if (!imageUrl) {
+      return res.status(400).json({ error: "Image URL is required." });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO key_officials (id, title, imageUrl, updatedAt)
+      VALUES (1, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        imageUrl = excluded.imageUrl,
+        updatedAt = excluded.updatedAt
+    `).run(title, imageUrl, now);
+
+    const updated = db
+      .prepare("SELECT title, imageUrl, updatedAt FROM key_officials WHERE id = 1")
+      .get();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating key officials data:", error);
+    res.status(500).json({ error: "Failed to update key officials data." });
+  }
+});
+
 app.post("/api/announcements", (req, res) => {
   const title = String(req.body?.title || "").trim();
   const message = String(req.body?.message || "").trim();
@@ -2057,6 +2064,8 @@ app.post("/calendar-events/sync-holidays", syncPhilippineHolidaysHandler);
 app.post("/api/reset-data", (req, res) => {
   try {
     restoreDatabaseFromSnapshot();
+    db.prepare("DELETE FROM key_officials").run();
+    upsertDefaultKeyOfficialsRow();
     broadcastAnnouncementsChanged();
     res.json({ message: "Factory defaults restored successfully." });
   } catch (error) {
@@ -2104,6 +2113,50 @@ app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8),
     console.error("Error uploading announcement files:", error);
     res.status(500).json({ error: "Failed to upload files." });
   }
+});
+
+app.post("/api/key-officials/upload", (req, res) => {
+  uploadKeyOfficialsImage.single("image")(req, res, (error) => {
+    if (error) {
+      const message = String(error?.message || "Upload failed.");
+      return res.status(400).json({ error: message });
+    }
+
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No image uploaded." });
+      }
+
+      const previous = db
+        .prepare("SELECT title, imageUrl FROM key_officials WHERE id = 1")
+        .get();
+      const currentTitle = String(previous?.title || "Key Officials").trim() || "Key Officials";
+      const previousImageUrl = String(previous?.imageUrl || "").trim();
+      const imageUrl = `/uploads/key-officials/${file.filename}`;
+      const now = new Date().toISOString();
+      db.prepare(`
+        INSERT INTO key_officials (id, title, imageUrl, updatedAt)
+        VALUES (1, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          imageUrl = excluded.imageUrl,
+          updatedAt = excluded.updatedAt
+          `).run(currentTitle, imageUrl, now);
+
+      if (previousImageUrl && previousImageUrl !== imageUrl) {
+        deleteOldKeyOfficialsUpload(previousImageUrl);
+      }
+
+      res.status(201).json({
+        title: currentTitle,
+        imageUrl,
+        updatedAt: now,
+      });
+    } catch (uploadError) {
+      console.error("Error uploading key officials image:", uploadError);
+      res.status(500).json({ error: "Failed to upload key officials image." });
+    }
+  });
 });
 
 app.post("/api/programs/upload", (req, res) => {

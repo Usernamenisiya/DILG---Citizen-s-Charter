@@ -68,7 +68,7 @@ export default function IssuanceFormEditor({ issuance, onSave, onBack }) {
 
       <div className="a-row">
         <div className="a-field">
-          <label className="a-label">Circular Number</label>
+          <label className="a-label">Circular Number <span style={{color: 'red'}}>*</span></label>
           <input className="a-input" value={form.circularNo} onChange={e => set("circularNo", e.target.value)} />
         </div>
         <div className="a-field">

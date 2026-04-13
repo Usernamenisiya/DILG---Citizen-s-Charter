@@ -93,7 +93,7 @@ function NavItem({ id, label, color, onClick }) {
   );
 }
 
-export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef, onUserActivity }) {
+export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef, onUserActivity, onLgrrcLogoClick }) {
   const [clockTime, setClockTime]             = useState("");
   const [clockDate, setClockDate]             = useState("");
   const [drawerOpen, setDrawerOpen]           = useState(false);
@@ -309,7 +309,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
         <div className="idle-footer-left">
           <div className="idle-footer-logos">
             <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
-            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" onClick={onLgrrcLogoClick} />
           </div>
           <div className="idle-footer-text">
             <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>

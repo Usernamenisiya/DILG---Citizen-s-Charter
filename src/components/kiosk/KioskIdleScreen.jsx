@@ -10,7 +10,7 @@ import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
-export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain }) {
+export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain, onLgrrcLogoClick }) {
   const tickerItems = useMemo(() => {
     const fromList = (announcements || [])
       .map(a => {
@@ -43,7 +43,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
     if (tickerItems.length <= 1) return undefined;
     const id = setInterval(() => {
       setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, 7000);
+    }, 10000);
     return () => clearInterval(id);
   }, [tickerItems]);
 
@@ -146,7 +146,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         <div className="idle-footer-left">
           <div className="idle-footer-logos">
             <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
-            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" onClick={onLgrrcLogoClick} />
           </div>
           <div className="idle-footer-text">
             <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>

@@ -32,6 +32,7 @@ function createEmptyAppData() {
     officeDirectory: null,
     organizationalProfile: null,
     policiesAndIssuances: null,
+    keyOfficials: null,
     calendarEvents: [],
     announcements: [],
     programs: [],
@@ -203,12 +204,14 @@ export default function KioskApp() {
   const [clockTime, setClockTime]           = useState("");
   const [clockDate, setClockDate]           = useState("");
   const [logoTaps, setLogoTaps]             = useState(0);
+  const [lgrrcLogoTaps, setLgrrcLogoTaps]   = useState(0);
 
   // "profile" | "offices" | "feedback" | "issuances" | null
   const [modalSection, setModalSection] = useState(null);
   const [mainScreenModalOpen, setMainScreenModalOpen] = useState(false);
 
   const logoTimerRef  = useRef(null);
+  const lgrrcLogoTimerRef = useRef(null);
   const inactTimerRef = useRef(null);
   const inactBarRef   = useRef(null);
 
@@ -261,6 +264,11 @@ export default function KioskApp() {
       .then(r => { if (!r.ok) throw new Error(`offices ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, officeDirectory: data })));
 
+
+    fetch("/api/key-officials")
+      .then(r => { if (!r.ok) throw new Error(`key-officials ${r.status}`); return r.json(); })
+      .then(data => setAppData(p => ({ ...p, keyOfficials: data })))
+      .catch(err => console.error("Key officials API load failed:", err));
     fetch("/api/profile")
       .then(r => { if (!r.ok) throw new Error(`profile ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, organizationalProfile: data })));
@@ -465,6 +473,32 @@ export default function KioskApp() {
     }
   };
 
+  const handleLgrrcLogoClick = () => {
+    const next = lgrrcLogoTaps + 1;
+    setLgrrcLogoTaps(next);
+    clearTimeout(lgrrcLogoTimerRef.current);
+
+    if (next >= 4) {
+      setLgrrcLogoTaps(0);
+
+      try {
+        window.open("", "_self");
+        window.close();
+      } catch {
+        // Ignore close errors. App environments handle this action.
+      }
+    } else {
+      lgrrcLogoTimerRef.current = setTimeout(() => setLgrrcLogoTaps(0), 4000);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(logoTimerRef.current);
+      clearTimeout(lgrrcLogoTimerRef.current);
+    };
+  }, []);
+
   /* ══════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════ */
@@ -478,6 +512,7 @@ export default function KioskApp() {
           settings={s}
           announcements={announcements}
           programs={programs}
+          onLgrrcLogoClick={handleLgrrcLogoClick}
           onShowMain={showMain}
         />
       )}
@@ -489,6 +524,7 @@ export default function KioskApp() {
           settings={s}
           announcements={announcements}
           calendarEvents={appData.calendarEvents}
+          onLgrrcLogoClick={handleLgrrcLogoClick}
           onSelectSection={selectSection}
           inactBarRef={inactBarRef}
           onUserActivity={handleUserAction}
@@ -518,6 +554,7 @@ export default function KioskApp() {
           clockTime={clockTime}
           clockDate={clockDate}
           onLogoClick={handleLogoClick}
+          onLgrrcLogoClick={handleLgrrcLogoClick}
           inactBarRef={inactBarRef}
           activeSection={activeSection}
           onReturnToMenu={returnToMenu}

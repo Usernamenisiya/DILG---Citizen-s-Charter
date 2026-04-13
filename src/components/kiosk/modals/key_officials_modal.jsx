@@ -1,8 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import orgChart from "../../../assets/images/Organizational Chart.jpg";
 
 export default function KeyOfficialsModal({ onClose, onInteract }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [title, setTitle] = useState("Key Officials");
+  const [imageUrl, setImageUrl] = useState(orgChart);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/key-officials")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load key officials data.");
+        return res.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        const nextTitle = String(data?.title || "").trim();
+        const nextImageUrl = String(data?.imageUrl || "").trim();
+        if (nextTitle) setTitle(nextTitle);
+        if (nextImageUrl) setImageUrl(nextImageUrl);
+      })
+      .catch(() => {
+        // Keep static fallback image when API is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div
@@ -33,7 +58,7 @@ export default function KeyOfficialsModal({ onClose, onInteract }) {
         {/* ── Header ── */}
         <div className="kmodal-header" style={{ flexShrink: 0 }}>
           <div className="kmodal-header-stripe" />
-          <div className="kmodal-title">Key Officials</div>
+          <div className="kmodal-title">{title}</div>
 
           {/* Fullscreen toggle button */}
           <button
@@ -100,8 +125,9 @@ export default function KeyOfficialsModal({ onClose, onInteract }) {
           }}
         >
           <img
-            src={orgChart}
+            src={imageUrl}
             alt="Organizational Chart"
+            onError={() => setImageUrl(orgChart)}
             style={{
               maxWidth: "100%",
               width: isFullscreen ? "100%" : undefined,

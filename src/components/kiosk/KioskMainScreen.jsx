@@ -29,6 +29,7 @@ export default function KioskMainScreen({
   clockTime,
   clockDate,
   onLogoClick,
+  onLgrrcLogoClick,
   inactBarRef,
   activeSection,
   onReturnToMenu,
@@ -227,6 +228,8 @@ export default function KioskMainScreen({
             playsinline: 1,
             rel: 0,
             modestbranding: 1,
+            loop: isSingleVideo ? 1 : 0,
+            playlist: isSingleVideo ? getYouTubeVideoId(currentProgram?.videoUrl) : undefined,
             origin: window.location.origin,
           },
           events: {
@@ -274,7 +277,6 @@ export default function KioskMainScreen({
                 height="620"
                 controls
                 autoPlay
-                loop={isSingleVideo}
                 onEnded={goNext}
                 style={{ borderRadius: 8, backgroundColor: "#000" }}
               />
@@ -521,6 +523,7 @@ export default function KioskMainScreen({
                     onChange={e => onServiceSearchChange?.(e.target.value)}
                     placeholder={`Search ${isExternalSection ? "external" : "internal"} services...`}
                     aria-label="Search services"
+                    autoFocus
                   />
                   {!!serviceSearch && (
                     <button
@@ -1268,7 +1271,7 @@ export default function KioskMainScreen({
           <div className="idle-footer-left">
             <div className="idle-footer-logos">
               <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
-              <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" />
+              <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" onClick={onLgrrcLogoClick} />
             </div>
             <div className="idle-footer-text">
               <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>

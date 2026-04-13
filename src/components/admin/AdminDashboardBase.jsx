@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   Download,
   Eye,
   FolderOpen,
@@ -34,6 +35,96 @@ function AdminFormModal({ open, title, onClose, children }) {
         </div>
         <div className="admin-form-modal-body">{children}</div>
       </div>
+    </div>
+  );
+}
+
+function ConfirmDialog({ open, title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "danger", onConfirm, onCancel }) {
+  if (!open) return null;
+
+  return (
+    <div className="admin-confirm-overlay" onClick={onCancel}>
+      <div className="admin-confirm-modal" onClick={e => e.stopPropagation()}>
+        <div className="admin-confirm-title">{title || "Please Confirm"}</div>
+        <div className="admin-confirm-message">{message}</div>
+        <div className="admin-confirm-actions">
+          <button type="button" className="a-btn a-btn-ghost" onClick={onCancel}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={`a-btn ${tone === "danger" ? "a-btn-danger" : "a-btn-primary"}`}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalSelect({ value, onChange, options = [], className = "a-select" }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = event => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleEscape = event => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  const selectedOption = options.find(option => option.value === value) || options[0] || { value: "", label: "Select" };
+
+  return (
+    <div className={`a-dropdown ${open ? "open" : ""}`} ref={rootRef}>
+      <button
+        type="button"
+        className={`${className} a-dropdown-trigger`}
+        onClick={() => setOpen(current => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span>{selectedOption.label}</span>
+        <ChevronDown size={14} className="a-dropdown-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="a-dropdown-menu" role="listbox">
+          {options.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === selectedOption.value}
+              className={`a-dropdown-option ${option.value === selectedOption.value ? "active" : ""}`}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -112,6 +203,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [programStatus, setProgramStatus] = useState(null);
   const [idleVideosStatus, setIdleVideosStatus] = useState(null);
   const [currentIdleVideos, setCurrentIdleVideos] = useState([]);
+  const [keyOfficialsStatus, setKeyOfficialsStatus] = useState(null);
+  const [keyOfficialsForm, setKeyOfficialsForm] = useState({
+    title: "Key Officials",
+    imageUrl: "",
+    updatedAt: "",
+  });
   const [settingsForm, setSettingsForm] = useState({ ...appData.settings });
   const [feedbackForm, setFeedbackForm] = useState(JSON.parse(JSON.stringify(defaultFeedback)));
   const [issuanceMetaForm, setIssuanceMetaForm] = useState({
@@ -179,6 +276,14 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     tickerDisplay: "message",
     attachmentsText: "",
   });
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmLabel: "Confirm",
+    tone: "danger",
+    resolve: null,
+  });
 
   // Store refs for feedback section heading inputs
   const feedbackSectionRefs = useRef({});
@@ -239,6 +344,32 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     setTimeout(() => setter(null), 5000);
   };
 
+  const requestConfirm = (message, options = {}) => {
+    return new Promise((resolve) => {
+      setConfirmState({
+        open: true,
+        title: options.title || "Please Confirm",
+        message,
+        confirmLabel: options.confirmLabel || "Confirm",
+        tone: options.tone || "danger",
+        resolve,
+      });
+    });
+  };
+
+  const closeConfirm = (result) => {
+    const resolver = confirmState.resolve;
+    setConfirmState({
+      open: false,
+      title: "",
+      message: "",
+      confirmLabel: "Confirm",
+      tone: "danger",
+      resolve: null,
+    });
+    if (typeof resolver === "function") resolver(!!result);
+  };
+
   const normalizeIdleVideoUrls = (settingsObj = {}) => {
     const fromList = Array.isArray(settingsObj.idleVideoUrls)
       ? settingsObj.idleVideoUrls.map(url => String(url || "").trim()).filter(Boolean)
@@ -275,8 +406,99 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
   };
 
+  const loadKeyOfficials = async () => {
+    try {
+      const data = await callApi("/api/key-officials");
+      setKeyOfficialsForm({
+        title: String(data?.title || "Key Officials"),
+        imageUrl: String(data?.imageUrl || ""),
+        updatedAt: String(data?.updatedAt || ""),
+      });
+    } catch (e) {
+      showStatus(setKeyOfficialsStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const saveKeyOfficials = async () => {
+    const title = String(keyOfficialsForm.title || "Key Officials").trim() || "Key Officials";
+    const imageUrl = String(keyOfficialsForm.imageUrl || "").trim();
+    if (!imageUrl) {
+      showStatus(setKeyOfficialsStatus, "error", "✗ Please upload a key officials image first.");
+      return;
+    }
+
+    try {
+      const updated = await callApi("/api/key-officials", {
+        method: "PUT",
+        body: JSON.stringify({ title, imageUrl }),
+      });
+      setKeyOfficialsForm({
+        title: String(updated?.title || title),
+        imageUrl: String(updated?.imageUrl || imageUrl),
+        updatedAt: String(updated?.updatedAt || new Date().toISOString()),
+      });
+      onDataChange({
+        ...appData,
+        keyOfficials: {
+          title: String(updated?.title || title),
+          imageUrl: String(updated?.imageUrl || imageUrl),
+          updatedAt: String(updated?.updatedAt || new Date().toISOString()),
+        },
+      });
+      showStatus(setKeyOfficialsStatus, "success", "✓ Key Officials details saved.");
+    } catch (e) {
+      showStatus(setKeyOfficialsStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
+  const uploadKeyOfficialsImage = async files => {
+    const file = Array.from(files || [])[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const response = await fetch("/api/key-officials/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let message = `Upload failed (${response.status})`;
+        try {
+          const data = await response.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // Ignore invalid upload error payload.
+        }
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const nextImageUrl = String(data?.imageUrl || keyOfficialsForm.imageUrl || "");
+      const nextUpdatedAt = String(data?.updatedAt || new Date().toISOString());
+      setKeyOfficialsForm(prev => ({
+        ...prev,
+        imageUrl: nextImageUrl,
+        updatedAt: nextUpdatedAt,
+      }));
+      onDataChange({
+        ...appData,
+        keyOfficials: {
+          title: String(keyOfficialsForm.title || "Key Officials").trim() || "Key Officials",
+          imageUrl: nextImageUrl,
+          updatedAt: nextUpdatedAt,
+        },
+      });
+      showStatus(setKeyOfficialsStatus, "success", "✓ Key Officials image uploaded.");
+    } catch (e) {
+      showStatus(setKeyOfficialsStatus, "error", `✗ ${e.message}`);
+    }
+  };
+
   useEffect(() => {
     loadIdleVideos();
+    loadKeyOfficials();
   }, []);
 
   const parseTimeRange = raw => {
@@ -718,7 +940,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
     const entry = (currentOfficeDirectory.entries || [])[idx];
     if (!entry) return;
-    if (!window.confirm(`Delete "${entry.office || "office entry"}"?`)) return;
+    if (!await requestConfirm(`Delete "${entry.office || "office entry"}"?`, { title: "Delete Office Entry", confirmLabel: "Delete", tone: "danger" })) return;
 
     try {
       if (entry.id) {
@@ -943,7 +1165,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
     const entry = currentAnnouncements[idx];
     if (!entry) return;
-    if (!window.confirm("Delete this announcement?")) return;
+    if (!await requestConfirm("Delete this announcement?", { title: "Delete Announcement", confirmLabel: "Delete", tone: "danger" })) return;
 
     try {
       if (entry.id) {
@@ -1054,7 +1276,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
     const entry = currentCalendarEvents[idx];
     if (!entry) return;
-    if (!window.confirm(`Delete event "${entry.title || entry.id}"?`)) return;
+    if (!await requestConfirm(`Delete event "${entry.title || entry.id}"?`, { title: "Delete Calendar Event", confirmLabel: "Delete", tone: "danger" })) return;
 
     try {
       await callApi(`/api/calendar-events/${entry.id}`, { method: "DELETE" });
@@ -1308,7 +1530,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       showStatus(setIdleVideosStatus, "error", "✗ Admin role cannot delete items.");
       return;
     }
-    if (!window.confirm(`Delete idle video "${title || "Untitled Video"}"?`)) return;
+    if (!await requestConfirm(`Delete idle video "${title || "Untitled Video"}"?`, { title: "Delete Idle Video", confirmLabel: "Delete", tone: "danger" })) return;
 
     try {
       await callApi(`/api/idle-videos/${id}`, { method: "DELETE" });
@@ -1350,7 +1572,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     }
     const prog = currentPrograms[idx];
     if (!prog) return;
-    if (!window.confirm(`Delete program "${prog.title || prog.id}"?`)) return;
+    if (!await requestConfirm(`Delete program "${prog.title || prog.id}"?`, { title: "Delete Program", confirmLabel: "Delete", tone: "danger" })) return;
 
     try {
       if (prog.id) {
@@ -1485,15 +1707,18 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const confirmReset = () => {
-    if (!window.confirm("Reset ALL data to factory defaults? Admin passwords reset to their database defaults.")) return;
-    callApi("/api/reset-data", { method: "POST" })
-      .then(() => {
-        showStatus(setBackupStatus, "success", "✓ Reset to defaults complete.");
-        window.location.reload();
-      })
-      .catch((e) => {
-        showStatus(setBackupStatus, "error", `✗ ${e.message}`);
-      });
+    requestConfirm("Reset ALL data to factory defaults? Admin passwords reset to their database defaults.", { title: "Factory Reset", confirmLabel: "Reset", tone: "danger" }).then((confirmed) => {
+      if (!confirmed) return;
+      callApi("/api/reset-data", { method: "POST" })
+        .then(() => {
+          showStatus(setBackupStatus, "success", "✓ Reset to defaults complete.");
+          window.location.reload();
+        })
+        .catch((e) => {
+          showStatus(setBackupStatus, "error", `✗ ${e.message}`);
+        });
+    });
+    return;
   };
 
   const navItems = [
@@ -1504,6 +1729,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     { id: "feedback", label: "Feedback" },
     { id: "announcements", label: "Announcements" },
     { id: "calendar-events", label: "Calendar Events" },
+    { id: "key-officials", label: "Key Officials" },
     { id: "idle-videos", label: "Idle Screen Video" },
     { id: "programs", label: "LGUSS Programs" },
     { id: "offices", label: "Offices" },
@@ -1596,7 +1822,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                         <button
                           className="a-btn a-btn-danger a-btn-sm"
                           onClick={async () => {
-                            if (!window.confirm(`Delete "${s.label}"?`)) return;
+                            if (!await requestConfirm(`Delete "${s.label}"?`, { title: "Delete Service", confirmLabel: "Delete", tone: "danger" })) return;
                             const response = await fetch(`/api/services/internal/${s.id}`, { method: "DELETE" });
                             if (!response.ok) {
                               const errText = await response.text();
@@ -1662,7 +1888,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                         <button
                           className="a-btn a-btn-danger a-btn-sm"
                           onClick={async () => {
-                            if (!window.confirm(`Delete "${s.label}"?`)) return;
+                            if (!await requestConfirm(`Delete "${s.label}"?`, { title: "Delete External Service", confirmLabel: "Delete", tone: "danger" })) return;
                             const response = await fetch(`/api/services/external/${s.id}`, { method: "DELETE" });
                             if (!response.ok) {
                               const errText = await response.text();
@@ -1765,7 +1991,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                         <button
                           className="a-btn a-btn-danger a-btn-sm"
                           onClick={async () => {
-                            if (!window.confirm(`Delete "${item.circularNo || item.title || "issuance"}"?`)) return;
+                            if (!await requestConfirm(`Delete "${item.circularNo || item.title || "issuance"}"?`, { title: "Delete Issuance", confirmLabel: "Delete", tone: "danger" })) return;
                             try {
                               await callApi(`/api/issuances/${item.id}`, { method: "DELETE" });
                               const current = appData.policiesAndIssuances || defaultIssuances;
@@ -2157,12 +2383,13 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   />
                 </div>
                 <div className="a-field">
-                  <label className="a-label">Announcement Message</label>
+                  <label className="a-label">Announcement Message <span style={{color: 'red'}}>*</span></label>
                   <textarea
                     className="a-textarea"
                     value={announcementForm.message}
                     onChange={e => setAnnouncementForm(f => ({ ...f, message: e.target.value }))}
                     placeholder="Type announcement text..."
+                    autoFocus
                   />
                 </div>
                 <div className="a-field">
@@ -2273,14 +2500,15 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 </div>
                 <div className="a-field">
                   <label className="a-label">Running Ticker Display Source</label>
-                  <select
-                    className="a-input"
+                  <ModalSelect
+                    className="a-select"
                     value={announcementForm.tickerDisplay}
-                    onChange={e => setAnnouncementForm(f => ({ ...f, tickerDisplay: e.target.value === "title" ? "title" : "message" }))}
-                  >
-                    <option value="message">Description / Message</option>
-                    <option value="title">Title</option>
-                  </select>
+                    onChange={nextValue => setAnnouncementForm(f => ({ ...f, tickerDisplay: nextValue === "title" ? "title" : "message" }))}
+                    options={[
+                      { value: "message", label: "Description / Message" },
+                      { value: "title", label: "Title" },
+                    ]}
+                  />
                 </div>
                 <div className="a-field">
                   <label className="a-label">Attached Files (one per line)</label>
@@ -2398,7 +2626,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               >
                 <div className="a-row">
                   <div className="a-field">
-                    <label className="a-label">Event Title</label>
+                    <label className="a-label">Event Title <span style={{color: 'red'}}>*</span></label>
                     <input
                       className="a-input"
                       value={calendarForm.title}
@@ -2406,7 +2634,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     />
                   </div>
                   <div className="a-field">
-                    <label className="a-label">Event Date</label>
+                    <label className="a-label">Event Date <span style={{color: 'red'}}>*</span></label>
                     <input
                       type="date"
                       className="a-input"
@@ -2468,27 +2696,29 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">AM / PM</label>
-                    <select
-                      className="a-input"
+                    <ModalSelect
+                      className="a-select"
                       value={calendarForm.timePeriod}
-                      onChange={e => setCalendarForm(f => ({ ...f, timePeriod: e.target.value }))}
-                    >
-                      <option value="am">AM</option>
-                      <option value="pm">PM</option>
-                    </select>
+                      onChange={nextValue => setCalendarForm(f => ({ ...f, timePeriod: nextValue }))}
+                      options={[
+                        { value: "am", label: "AM" },
+                        { value: "pm", label: "PM" },
+                      ]}
+                    />
                   </div>
                   <div className="a-field">
                     <label className="a-label">Category</label>
-                    <select
-                      className="a-input"
+                    <ModalSelect
+                      className="a-select"
                       value={calendarForm.category}
-                      onChange={e => setCalendarForm(f => ({ ...f, category: e.target.value }))}
-                    >
-                      <option value="internal">Internal</option>
-                      <option value="external">External</option>
-                      <option value="deadline">Deadlines</option>
-                      <option value="holiday">Holiday</option>
-                    </select>
+                      onChange={nextValue => setCalendarForm(f => ({ ...f, category: nextValue }))}
+                      options={[
+                        { value: "internal", label: "Internal" },
+                        { value: "external", label: "External" },
+                        { value: "deadline", label: "Deadlines" },
+                        { value: "holiday", label: "Holiday" },
+                      ]}
+                    />
                   </div>
                 </div>
                 <div className="a-row">
@@ -2663,7 +2893,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               >
               <div>
                 <div className="a-field">
-                  <label className="a-label">Office Name</label>
+                  <label className="a-label">Office Name <span style={{color: 'red'}}>*</span></label>
                   <input
                     className="a-input"
                     value={officeForm.office}
@@ -2672,14 +2902,15 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 </div>
                 <div className="a-field">
                   <label className="a-label">Type</label>
-                  <select
+                  <ModalSelect
                     className="a-select"
                     value={officeForm.type || "office"}
-                    onChange={e => setOfficeForm(f => ({ ...f, type: e.target.value }))}
-                  >
-                    <option value="office">Office</option>
-                    <option value="province">Province</option>
-                  </select>
+                    onChange={nextValue => setOfficeForm(f => ({ ...f, type: nextValue }))}
+                    options={[
+                      { value: "office", label: "Office" },
+                      { value: "province", label: "Province" },
+                    ]}
+                  />
                 </div>
                 <div className="a-field">
                   <label className="a-label">Address</label>
@@ -2931,6 +3162,67 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
           </div>
         )}
 
+        {activeTab === "key-officials" && (
+          <div className="admin-sub-content">
+            <div className="admin-tab-title">Key Officials</div>
+            <div className="admin-tab-sub">Manage the image and title shown in the Key Officials kiosk modal.</div>
+            <StatusMsg status={keyOfficialsStatus} />
+
+            <div className="a-field">
+              <label className="a-label">Section Title</label>
+              <input
+                className="a-input"
+                value={keyOfficialsForm.title}
+                onChange={e => setKeyOfficialsForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Key Officials"
+              />
+            </div>
+
+            <div className="a-field settings-wide">
+              <label className="a-file-input" style={{ display: "inline-flex", marginBottom: 8 }}>
+                <Upload size={14} className="btn-icon" /> Upload Key Officials Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    uploadKeyOfficialsImage(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <small style={{ marginTop: 4, color: "#666" }}>
+                Upload a single image (organizational chart or officials layout).
+              </small>
+            </div>
+
+            <div className="a-field settings-wide" style={{ marginTop: 16 }}>
+              <label className="a-label">Preview</label>
+              {keyOfficialsForm.imageUrl ? (
+                <div style={{ border: "1px solid #dbe3f4", borderRadius: 10, padding: 12, background: "#f8fbff" }}>
+                  <img
+                    src={keyOfficialsForm.imageUrl}
+                    alt="Key Officials"
+                    style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 8, background: "#fff" }}
+                  />
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#5e6f94" }}>
+                    Source: {keyOfficialsForm.imageUrl}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "20px", textAlign: "center", color: "#888", border: "1px dashed #c9d4ee", borderRadius: 10 }}>
+                  No key officials image uploaded yet.
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button className="a-btn a-btn-primary" onClick={saveKeyOfficials}>
+                <Save size={14} className="btn-icon" /> Save Key Officials
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeTab === "profile" && (
           <div className="admin-sub-content">
             <div className="admin-tab-title">Mandate, Mission, Vision and Service Pledge</div>
@@ -3144,6 +3436,16 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        tone={confirmState.tone}
+        onConfirm={() => closeConfirm(true)}
+        onCancel={() => closeConfirm(false)}
+      />
     </div>
   );
 }
