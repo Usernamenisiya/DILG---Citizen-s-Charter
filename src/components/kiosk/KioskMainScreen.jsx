@@ -185,26 +185,10 @@ export default function KioskMainScreen({
       }
     };
 
-    const promoteFullscreenToContainer = async () => {
-      if (typeof document === "undefined") return false;
-      const fullscreenElement = document.fullscreenElement;
-      if (!fullscreenElement) return false;
-      if (fullscreenElement === containerRef.current) return true;
-      if (!containerRef.current?.requestFullscreen) return false;
-
-      try {
-        await containerRef.current.requestFullscreen();
-        return document.fullscreenElement === containerRef.current;
-      } catch {
-        return false;
-      }
-    };
-
-    const goNext = async () => {
-      const hadFullscreen = typeof document !== "undefined" && !!document.fullscreenElement;
-      if (hadFullscreen) {
-        const promoted = await promoteFullscreenToContainer();
-        shouldRestoreFullscreenRef.current = !promoted;
+    const goNext = () => {
+      const wasFullscreen = typeof document !== "undefined" && !!document.fullscreenElement;
+      if (wasFullscreen) {
+        shouldRestoreFullscreenRef.current = true;
       }
 
       if (isSingleVideo) {
@@ -220,7 +204,7 @@ export default function KioskMainScreen({
     const restoreFullscreenIfNeeded = async () => {
       if (!shouldRestoreFullscreenRef.current) return;
       if (typeof document === "undefined") return;
-      if (document.fullscreenElement === containerRef.current) {
+      if (document.fullscreenElement) {
         shouldRestoreFullscreenRef.current = false;
         return;
       }

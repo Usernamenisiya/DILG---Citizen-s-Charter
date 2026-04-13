@@ -57,8 +57,8 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
   };
 
   useEffect(() => {
-    if (selectedRole) setPasswordError("");
-  }, [passwordInput, selectedRole]);
+    setPasswordError("");
+  }, [selectedRole]);
 
   return (
     <div className="admin-overlay">
@@ -90,7 +90,10 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
                     style={{ flex: 1 }}
                     type={showPassword ? "text" : "password"}
                     value={passwordInput}
-                    onChange={e => setPasswordInput(e.target.value)}
+                    onChange={e => {
+                      if (passwordError) setPasswordError("");
+                      setPasswordInput(e.target.value);
+                    }}
                     placeholder="Password"
                     autoFocus
                   />
