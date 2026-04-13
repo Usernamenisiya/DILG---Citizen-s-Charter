@@ -14,7 +14,7 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-const port = 3000;
+const port = 3333;
 
 app.use(cors());
 app.use(express.json());
@@ -271,6 +271,44 @@ function deleteOldKeyOfficialsUpload(uploadUrl) {
     }
   } catch (error) {
     console.error("Error cleaning up old key officials image:", error);
+  }
+}
+
+function deleteUploadedProgramFile(videoUrl) {
+  const value = String(videoUrl || "").trim();
+  if (!value.startsWith("/uploads/programs/")) return;
+
+  const fileName = path.basename(value);
+  if (!fileName) return;
+
+  const absolutePath = path.join(programsUploadDir, fileName);
+  if (!absolutePath.startsWith(programsUploadDir)) return;
+
+  try {
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  } catch (error) {
+    console.error("Error deleting uploaded program file:", error);
+  }
+}
+
+function deleteUploadedIdleVideoFile(videoUrl) {
+  const value = String(videoUrl || "").trim();
+  if (!value.startsWith("/uploads/idle-videos/")) return;
+
+  const fileName = path.basename(value);
+  if (!fileName) return;
+
+  const absolutePath = path.join(idleVideosUploadDir, fileName);
+  if (!absolutePath.startsWith(idleVideosUploadDir)) return;
+
+  try {
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  } catch (error) {
+    console.error("Error deleting uploaded idle video file:", error);
   }
 }
 
@@ -1699,10 +1737,17 @@ app.put("/api/programs/:id", (req, res) => {
 app.delete("/api/programs/:id", (req, res) => {
   const id = Number(req.params.id);
   try {
+    const existing = db.prepare("SELECT videoUrl FROM programs WHERE id = ?").get(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Program not found." });
+    }
+
     const info = db.prepare("DELETE FROM programs WHERE id = ?").run(id);
     if (info.changes === 0) {
       return res.status(404).json({ error: "Program not found." });
     }
+
+    deleteUploadedProgramFile(existing.videoUrl);
     res.json({ message: "Program deleted successfully." });
   } catch (error) {
     console.error("Error deleting program:", error);
@@ -1750,6 +1795,8 @@ app.delete("/api/idle-videos/:id", (req, res) => {
       nextSelection[0] || "",
       JSON.stringify(nextSelection)
     );
+
+    deleteUploadedIdleVideoFile(existing.videoUrl);
     res.json({ message: "Idle video deleted successfully." });
   } catch (error) {
     console.error("Error deleting idle video:", error);
