@@ -316,7 +316,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const callApi = async (url, options = {}) => {
     const response = await fetch(url, {
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      headers: { "Content-Type": "application/json", "X-Admin-Role": role, ...(options.headers || {}) },
       ...options,
     });
 
@@ -1890,12 +1890,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                           className="a-btn a-btn-danger a-btn-sm"
                           onClick={async () => {
                             if (!await requestConfirm(`Delete "${s.label}"?`, { title: "Delete Service", confirmLabel: "Delete", tone: "danger" })) return;
-                            const response = await fetch(`/api/services/internal/${s.id}`, { method: "DELETE" });
-                            if (!response.ok) {
-                              const errText = await response.text();
-                              alert("Failed to delete service from database: " + (errText || response.status));
-                              return;
-                            }
+                            await callApi(`/api/services/internal/${s.id}`, { method: "DELETE" });
                             const services = appData.services.filter((_, i) => i !== idx);
                             onDataChange({ ...appData, services, version: appData.version + 1, lastUpdated: new Date().toISOString() });
                           }}
@@ -1956,12 +1951,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                           className="a-btn a-btn-danger a-btn-sm"
                           onClick={async () => {
                             if (!await requestConfirm(`Delete "${s.label}"?`, { title: "Delete External Service", confirmLabel: "Delete", tone: "danger" })) return;
-                            const response = await fetch(`/api/services/external/${s.id}`, { method: "DELETE" });
-                            if (!response.ok) {
-                              const errText = await response.text();
-                              alert("Failed to delete service from database: " + (errText || response.status));
-                              return;
-                            }
+                            await callApi(`/api/services/external/${s.id}`, { method: "DELETE" });
                             const externalServices = currentExternalServices.filter((_, i) => i !== idx);
                             onDataChange({
                               ...appData,

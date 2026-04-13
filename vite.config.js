@@ -7,15 +7,15 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3333',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3333',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3333',
         changeOrigin: true,
         ws: true,
       },

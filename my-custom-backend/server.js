@@ -19,6 +19,17 @@ const port = 3333;
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  if (req.method === "DELETE" && req.path.startsWith("/api/")) {
+    const adminRole = String(req.get("X-Admin-Role") || "").trim().toLowerCase();
+    if (adminRole !== "super-admin") {
+      return res.status(403).json({ error: "Only Super Admin can delete items." });
+    }
+  }
+
+  next();
+});
+
 // Trigger a generic realtime refresh after successful write requests.
 app.use((req, res, next) => {
   const shouldTrack = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
