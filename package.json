@@ -5,15 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "node my-custom-backend/server.js",
+    "backend:install": "npm --prefix my-custom-backend install",
+    "electron:dev": "wait-on tcp:5173 && cross-env ELECTRON_DEV_SERVER_URL=http://localhost:5173 electron .",
+    "dev:desktop": "concurrently \"npm run dev\" \"npm run electron:dev\"",
     "build": "vite build",
+    "dist": "npm run backend:install && npm run build && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "lucide-react": "^0.523.0",
+    "multer": "^1.4.5-lts.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
@@ -21,14 +30,45 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.5"
   },
   "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
-  "main": "eslint.config.js",
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.dilg.caraga.kiosk",
+    "productName": "DILG Citizens Charter Kiosk",
+    "directories": {
+      "output": "release-rebuild"
+    },
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
+    "files": [
+      "electron/**/*",
+      "my-custom-backend/server.js",
+      "my-custom-backend/package.json",
+      "my-custom-backend/seed-data.json",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis"
+      ]
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Usernamenisiya/DILG---Citizen-s-Charter.git"

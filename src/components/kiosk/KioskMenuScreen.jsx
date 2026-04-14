@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
@@ -23,13 +23,7 @@ import {
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
-const getAnnouncementDisplayMs = (text) => {
-  const messageLength = String(text || "").trim().length;
-  const minMs = 9000;
-  const maxMs = 46000;
-  const msPerCharacter = 85;
-  return Math.min(maxMs, Math.max(minMs, minMs + (messageLength * msPerCharacter)));
-};
+const MIN_SINGLE_BANNER_REPEAT = 4;
 
 /* ─── Icons ─── */
 const ICONS = {
@@ -126,27 +120,13 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
       return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
     })
     .filter(Boolean);
-
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
-
-  useEffect(() => {
-    setAnnouncementIndex(0);
-  }, [tickerItems.length]);
-
-  useEffect(() => {
-    if (tickerItems.length <= 1) return undefined;
-    const currentAnnouncement = tickerItems[announcementIndex] || "";
-    const id = setTimeout(() => {
-      setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, getAnnouncementDisplayMs(currentAnnouncement));
-    return () => clearTimeout(id);
-  }, [tickerItems, announcementIndex]);
-
-  const announcement =
-    tickerItems[announcementIndex] ||
-    String(settings.announcement || "").trim() ||
-    DEFAULT_ANNOUNCEMENT;
-  const announcementDisplayMs = getAnnouncementDisplayMs(announcement);
+  const fallbackAnnouncement = String(settings.announcement || "").trim() || DEFAULT_ANNOUNCEMENT;
+  const sourceItems = tickerItems.length ? tickerItems : [fallbackAnnouncement];
+  const isSingleAnnouncement = sourceItems.length === 1;
+  const bannerItems = isSingleAnnouncement
+    ? Array.from({ length: MIN_SINGLE_BANNER_REPEAT }, () => sourceItems[0])
+    : [...sourceItems, ...sourceItems];
+  const bannerAnimationDuration = isSingleAnnouncement ? "34s" : "25s";
 
   useEffect(() => {
     const tick = () => {
@@ -241,14 +221,16 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
             </div>
             <div className="mnav-ticker-track">
               <div
-                key={`menu-announcement-${announcementIndex}`}
                 className="mnav-ticker-inner"
-                style={{ animationDuration: `${announcementDisplayMs}ms` }}
+                aria-label="Announcements banner"
+                style={{ animationDuration: bannerAnimationDuration }}
               >
-                <span>{announcement}</span>
-                <span className="mnav-ticker-sep">◆</span>
-                <span>{announcement}</span>
-                <span className="mnav-ticker-sep">◆</span>
+                {bannerItems.map((item, index) => (
+                  <Fragment key={`${item}-${index}`}>
+                    <span>{item}</span>
+                    <span className="mnav-ticker-sep">◆</span>
+                  </Fragment>
+                ))}
               </div>
             </div>
           </div>

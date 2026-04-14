@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import orgChart from "../../../assets/images/Organizational Chart.jpg";
+import { apiUrl } from "../../../utils/runtime";
 
 export default function KeyOfficialsModal({ onClose, onInteract }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -8,7 +9,7 @@ export default function KeyOfficialsModal({ onClose, onInteract }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/key-officials")
+    fetch(apiUrl("/api/key-officials"))
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load key officials data.");
         return res.json();

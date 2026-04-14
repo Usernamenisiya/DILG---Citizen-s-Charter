@@ -14,7 +14,17 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-const port = 3333;
+const port = Number(process.env.KIOSK_PORT) || 3333;
+const host = String(process.env.KIOSK_HOST || "0.0.0.0").trim() || "0.0.0.0";
+
+const dataRoot = process.env.KIOSK_DATA_DIR
+  ? path.resolve(process.env.KIOSK_DATA_DIR)
+  : __dirname;
+const webRoot = process.env.KIOSK_WEB_DIR
+  ? path.resolve(process.env.KIOSK_WEB_DIR)
+  : "";
+
+fs.mkdirSync(dataRoot, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
@@ -43,7 +53,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const uploadsRoot = path.join(__dirname, "uploads");
+const uploadsRoot = path.join(dataRoot, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
 const idleVideosUploadDir = path.join(uploadsRoot, "idle-videos");
@@ -133,9 +143,13 @@ const uploadKeyOfficialsImage = multer({
   },
 });
 
-const dbPath = path.join(__dirname, "app-data.db");
+const dbPath = path.join(dataRoot, "app-data.db");
 const db = new Database(dbPath);
 const seedSnapshotPath = path.join(__dirname, "seed-data.json");
+
+if (webRoot && fs.existsSync(path.join(webRoot, "index.html"))) {
+  app.use(express.static(webRoot));
+}
 
 let seedSnapshot = null;
 try {
@@ -2274,8 +2288,8 @@ app.post("/api/data/import", (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Server is running on http://${host}:${port}`);
 });
 
 app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8), (req, res) => {
@@ -2408,3 +2422,13 @@ app.post("/api/idle-videos/upload", (req, res) => {
     }
   });
 });
+
+function serveFrontendIndex(_req, res) {
+  res.sendFile(path.join(webRoot, "index.html"));
+}
+
+if (webRoot) {
+  app.use(express.static(webRoot));
+  app.get("/", serveFrontendIndex);
+  app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, serveFrontendIndex);
+}

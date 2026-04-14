@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg"; 
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
@@ -6,17 +6,12 @@ import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
 import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
+import { resolveMediaUrl } from "../../utils/runtime";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
 
-const getAnnouncementDisplayMs = (text) => {
-  const messageLength = String(text || "").trim().length;
-  const minMs = 9000;
-  const maxMs = 46000;
-  const msPerCharacter = 85;
-  return Math.min(maxMs, Math.max(minMs, minMs + (messageLength * msPerCharacter)));
-};
+const MIN_SINGLE_BANNER_REPEAT = 4;
 
 export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain, onLgrrcLogoClick }) {
   const tickerItems = useMemo(() => {
@@ -41,42 +36,30 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
     return [fallback || DEFAULT_ANNOUNCEMENT];
   }, [announcements, settings.announcement]);
 
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
-
-  useEffect(() => {
-    setAnnouncementIndex(0);
-  }, [tickerItems.length]);
-
-  useEffect(() => {
-    if (tickerItems.length <= 1) return undefined;
-    const currentAnnouncement = tickerItems[announcementIndex] || "";
-    const id = setTimeout(() => {
-      setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, getAnnouncementDisplayMs(currentAnnouncement));
-    return () => clearTimeout(id);
-  }, [tickerItems, announcementIndex]);
-
-  const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
-  const announcementDisplayMs = getAnnouncementDisplayMs(announcement);
+  const fallbackAnnouncement = String(settings.announcement || "").trim() || DEFAULT_ANNOUNCEMENT;
+  const sourceItems = tickerItems.length ? tickerItems : [fallbackAnnouncement];
+  const isSingleAnnouncement = sourceItems.length === 1;
+  const bannerItems = isSingleAnnouncement
+    ? Array.from({ length: MIN_SINGLE_BANNER_REPEAT }, () => sourceItems[0])
+    : [...sourceItems, ...sourceItems];
+  const bannerAnimationDuration = isSingleAnnouncement ? "34s" : "25s";
   const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
   
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(0);
 
   const selectedIdleVideoUrls = useMemo(() => {
     const fromList = Array.isArray(settings.idleVideoUrls)
-      ? settings.idleVideoUrls.map(url => String(url || "").trim()).filter(Boolean)
+      ? settings.idleVideoUrls.map(url => resolveMediaUrl(url)).filter(Boolean)
       : [];
     if (fromList.length) return fromList;
-    const single = String(settings.idleVideoUrl || "").trim();
+    const single = resolveMediaUrl(settings.idleVideoUrl);
     return single ? [single] : [];
   }, [settings.idleVideoUrls, settings.idleVideoUrl]);
 
   const videoPlaylist = selectedIdleVideoUrls.map(videoUrl => ({ videoUrl }));
   
   const currentPlayingVideo = videoPlaylist[currentPlayingIndex];
-  const idleVideoSource = currentPlayingVideo?.videoUrl
-    ? String(currentPlayingVideo.videoUrl || "").trim()
-    : fallbackIdleVideo;
+  const idleVideoSource = currentPlayingVideo?.videoUrl || fallbackIdleVideo;
 
   useEffect(() => {
     setCurrentPlayingIndex(0);
@@ -84,6 +67,12 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
 
   const handleVideoEnded = () => {
     if (videoPlaylist.length > 0) {
+      setCurrentPlayingIndex(prev => (prev + 1) % videoPlaylist.length);
+    }
+  };
+
+  const handleVideoError = () => {
+    if (videoPlaylist.length > 1) {
       setCurrentPlayingIndex(prev => (prev + 1) % videoPlaylist.length);
     }
   };
@@ -101,6 +90,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
         muted
         playsInline
         onEnded={handleVideoEnded}
+        onError={handleVideoError}
       />
 
       {/* Dark overlay so content stays readable */}
@@ -122,16 +112,16 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
           </div>
           <div className="idle-ticker-track">
             <div
-              key={`idle-announcement-${announcementIndex}`}
               className="idle-ticker-inner"
-              style={{ animationDuration: `${announcementDisplayMs}ms` }}
+              aria-label="Announcements banner"
+              style={{ animationDuration: bannerAnimationDuration }}
             >
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
+              {bannerItems.map((item, index) => (
+                <Fragment key={`${item}-${index}`}>
+                  <span>{item}</span>
+                  <span className="idle-ticker-sep">◆</span>
+                </Fragment>
+              ))}
             </div>
           </div>
         </div>
