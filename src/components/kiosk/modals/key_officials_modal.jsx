@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import orgChart from "../../../assets/images/Organizational Chart.jpg";
+import { resolveMediaUrl } from "../../../utils/resolveMediaUrl";
 
 export default function KeyOfficialsModal({ onClose, onInteract }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -18,7 +19,7 @@ export default function KeyOfficialsModal({ onClose, onInteract }) {
         const nextTitle = String(data?.title || "").trim();
         const nextImageUrl = String(data?.imageUrl || "").trim();
         if (nextTitle) setTitle(nextTitle);
-        if (nextImageUrl) setImageUrl(nextImageUrl);
+        if (nextImageUrl) setImageUrl(resolveMediaUrl(nextImageUrl));
       })
       .catch(() => {
         // Keep static fallback image when API is unavailable.

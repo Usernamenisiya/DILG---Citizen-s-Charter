@@ -25,3 +25,31 @@ If you are developing a production application, we recommend using TypeScript wi
 The backend stores kiosk content in `my-custom-backend/app-data.db`, which is not committed to git. Fresh clones are auto-seeded from `my-custom-backend/seed-data.json` on backend startup when the local tables are empty.
 
 If you update the database on your machine and want to refresh the committed snapshot, run `node scripts/export-db-snapshot.cjs` from the repo root, then commit the updated `my-custom-backend/seed-data.json`.
+
+## Electron Desktop App
+
+This project is now configured to run as an Electron desktop app.
+
+### Run in desktop dev mode
+
+```bash
+npm run electron:dev
+```
+
+This starts Vite and Electron together.
+
+### Build Windows installer/EXE
+
+```bash
+npm run electron:build
+```
+
+Output files are generated in `release/`.
+
+### App icon for EXE
+
+Put your icon at:
+
+`build/icon.ico`
+
+The Electron builder config uses this file for Windows app/installer branding.

@@ -5,6 +5,7 @@ import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
 import KioskMenuScreen from "./components/kiosk/KioskMenuScreen";
 import KioskMainScreen from "./components/kiosk/KioskMainScreen";
+import { getElectronApiBaseUrl } from "./utils/resolveMediaUrl";
 
 // ── Extracted modal components ──
 import ProfileModal from "./components/kiosk/modals/mmv_modal";
@@ -304,7 +305,9 @@ export default function KioskApp() {
   }, [loadAllData]);
 
   useEffect(() => {
-    const socket = io({
+    const socketBaseUrl = getElectronApiBaseUrl() || undefined;
+
+    const socket = io(socketBaseUrl, {
       transports: import.meta.env.DEV ? ["polling"] : ["websocket", "polling"],
     });
 

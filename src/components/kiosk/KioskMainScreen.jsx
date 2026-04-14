@@ -7,6 +7,7 @@ import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
 import { useEffect, useRef, useState } from "react";
 import { ServiceIcon } from "../ServiceIcon";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { resolveMediaUrl } from "../../utils/resolveMediaUrl";
 
 export default function KioskMainScreen({
   visible,
@@ -91,8 +92,12 @@ export default function KioskMainScreen({
   };
 
   const getProgramVideoInfo = rawUrl => {
-    const input = String(rawUrl || "").trim();
+    const input = resolveMediaUrl(rawUrl);
     if (!input) return { isYouTube: false, playableUrl: "" };
+
+    if (input.startsWith("/uploads/") || input.startsWith("http://127.0.0.1:3333/uploads/")) {
+      return { isYouTube: false, playableUrl: input };
+    }
 
     const withProtocol = /^https?:\/\//i.test(input) ? input : `https://${input}`;
 
@@ -416,7 +421,7 @@ export default function KioskMainScreen({
           if (!url) return null;
           return {
             name: `Attachment ${idx + 1}`,
-            url,
+            url: resolveMediaUrl(url),
           };
         }
         const name = String(file?.name || file?.label || file?.title || "").trim();
@@ -424,7 +429,7 @@ export default function KioskMainScreen({
         if (!url) return null;
         return {
           name: name || `Attachment ${idx + 1}`,
-          url,
+          url: resolveMediaUrl(url),
         };
       })
       .filter(Boolean);

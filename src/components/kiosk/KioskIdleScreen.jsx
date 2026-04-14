@@ -6,6 +6,7 @@ import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
 import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
+import { resolveMediaUrl } from "../../utils/resolveMediaUrl";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
@@ -56,7 +57,7 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
   
   const currentPlayingVideo = videoPlaylist[currentPlayingIndex];
   const idleVideoSource = currentPlayingVideo?.videoUrl
-    ? String(currentPlayingVideo.videoUrl || "").trim()
+    ? (resolveMediaUrl(currentPlayingVideo.videoUrl) || fallbackIdleVideo)
     : fallbackIdleVideo;
 
   useEffect(() => {
