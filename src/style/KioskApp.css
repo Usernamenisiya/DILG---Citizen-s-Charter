@@ -362,11 +362,19 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 .idle-ticker-inner {
-  display: flex; align-items: center; gap: 40px;
+  display: flex; align-items: center;
   white-space: nowrap;
-  animation: idle-ticker-scroll 28s linear infinite;
+  width: max-content;
+  animation: idle-ticker-scroll 20s linear infinite;
   font-family: var(--fd); font-size: 80px; font-weight: 700;
   color: #fff; letter-spacing: 0.02em;
+}
+.idle-ticker-group {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  flex-shrink: 0;
+  padding-right: 40px;
 }
 .idle-ticker-sep { color: var(--gold); font-size: 14px; opacity: 0.9; }
 @keyframes idle-ticker-scroll {
@@ -988,10 +996,19 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 .mnav-ticker-inner {
-  display: flex; align-items: center; gap: 48px;
-  white-space: nowrap; animation: ticker-scroll 28s linear infinite;
+  display: flex; align-items: center;
+  white-space: nowrap;
+  width: max-content;
+  animation: ticker-scroll 20s linear infinite;
   font-family: var(--fd); font-size: 50px; font-weight: 700;
   color: #fff; letter-spacing: .02em;
+}
+.mnav-ticker-group {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  flex-shrink: 0;
+  padding-right: 48px;
 }
 .mnav-ticker-sep { color: var(--gold); font-size: 22px; opacity: .9; }
 @keyframes ticker-scroll {

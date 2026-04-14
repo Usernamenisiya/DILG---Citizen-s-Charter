@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg"; 
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
@@ -9,14 +9,6 @@ import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
 
 const DEFAULT_ANNOUNCEMENT =
   "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
-
-const getAnnouncementDisplayMs = (text) => {
-  const messageLength = String(text || "").trim().length;
-  const minMs = 9000;
-  const maxMs = 46000;
-  const msPerCharacter = 85;
-  return Math.min(maxMs, Math.max(minMs, minMs + (messageLength * msPerCharacter)));
-};
 
 export default function KioskIdleScreen({ hiding, settings, announcements = [], onShowMain, onLgrrcLogoClick }) {
   const tickerItems = useMemo(() => {
@@ -41,23 +33,12 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
     return [fallback || DEFAULT_ANNOUNCEMENT];
   }, [announcements, settings.announcement]);
 
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
-
-  useEffect(() => {
-    setAnnouncementIndex(0);
-  }, [tickerItems.length]);
-
-  useEffect(() => {
-    if (tickerItems.length <= 1) return undefined;
-    const currentAnnouncement = tickerItems[announcementIndex] || "";
-    const id = setTimeout(() => {
-      setAnnouncementIndex(prev => (prev + 1) % tickerItems.length);
-    }, getAnnouncementDisplayMs(currentAnnouncement));
-    return () => clearTimeout(id);
-  }, [tickerItems, announcementIndex]);
-
-  const announcement = tickerItems[announcementIndex] || DEFAULT_ANNOUNCEMENT;
-  const announcementDisplayMs = getAnnouncementDisplayMs(announcement);
+  const announcementScrollMs = useMemo(() => {
+    const messageLength = tickerItems.join(" ").length;
+    const baseMs = 15000;
+    const msPerCharacter = 14;
+    return Math.max(12000, Math.min(22000, baseMs + (messageLength * msPerCharacter)));
+  }, [tickerItems]);
   const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
   
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(0);
@@ -122,16 +103,23 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
           </div>
           <div className="idle-ticker-track">
             <div
-              key={`idle-announcement-${announcementIndex}`}
               className="idle-ticker-inner"
-              style={{ animationDuration: `${announcementDisplayMs}ms` }}
+              style={{ animationDuration: `${announcementScrollMs}ms` }}
             >
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
-              <span>{announcement}</span>
-              <span className="idle-ticker-sep">◆</span>
+              {[0, 1].map(groupIndex => (
+                <div
+                  key={groupIndex}
+                  className="idle-ticker-group"
+                  aria-hidden={groupIndex === 1 ? "true" : undefined}
+                >
+                  {tickerItems.map((item, itemIndex) => (
+                    <Fragment key={`${groupIndex}-${itemIndex}-${item}`}>
+                      <span>{item}</span>
+                      <span className="idle-ticker-sep">◆</span>
+                    </Fragment>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         </div>
