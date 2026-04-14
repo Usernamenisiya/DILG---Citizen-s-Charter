@@ -22,7 +22,6 @@ import {
 import ServiceFormEditor from "./ServiceFormEditor";
 import IssuanceFormEditor from "./IssuanceFormEditor";
 import { ServiceIcon } from "../ServiceIcon";
-import { apiUrl } from "../../utils/runtime";
 
 function AdminFormModal({ open, title, onClose, children }) {
   if (!open) return null;
@@ -316,8 +315,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   };
 
   const callApi = async (url, options = {}) => {
-    const resolvedUrl = /^https?:\/\//i.test(String(url || "")) ? url : apiUrl(url);
-    const response = await fetch(resolvedUrl, {
+    const response = await fetch(url, {
       headers: { "Content-Type": "application/json", "X-Admin-Role": role, ...(options.headers || {}) },
       ...options,
     });
@@ -460,7 +458,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     try {
       const formData = new FormData();
       formData.append("image", file);
-      const response = await fetch(apiUrl("/api/key-officials/upload"), {
+      const response = await fetch("/api/key-officials/upload", {
         method: "POST",
         body: formData,
       });
@@ -1114,7 +1112,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch(apiUrl("/api/announcements/upload"), {
+      const response = await fetch("/api/announcements/upload", {
         method: "POST",
         body: formData,
       });
@@ -1357,7 +1355,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch(apiUrl("/api/programs/upload"), {
+      const response = await fetch("/api/programs/upload", {
         method: "POST",
         body: formData,
       });
@@ -1461,7 +1459,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch(apiUrl("/api/idle-videos/upload"), {
+      const response = await fetch("/api/idle-videos/upload", {
         method: "POST",
         body: formData,
       });

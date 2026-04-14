@@ -362,9 +362,9 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 .idle-ticker-inner {
-  display: flex; align-items: center; gap: 24px;
+  display: flex; align-items: center; gap: 40px;
   white-space: nowrap;
-  animation: idle-ticker-scroll 25s linear infinite;
+  animation: idle-ticker-scroll 28s linear infinite;
   font-family: var(--fd); font-size: 80px; font-weight: 700;
   color: #fff; letter-spacing: 0.02em;
 }
@@ -988,8 +988,8 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
   mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
 }
 .mnav-ticker-inner {
-  display: flex; align-items: center; gap: 28px;
-  white-space: nowrap; animation: ticker-scroll 25s linear infinite;
+  display: flex; align-items: center; gap: 48px;
+  white-space: nowrap; animation: ticker-scroll 28s linear infinite;
   font-family: var(--fd); font-size: 50px; font-weight: 700;
   color: #fff; letter-spacing: .02em;
 }

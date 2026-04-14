@@ -5,7 +5,6 @@ import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
 import KioskMenuScreen from "./components/kiosk/KioskMenuScreen";
 import KioskMainScreen from "./components/kiosk/KioskMainScreen";
-import { apiUrl, getApiOrigin } from "./utils/runtime";
 
 // ── Extracted modal components ──
 import ProfileModal from "./components/kiosk/modals/mmv_modal";
@@ -223,24 +222,24 @@ export default function KioskApp() {
   }, []);
 
   const loadAllData = useCallback(() => {
-    fetch(apiUrl("/api/settings"))
+    fetch("/api/settings")
       .then(r => { if (!r.ok) throw new Error(`settings ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, settings: { ...p.settings, ...data } })))
       .catch(err => console.error("Settings API load failed:", err));
 
-    fetch(apiUrl("/api/services/internal"))
+    fetch("/api/services/internal")
       .then(r => { if (!r.ok) throw new Error(`internal ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, services: data })));
 
-    fetch(apiUrl("/api/services/external"))
+    fetch("/api/services/external")
       .then(r => { if (!r.ok) throw new Error(`external ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, externalServices: data })));
 
-    fetch(apiUrl("/api/issuances"))
+    fetch("/api/issuances")
       .then(r => { if (!r.ok) throw new Error(`issuances ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, policiesAndIssuances: { ...p.policiesAndIssuances, items: data } })));
 
-    fetch(apiUrl("/api/issuances/meta"))
+    fetch("/api/issuances/meta")
       .then(r => { if (!r.ok) throw new Error(`issuances/meta ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({
         ...p,
@@ -251,35 +250,35 @@ export default function KioskApp() {
         },
       })));
 
-    fetch(apiUrl("/api/feedback"))
+    fetch("/api/feedback")
       .then(r => { if (!r.ok) throw new Error(`feedback ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, feedbackAndComplaints: data })))
       .catch(err => console.error("Feedback API load failed:", err));
 
-    fetch(apiUrl("/api/calendar-events"))
+    fetch("/api/calendar-events")
       .then(r => { if (!r.ok) throw new Error(`calendar-events ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, calendarEvents: Array.isArray(data) ? data : [] })))
       .catch(err => console.error("Calendar events API load failed:", err));
 
-    fetch(apiUrl("/api/offices"))
+    fetch("/api/offices")
       .then(r => { if (!r.ok) throw new Error(`offices ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, officeDirectory: data })));
 
 
-    fetch(apiUrl("/api/key-officials"))
+    fetch("/api/key-officials")
       .then(r => { if (!r.ok) throw new Error(`key-officials ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, keyOfficials: data })))
       .catch(err => console.error("Key officials API load failed:", err));
-    fetch(apiUrl("/api/profile"))
+    fetch("/api/profile")
       .then(r => { if (!r.ok) throw new Error(`profile ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, organizationalProfile: data })));
 
-    fetch(apiUrl("/api/announcements"))
+    fetch("/api/announcements")
       .then(r => { if (!r.ok) throw new Error(`announcements ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, announcements: data })))
       .catch(err => console.error("API load failed:", err));
 
-    fetch(apiUrl("/api/programs"))
+    fetch("/api/programs")
       .then(r => { if (!r.ok) throw new Error(`programs ${r.status}`); return r.json(); })
       .then(data => setAppData(p => ({ ...p, programs: data })))
       .catch(err => console.error("Programs API load failed:", err));
@@ -305,7 +304,7 @@ export default function KioskApp() {
   }, [loadAllData]);
 
   useEffect(() => {
-    const socket = io(getApiOrigin() || undefined, {
+    const socket = io({
       transports: import.meta.env.DEV ? ["polling"] : ["websocket", "polling"],
     });
 

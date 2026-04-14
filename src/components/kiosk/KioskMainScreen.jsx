@@ -4,7 +4,6 @@ import rictuLogo from "../../assets/images/RICTU_LOGO.png";
 import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { getServiceBadgeClass } from "../../utils/serviceBadgeClass";
-import { resolveMediaUrl } from "../../utils/runtime";
 import { useEffect, useRef, useState } from "react";
 import { ServiceIcon } from "../ServiceIcon";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
@@ -131,7 +130,7 @@ export default function KioskMainScreen({
 
     return {
       isYouTube: /youtube\.com\/embed\//i.test(input),
-      playableUrl: resolveMediaUrl(input),
+      playableUrl: input,
     };
   };
 
@@ -344,16 +343,10 @@ export default function KioskMainScreen({
                 height="620"
                 controls
                 autoPlay
-                playsInline
                 onLoadedMetadata={() => {
                   setTimeout(() => {
                     restoreFullscreenIfNeeded();
                   }, 80);
-                }}
-                onError={() => {
-                  if (playlist.length > 1) {
-                    goNext();
-                  }
                 }}
                 onEnded={goNext}
                 style={{ borderRadius: 8, backgroundColor: "#000" }}
@@ -419,7 +412,7 @@ export default function KioskMainScreen({
     return rawFiles
       .map((file, idx) => {
         if (typeof file === "string") {
-          const url = resolveMediaUrl(file.trim());
+          const url = file.trim();
           if (!url) return null;
           return {
             name: `Attachment ${idx + 1}`,
@@ -427,7 +420,7 @@ export default function KioskMainScreen({
           };
         }
         const name = String(file?.name || file?.label || file?.title || "").trim();
-        const url = resolveMediaUrl(String(file?.url || file?.href || file?.path || "").trim());
+        const url = String(file?.url || file?.href || file?.path || "").trim();
         if (!url) return null;
         return {
           name: name || `Attachment ${idx + 1}`,
