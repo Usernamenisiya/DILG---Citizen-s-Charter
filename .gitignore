@@ -27,3 +27,11 @@ dist-ssr
 my-custom-backend/app-data.db
 my-custom-backend/app-data.db-wal
 my-custom-backend/app-data.db-shm
+
+# Generated desktop build artifacts (do not commit)
+release/
+release-fix/
+release-rebuild/
+release-deploy/
+*.exe
+*.blockmap
