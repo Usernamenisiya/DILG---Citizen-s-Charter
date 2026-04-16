@@ -237,23 +237,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [showNewPin, setShowNewPin] = useState(false);
   const [showAdminOldPin, setShowAdminOldPin] = useState(false);
   const [showAdminNewPin, setShowAdminNewPin] = useState(false);
+  const [passwordModal, setPasswordModal] = useState({ open: false, type: null });
   const [officeMetaForm, setOfficeMetaForm] = useState({
     title: defaultOfficeDirectory.title || "List of Offices",
     region: defaultOfficeDirectory.region || "",
   });
 
-  const getHoldToShowHandlers = setter => ({
-    onMouseDown: e => {
-      e.preventDefault();
-      setter(true);
-    },
-    onMouseUp: () => setter(false),
-    onMouseLeave: () => setter(false),
-    onTouchStart: () => setter(true),
-    onTouchEnd: () => setter(false),
-    onTouchCancel: () => setter(false),
-    onBlur: () => setter(false),
-  });
   const [officeForm, setOfficeForm] = useState({ office: "", address: "", contact: "", type: "office" });
   const [settingsStatus, setSettingsStatus] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
@@ -620,6 +609,14 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
     return input;
   };
+
+  const getHoldToShowHandlers = (setShowState) => ({
+    onMouseDown: () => setShowState(true),
+    onMouseUp: () => setShowState(false),
+    onMouseLeave: () => setShowState(false),
+    onTouchStart: () => setShowState(true),
+    onTouchEnd: () => setShowState(false),
+  });
 
   const changeSuperAdminPin = async () => {
     if (!isSuperAdmin) {
@@ -1397,7 +1394,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     const category = String(programForm.category || "").trim();
     const uploadedDate = String(programForm.uploadedDate || new Date().toISOString().split("T")[0]).trim();
     if (!title || !videoUrl) {
-      showStatus(setProgramStatus, "error", "✗ Program title and video URL are required.");
+      showStatus(setProgramStatus, "error", "✗ Program title and uploaded video are required.");
       return;
     }
 
@@ -1437,7 +1434,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         version: appData.version + 1,
         lastUpdated: new Date().toISOString(),
       });
-      setProgramEditingIdx(null);
       setProgramForm({
         title: "",
         description: "",
@@ -2169,125 +2165,182 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
             <div className="a-divider" />
             <div style={{ fontFamily: "var(--fd)", fontSize: 18, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
-              {isSuperAdmin ? "Change Super Admin Password" : "Change Admin Password"}
+              Change Passwords
             </div>
             <div style={{ fontSize: 12, color: "#5370ab", marginBottom: 14 }}>
+              Click a button to open a modal, enter the old password and the new password, then save.
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {isSuperAdmin ? (
                 <>
-                  Default Super Admin password is <strong style={{ color: "#194fb7" }}>0000</strong>. Change this immediately.
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    onClick={() => {
+                      setSettingsStatus(null);
+                      setOldPin("");
+                      setNewPin("");
+                      setPasswordModal({ open: true, type: "super-admin" });
+                    }}
+                  >
+                    <KeyRound size={14} className="btn-icon" /> Change Super Admin Password
+                  </button>
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    onClick={() => {
+                      setSettingsStatus(null);
+                      setAdminOldPin("");
+                      setAdminNewPin("");
+                      setPasswordModal({ open: true, type: "admin" });
+                    }}
+                  >
+                    <KeyRound size={14} className="btn-icon" /> Change Admin Password
+                  </button>
                 </>
               ) : (
-                <>
-                  Default Admin password is <strong style={{ color: "#194fb7" }}>1111</strong>. Change this immediately.
-                </>
+                <button
+                  type="button"
+                  className="a-btn a-btn-ghost"
+                  onClick={() => {
+                    setSettingsStatus(null);
+                    setOldPin("");
+                    setNewPin("");
+                    setPasswordModal({ open: true, type: "admin" });
+                  }}
+                >
+                  <KeyRound size={14} className="btn-icon" /> Change Admin Password
+                </button>
               )}
             </div>
-            <div className="a-row">
-              <div className="a-field">
-                <label className="a-label">Current Password</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    className="a-input"
-                    style={{ flex: 1 }}
-                    type={showOldPin ? "text" : "password"}
-                    value={oldPin}
-                    onChange={e => setOldPin(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="a-btn a-btn-ghost"
-                    aria-label="Hold to show current password"
-                    title="Hold to show current password"
-                    {...getHoldToShowHandlers(setShowOldPin)}
-                  >
-                    <Eye size={16} className="btn-icon" />
-                  </button>
-                </div>
-              </div>
-              <div className="a-field">
-                <label className="a-label">New Password (minimum 4 chars)</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    className="a-input"
-                    style={{ flex: 1 }}
-                    type={showNewPin ? "text" : "password"}
-                    value={newPin}
-                    onChange={e => setNewPin(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="a-btn a-btn-ghost"
-                    aria-label="Hold to show new password"
-                    title="Hold to show new password"
-                    {...getHoldToShowHandlers(setShowNewPin)}
-                  >
-                    <Eye size={16} className="btn-icon" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button className="a-btn a-btn-primary" onClick={saveSettings}><Save size={14} className="btn-icon" /> Save Settings</button>
-              <button className="a-btn a-btn-ghost" onClick={isSuperAdmin ? changeSuperAdminPin : changeAdminPin}>
-                <KeyRound size={14} className="btn-icon" /> Change {isSuperAdmin ? "Super Admin" : "Admin"} Password
-              </button>
-            </div>
 
-            {isSuperAdmin && (
-              <>
-                <div className="a-divider" />
-                <div style={{ fontFamily: "var(--fd)", fontSize: 16, fontWeight: 700, color: "#0b2f7a", marginBottom: 4 }}>
-                  Change Admin Password (Managed by Super Admin)
-                </div>
-                <div className="a-row">
-                  <div className="a-field">
-                    <label className="a-label">Current Admin Password</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        className="a-input"
-                        style={{ flex: 1 }}
-                        type={showAdminOldPin ? "text" : "password"}
-                        value={adminOldPin}
-                        onChange={e => setAdminOldPin(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="a-btn a-btn-ghost"
-                        aria-label="Hold to show current admin password"
-                        title="Hold to show current admin password"
-                        {...getHoldToShowHandlers(setShowAdminOldPin)}
-                      >
-                        <Eye size={16} className="btn-icon" />
-                      </button>
-                    </div>
+            <AdminFormModal
+              open={passwordModal.open}
+              title={passwordModal.type === "super-admin" ? "Change Super Admin Password" : "Change Admin Password"}
+              onClose={() => {
+                setPasswordModal({ open: false, type: null });
+                setOldPin("");
+                setNewPin("");
+                setAdminOldPin("");
+                setAdminNewPin("");
+                setShowOldPin(false);
+                setShowNewPin(false);
+                setShowAdminOldPin(false);
+                setShowAdminNewPin(false);
+              }}
+            >
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (passwordModal.type === "super-admin") {
+                    changeSuperAdminPin();
+                  } else {
+                    changeAdminPin();
+                  }
+                }}
+                autoComplete="off"
+              >
+                <StatusMsg status={settingsStatus} />
+                <div className="a-field">
+                  <label className="a-label">Current Password</label>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <input
+                      className="a-input"
+                      type={passwordModal.type === "super-admin" ? (showOldPin ? "text" : "password") : isSuperAdmin ? (showAdminOldPin ? "text" : "password") : (showOldPin ? "text" : "password")}
+                      value={passwordModal.type === "super-admin" ? oldPin : isSuperAdmin ? adminOldPin : oldPin}
+                      onChange={e => {
+                        if (passwordModal.type === "super-admin") {
+                          setOldPin(e.target.value);
+                        } else if (isSuperAdmin) {
+                          setAdminOldPin(e.target.value);
+                        } else {
+                          setOldPin(e.target.value);
+                        }
+                      }}
+                      placeholder="Enter current password"
+                      style={{ paddingRight: "36px" }}
+                    />
+                    <button
+                      type="button"
+                      style={{
+                        position: "absolute",
+                        right: "8px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        color: "#666",
+                      }}
+                      {...(passwordModal.type === "super-admin" ? getHoldToShowHandlers(setShowOldPin) : isSuperAdmin ? getHoldToShowHandlers(setShowAdminOldPin) : getHoldToShowHandlers(setShowOldPin))}
+                    >
+                      <Eye size={14} />
+                    </button>
                   </div>
-                  <div className="a-field">
-                    <label className="a-label">New Admin Password (minimum 4 chars)</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        className="a-input"
-                        style={{ flex: 1 }}
-                        type={showAdminNewPin ? "text" : "password"}
-                        value={adminNewPin}
-                        onChange={e => setAdminNewPin(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="a-btn a-btn-ghost"
-                        aria-label="Hold to show new admin password"
-                        title="Hold to show new admin password"
-                        {...getHoldToShowHandlers(setShowAdminNewPin)}
-                      >
-                        <Eye size={16} className="btn-icon" />
-                      </button>
-                    </div>
+                </div>
+                <div className="a-field">
+                  <label className="a-label">New Password</label>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <input
+                      className="a-input"
+                      type={passwordModal.type === "super-admin" ? (showNewPin ? "text" : "password") : isSuperAdmin ? (showAdminNewPin ? "text" : "password") : (showNewPin ? "text" : "password")}
+                      value={passwordModal.type === "super-admin" ? newPin : isSuperAdmin ? adminNewPin : newPin}
+                      onChange={e => {
+                        if (passwordModal.type === "super-admin") {
+                          setNewPin(e.target.value);
+                        } else if (isSuperAdmin) {
+                          setAdminNewPin(e.target.value);
+                        } else {
+                          setNewPin(e.target.value);
+                        }
+                      }}
+                      placeholder="Enter new password"
+                      style={{ paddingRight: "36px" }}
+                    />
+                    <button
+                      type="button"
+                      style={{
+                        position: "absolute",
+                        right: "8px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        color: "#666",
+                      }}
+                      {...(passwordModal.type === "super-admin" ? getHoldToShowHandlers(setShowNewPin) : isSuperAdmin ? getHoldToShowHandlers(setShowAdminNewPin) : getHoldToShowHandlers(setShowNewPin))}
+                    >
+                      <Eye size={14} />
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button className="a-btn a-btn-ghost" onClick={changeAdminPin}><KeyRound size={14} className="btn-icon" /> Change Admin Password</button>
+                <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                  <button className="a-btn a-btn-primary" type="submit">
+                    <Save size={14} className="btn-icon" /> Save
+                  </button>
+                  <button
+                    className="a-btn a-btn-ghost"
+                    type="button"
+                    onClick={() => {
+                      setPasswordModal({ open: false, type: null });
+                      setOldPin("");
+                      setNewPin("");
+                      setAdminOldPin("");
+                      setAdminNewPin("");
+                      setShowOldPin(false);
+                      setShowNewPin(false);
+                      setShowAdminOldPin(false);
+                      setShowAdminNewPin(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-              </>
-            )}
+              </form>
+            </AdminFormModal>
           </div>
         )}
 
@@ -3050,6 +3103,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                 onClose={() => setProgramEditingIdx(null)}
               >
               <div>
+                <StatusMsg status={programStatus} />
                 <div className="a-field">
                   <label className="a-label">Program Title</label>
                   <input
@@ -3069,32 +3123,35 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                   />
                 </div>
                 <div className="a-field">
-                  <label className="a-label">Video URL or Embed Code</label>
-                  <input
-                    className="a-input"
-                    value={programForm.videoUrl}
-                    onChange={e => setProgramForm(f => ({ ...f, videoUrl: e.target.value }))}
-                    placeholder="YouTube link, embed URL, or direct video file URL"
-                  />
-                  <small style={{ marginTop: 4, color: "#666" }}>
-                    You can paste YouTube watch/share links (they are auto-converted to embed format).
+                  <label className="a-label">Upload Program Video</label>
+                  <label className="a-file-input" style={{ marginTop: 10, display: "inline-flex", marginBottom: 0 }}>
+                    <Upload size={14} className="btn-icon" /> Upload Video File
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={e => {
+                        uploadProgramVideos(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <small style={{ display: "block", marginTop: 8, color: "#666" }}>
+                    Program videos are uploaded from your local device only.
                   </small>
-                  <div style={{ marginTop: 10 }}>
-                    <label className="a-file-input" style={{ marginTop: 10, display: "inline-flex", marginBottom: 0 }}>
-                      <Upload size={14} className="btn-icon" /> Upload Video File
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={e => {
-                          uploadProgramVideos(e.target.files);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    <small style={{ marginTop: 4, color: "#666" }}>
-                      Uploaded video URL will auto-fill above.
-                    </small>
-                  </div>
+                  {programForm.videoUrl && (
+                    <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-start" }}>
+                      <div style={{ width: "100%", maxWidth: 280, borderRadius: 10, padding: 8, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#444" }}>Preview</div>
+                      <video
+                        src={programForm.videoUrl}
+                        controls
+                        style={{ width: "100%", maxHeight: 160, borderRadius: 8, background: "#000", display: "block" }}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="a-field">
                   <label className="a-label">Category</label>
@@ -3141,6 +3198,17 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     <div className="svc-row-name">{prog.title || "Untitled Program"}</div>
                     {prog.category && <div className="svc-row-meta">{prog.category}</div>}
                     {prog.description && <div className="svc-row-meta">{prog.description.substring(0, 80)}...</div>}
+                    {prog.videoUrl && (
+                      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-start" }}>
+                        <video
+                          src={prog.videoUrl}
+                          controls
+                          style={{ width: "100%", maxWidth: 220, maxHeight: 120, borderRadius: 8, background: "#000" }}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    )}
                   </div>
                   <div className="svc-row-actions">
                     <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditProgram(idx)}>Edit</button>

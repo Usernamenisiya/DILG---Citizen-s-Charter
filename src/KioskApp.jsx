@@ -5,6 +5,7 @@ import AdminAccessOverlay from "./components/admin/AdminAccessOverlay";
 import KioskIdleScreen from "./components/kiosk/KioskIdleScreen";
 import KioskMenuScreen from "./components/kiosk/KioskMenuScreen";
 import KioskMainScreen from "./components/kiosk/KioskMainScreen";
+import KioskCalendarPage from "./components/kiosk/KioskCalendarPage";
 import { getElectronApiBaseUrl } from "./utils/resolveMediaUrl";
 
 // ── Extracted modal components ──
@@ -206,6 +207,7 @@ export default function KioskApp() {
   const [clockDate, setClockDate]           = useState("");
   const [logoTaps, setLogoTaps]             = useState(0);
   const [lgrrcLogoTaps, setLgrrcLogoTaps]   = useState(0);
+  const [showCalendarPage, setShowCalendarPage] = useState(false);
 
   // "profile" | "offices" | "feedback" | "issuances" | null
   const [modalSection, setModalSection] = useState(null);
@@ -365,12 +367,12 @@ export default function KioskApp() {
 
   /* ── Pause inactivity timer when modal or admin overlay is open ── */
   useEffect(() => {
-    if (modalSection !== null || showAdmin || mainScreenModalOpen) {
+    if (modalSection !== null || showAdmin || mainScreenModalOpen || showCalendarPage) {
       clearInactivity();
     } else if (screen === "main" || screen === "menu") {
       startInactivity();
     }
-  }, [modalSection, showAdmin, mainScreenModalOpen, screen, startInactivity, clearInactivity]);
+  }, [modalSection, showAdmin, mainScreenModalOpen, showCalendarPage, screen, startInactivity, clearInactivity]);
 
   const handleUserAction = useCallback(() => {
     if (screen === "main" || screen === "menu") startInactivity();
@@ -410,6 +412,10 @@ export default function KioskApp() {
     setActiveSection(null);
     setCurrentPage(0);
     setCurrentService(null);
+  };
+
+  const closeCalendarPage = () => {
+    setShowCalendarPage(false);
   };
 
   /* ── Derived data ── */
@@ -523,14 +529,27 @@ export default function KioskApp() {
       {/* ── Menu screen ── */}
       {screen === "menu" && (
         <KioskMenuScreen
-          visible={screen === "menu"}
+          visible={screen === "menu" && !showCalendarPage}
           settings={s}
           announcements={announcements}
           calendarEvents={appData.calendarEvents}
           onLgrrcLogoClick={handleLgrrcLogoClick}
           onSelectSection={selectSection}
+          onShowCalendar={() => setShowCalendarPage(true)}
           inactBarRef={inactBarRef}
           onUserActivity={handleUserAction}
+        />
+      )}
+
+      {/* ── Calendar Page ── */}
+      {showCalendarPage && (
+        <KioskCalendarPage
+          visible={showCalendarPage}
+          settings={s}
+          announcements={announcements}
+          calendarEvents={appData.calendarEvents}
+          onBackToMenu={closeCalendarPage}
+          onLgrrcLogoClick={handleLgrrcLogoClick}
         />
       )}
 
@@ -587,7 +606,7 @@ export default function KioskApp() {
 
       {/* Feedback · Issuances → inline KioskModal */}
       {(modalSection === "feedback" ||
-        modalSection === "issuances") && (
+        modalSection === "issuances") && !showCalendarPage && (
         <KioskModal
           section={modalSection}
           feedbackAndComplaints={feedbackAndComplaints}
@@ -598,7 +617,7 @@ export default function KioskApp() {
       )}
 
       {/* ── Admin overlay ── */}
-      {showAdmin && (
+      {showAdmin && !showCalendarPage && (
         <AdminAccessOverlay
           appData={appData}
           onDataChange={handleDataChange}

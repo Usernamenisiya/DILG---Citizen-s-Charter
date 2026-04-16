@@ -4,7 +4,6 @@ import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
 import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
-import EventsCalendarModal from "./modals/event_calendar_modal";
 import KeyOfficialsModal from "./modals/key_officials_modal";
 import {
   CalendarDays,
@@ -93,11 +92,10 @@ function NavItem({ id, label, color, onClick }) {
   );
 }
 
-export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, inactBarRef, onUserActivity, onLgrrcLogoClick }) {
+export default function KioskMenuScreen({ visible, settings, announcements = [], calendarEvents, onSelectSection, onShowCalendar, inactBarRef, onUserActivity, onLgrrcLogoClick }) {
   const [clockTime, setClockTime]             = useState("");
   const [clockDate, setClockDate]             = useState("");
   const [drawerOpen, setDrawerOpen]           = useState(false);
-  const [showCalendar, setShowCalendar]       = useState(false);
   const [showKeyOfficials, setShowKeyOfficials] = useState(false); // ← FIXED
   const drawerRef    = useRef(null);
   const hamburgerRef = useRef(null);
@@ -165,7 +163,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
   const handleSelect = (id) => {
     setDrawerOpen(false);
     if (id === "calendar") {
-      setShowCalendar(true);
+      onShowCalendar?.();
       return;
     }
     if (id === "keyOfficials") { // ← FIXED
@@ -178,10 +176,7 @@ export default function KioskMenuScreen({ visible, settings, announcements = [],
   return (
     <div className={`menu-screen${visible ? " visible" : ""}`}>
 
-      {/* ── Events Calendar Modal ── */}
-      {showCalendar && (
-        <EventsCalendarModal onClose={() => setShowCalendar(false)} events={calendarEvents} onInteract={onUserActivity} />
-      )}
+      {/* ── Events Calendar Modal - Now a full page ── */}
 
       {/* ── Key Officials Modal ── */}
       {showKeyOfficials && ( // ← FIXED

@@ -1097,7 +1097,7 @@ export default function KioskMainScreen({
                     const title = prog.title || `Video ${idx + 1}`;
                     const description = String(prog.description || "").trim();
                     const category = String(prog.category || "").trim();
-
+                    const videoUrl = prog.videoUrl;
                     return (
                       <button
                         key={prog.id || idx}
@@ -1116,10 +1116,57 @@ export default function KioskMainScreen({
                           );
                         }}
                       >
-                        <div className="programs-page-card-thumb">
-                          <span className="programs-page-card-index">{String(idx + 1).padStart(2, "0")}</span>
-                          {!!category && <span className="programs-page-card-badge">{category}</span>}
-                          <div className="programs-page-card-play-icon">▶</div>
+                        <div className="programs-page-card-thumb" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 0, background: "none", minHeight: 90 }}>
+                          <span className="programs-page-card-index" style={{ position: "absolute", top: 8, left: 8, zIndex: 2, background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: 4, padding: "1px 7px", fontSize: 13 }}>{String(idx + 1).padStart(2, "0")}</span>
+                          {!!category && <span className="programs-page-card-badge" style={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>{category}</span>}
+                          {videoUrl ? (
+                            <div style={{ width: 220, height: 124, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", background: "#000", borderRadius: 10, overflow: "hidden" }}>
+                              <video
+                                src={videoUrl}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                muted
+                                preload="metadata"
+                                tabIndex={-1}
+                              />
+                              <div className="programs-page-card-play-icon" style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "50%",
+                                transform: "translate(-50%, -50%)",
+                                background: "rgba(0,0,0,0.45)",
+                                borderRadius: "50%",
+                                width: 48,
+                                height: 48,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#fff",
+                                fontSize: 28,
+                                zIndex: 2,
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.18)"
+                              }}>▶</div>
+                            </div>
+                          ) : (
+                            <div style={{ width: 220, height: 124, display: "flex", alignItems: "center", justifyContent: "center", background: "#e6e6e6", borderRadius: 10, position: "relative" }}>
+                              <div className="programs-page-card-play-icon" style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "50%",
+                                transform: "translate(-50%, -50%)",
+                                background: "rgba(0,0,0,0.45)",
+                                borderRadius: "50%",
+                                width: 48,
+                                height: 48,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#fff",
+                                fontSize: 28,
+                                zIndex: 2,
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.18)"
+                              }}>▶</div>
+                            </div>
+                          )}
                         </div>
                         <div className="programs-page-card-content">
                           <div className="programs-page-card-title">{title}</div>
