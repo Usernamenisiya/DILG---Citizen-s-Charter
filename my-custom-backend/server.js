@@ -398,7 +398,11 @@ function calendarEventRowToDto(row) {
     id: row.eventId || `evt_${row.id}`,
     title: row.title || "",
     date: row.date || "",
+    startDate: row.date || "",
+    endDate: row.endDate || row.date || "",
     time: row.time || "",
+    startTime: row.startTime || row.time || "",
+    endTime: row.endTime || "",
     location: row.location || "",
     office: row.office || "",
     category: row.category || "internal",
@@ -643,14 +647,19 @@ function importKioskDataToDatabase(payload, options = {}) {
     if (Object.prototype.hasOwnProperty.call(data, "calendarEvents")) {
       db.prepare("DELETE FROM calendar_events").run();
       const insertCalendarEvent = db.prepare(
-        "INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO calendar_events (eventId, title, date, endDate, time, startTime, endTime, location, office, category, description, attendees, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       );
       (Array.isArray(data.calendarEvents) ? data.calendarEvents : []).forEach((item, index) => {
+        const itemStartDate = String(item?.startDate || item?.date || "");
+        const itemStartTime = String(item?.startTime || item?.time || "");
         insertCalendarEvent.run(
           String(item?.id || `evt_${Date.now()}_${index}`),
           String(item?.title || ""),
-          String(item?.date || ""),
-          String(item?.time || ""),
+          itemStartDate,
+          String(item?.endDate || itemStartDate),
+          itemStartTime,
+          itemStartTime,
+          String(item?.endTime || ""),
           String(item?.location || ""),
           String(item?.office || ""),
           String(item?.category || "internal"),
@@ -971,12 +980,15 @@ db.exec(`
     sortOrder INTEGER NOT NULL DEFAULT 0
   );
 
-  CREATE TABLE IF NOT EXISTS calendar_events (
+CREATE TABLE IF NOT EXISTS calendar_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     eventId TEXT UNIQUE,
     title TEXT NOT NULL,
     date TEXT NOT NULL,
+    endDate TEXT,
     time TEXT,
+    startTime TEXT,
+    endTime TEXT,
     location TEXT,
     office TEXT,
     category TEXT,
@@ -1003,6 +1015,20 @@ try {
   }
 } catch (error) {
   console.error("Migration error:", error);
+}
+
+// Migration: Add endDate, startTime, endTime to calendar_events
+try {
+  const calendarColumns = db.prepare("PRAGMA table_info(calendar_events)").all();
+  const hasEndDate = calendarColumns.some(col => col.name === "endDate");
+  if (!hasEndDate) {
+    db.prepare("ALTER TABLE calendar_events ADD COLUMN endDate TEXT").run();
+    db.prepare("ALTER TABLE calendar_events ADD COLUMN startTime TEXT").run();
+    db.prepare("ALTER TABLE calendar_events ADD COLUMN endTime TEXT").run();
+    console.log("✓ Added 'endDate', 'startTime', and 'endTime' to calendar_events");
+  }
+} catch (error) {
+  console.error("Calendar events migration error:", error);
 }
 
 try {
@@ -2032,7 +2058,7 @@ app.delete("/api/announcements/:id", (req, res) => {
 app.get("/api/calendar-events", (req, res) => {
   try {
     const events = db
-      .prepare("SELECT id, eventId, title, date, time, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
+      .prepare("SELECT id, eventId, title, date, endDate, time, startTime, endTime, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
       .all();
     res.json(events.map(calendarEventRowToDto));
   } catch (error) {
@@ -2044,7 +2070,8 @@ app.get("/api/calendar-events", (req, res) => {
 app.post("/api/calendar-events", (req, res) => {
   const body = req.body || {};
   const title = String(body.title || "").trim();
-  const date = String(body.date || "").trim();
+  const date = String(body.startDate || body.date || "").trim();
+  
   if (!title || !date) {
     return res.status(400).json({ error: "Event title and date are required." });
   }
@@ -2052,14 +2079,21 @@ app.post("/api/calendar-events", (req, res) => {
   try {
     const currentMax = db.prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM calendar_events").get();
     const eventId = String(body.id || `evt_${Date.now()}`).trim();
+    const startTime = String(body.startTime || body.time || "").trim();
+    const endDate = String(body.endDate || date).trim();
+    const endTime = String(body.endTime || "").trim();
+
     db.prepare(`
-      INSERT INTO calendar_events (eventId, title, date, time, location, office, category, description, attendees, sortOrder)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO calendar_events (eventId, title, date, endDate, time, startTime, endTime, location, office, category, description, attendees, sortOrder)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       eventId,
       title,
       date,
-      String(body.time || "").trim(),
+      endDate,
+      startTime,
+      startTime,
+      endTime,
       String(body.location || "").trim(),
       String(body.office || "").trim(),
       String(body.category || "internal").trim() || "internal",
@@ -2072,7 +2106,11 @@ app.post("/api/calendar-events", (req, res) => {
       id: eventId,
       title,
       date,
-      time: String(body.time || "").trim(),
+      startDate: date,
+      endDate,
+      time: startTime,
+      startTime,
+      endTime,
       location: String(body.location || "").trim(),
       office: String(body.office || "").trim(),
       category: String(body.category || "internal").trim() || "internal",
@@ -2089,20 +2127,28 @@ app.put("/api/calendar-events/:id", (req, res) => {
   const eventId = String(req.params.id || "").trim();
   const body = req.body || {};
   const title = String(body.title || "").trim();
-  const date = String(body.date || "").trim();
+  const date = String(body.startDate || body.date || "").trim();
+
   if (!title || !date) {
     return res.status(400).json({ error: "Event title and date are required." });
   }
 
   try {
+    const startTime = String(body.startTime || body.time || "").trim();
+    const endDate = String(body.endDate || date).trim();
+    const endTime = String(body.endTime || "").trim();
+
     const info = db.prepare(`
       UPDATE calendar_events
-      SET title = ?, date = ?, time = ?, location = ?, office = ?, category = ?, description = ?, attendees = ?
+      SET title = ?, date = ?, endDate = ?, time = ?, startTime = ?, endTime = ?, location = ?, office = ?, category = ?, description = ?, attendees = ?
       WHERE eventId = ?
     `).run(
       title,
       date,
-      String(body.time || "").trim(),
+      endDate,
+      startTime,
+      startTime,
+      endTime,
       String(body.location || "").trim(),
       String(body.office || "").trim(),
       String(body.category || "internal").trim() || "internal",
@@ -2119,7 +2165,11 @@ app.put("/api/calendar-events/:id", (req, res) => {
       id: eventId,
       title,
       date,
-      time: String(body.time || "").trim(),
+      startDate: date,
+      endDate,
+      time: startTime,
+      startTime,
+      endTime,
       location: String(body.location || "").trim(),
       office: String(body.office || "").trim(),
       category: String(body.category || "internal").trim() || "internal",

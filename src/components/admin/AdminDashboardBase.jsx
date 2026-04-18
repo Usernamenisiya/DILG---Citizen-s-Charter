@@ -9,6 +9,7 @@ import {
   KeyRound,
   LogOut,
   MapPin,
+  Calendar,
   Pencil,
   RotateCcw,
   Save,
@@ -181,10 +182,10 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const [programEditingIdx, setProgramEditingIdx] = useState(null);
   const [calendarForm, setCalendarForm] = useState({
     title: "",
-    date: "",
-    timeFrom: "",
-    timeUntil: "",
-    timePeriod: "pm",
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
     location: "",
     office: "",
     attendees: [],
@@ -193,6 +194,8 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     description: "",
   });
   const [calendarStatus, setCalendarStatus] = useState(null);
+  const startDatePickerRef = useRef(null);
+  const endDatePickerRef = useRef(null);
   const [holidaySyncYear, setHolidaySyncYear] = useState(String(new Date().getFullYear()));
   const [programForm, setProgramForm] = useState({
     title: "",
@@ -490,15 +493,18 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     loadKeyOfficials();
   }, []);
 
-  const parseTimeRange = raw => {
-    const value = String(raw || "").trim();
-    if (!value) return { from: "", until: "", period: "pm" };
-    const match = value.match(/^(.+?)\s*-\s*(.+?)(?:\s*(am|pm))?$/i);
-    if (!match) return { from: value, until: "", period: "pm" };
+  const buildDateTimeValue = (date, time) => {
+    if (!date) return "";
+    if (!time) return `${date}T00:00`;
+    return `${date}T${time}`;
+  };
+
+  const parseDateTimeValue = raw => {
+    const value = String(raw || "");
+    const [date, time] = value.split("T");
     return {
-      from: match[1].trim(),
-      until: match[2].trim(),
-      period: (match[3] || "pm").toLowerCase(),
+      date: date || "",
+      time: time || "",
     };
   };
 
@@ -509,27 +515,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       .split(/\r?\n|,|•/)
       .map((item) => item.trim())
       .filter(Boolean);
-  };
-
-  const formatTimeValue = raw => {
-    const value = String(raw || "").trim();
-    if (!value) return "";
-    const digits = value.replace(/[^0-9]/g, "");
-    if (!digits) return value;
-    if (value.includes(":")) return value;
-    const normalized = digits.slice(0, 4);
-    if (normalized.length <= 2) return `${parseInt(normalized, 10)}:00`;
-    if (normalized.length === 3) {
-      return `${parseInt(normalized.slice(0, 1), 10)}:${normalized.slice(1).padEnd(2, "0")}`;
-    }
-    return `${parseInt(normalized.slice(0, 2), 10)}:${normalized.slice(2)}`;
-  };
-
-  const buildTimeRange = ({ timeFrom, timeUntil, timePeriod }) => {
-    if (timeFrom && timeUntil) {
-      return `${timeFrom} - ${timeUntil} ${timePeriod || "pm"}`;
-    }
-    return "";
   };
 
   const saveSettings = async () => {
@@ -1184,10 +1169,10 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
   const startAddCalendarEvent = () => {
     setCalendarForm({
       title: "",
-      date: "",
-      timeFrom: "",
-      timeUntil: "",
-      timePeriod: "pm",
+      startDate: "",
+      startTime: "",
+      endDate: "",
+      endTime: "",
       location: "",
       office: "",
       attendees: [],
@@ -1200,13 +1185,12 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const startEditCalendarEvent = idx => {
     const entry = currentCalendarEvents[idx] || {};
-    const parsed = parseTimeRange(entry.time);
     setCalendarForm({
       title: entry.title || "",
-      date: entry.date || "",
-      timeFrom: parsed.from,
-      timeUntil: parsed.until,
-      timePeriod: parsed.period,
+      startDate: entry.startDate || entry.date || "",
+      startTime: entry.startTime || "",
+      endDate: entry.endDate || entry.date || "",
+      endTime: entry.endTime || "",
       location: entry.location || "",
       office: entry.office || "",
       attendees: parseAttendees(entry.attendees),
@@ -1219,15 +1203,20 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
   const saveCalendarEvent = async () => {
     const title = String(calendarForm.title || "").trim();
-    const date = String(calendarForm.date || "").trim();
-    if (!title || !date) {
-      showStatus(setCalendarStatus, "error", "✗ Event title and date are required.");
+    const startDate = String(calendarForm.startDate || "").trim();
+    const endDate = String(calendarForm.endDate || "").trim() || startDate;
+    if (!title || !startDate) {
+      showStatus(setCalendarStatus, "error", "✗ Event title and start date are required.");
       return;
     }
 
     const event = {
       ...calendarForm,
-      time: buildTimeRange(calendarForm),
+      startDate,
+      startTime: String(calendarForm.startTime || "").trim(),
+      endDate,
+      endTime: String(calendarForm.endTime || "").trim(),
+      date: startDate,
       attendees: Array.isArray(calendarForm.attendees)
         ? calendarForm.attendees.filter(Boolean).map(String)
         : parseAttendees(calendarForm.attendees),
@@ -2743,80 +2732,8 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                       onChange={e => setCalendarForm(f => ({ ...f, title: e.target.value }))}
                     />
                   </div>
-                  <div className="a-field">
-                    <label className="a-label">Event Date <span style={{color: 'red'}}>*</span></label>
-                    <input
-                      type="date"
-                      className="a-input"
-                      value={calendarForm.date}
-                      onChange={e => setCalendarForm(f => ({ ...f, date: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="a-row">
-                  <div className="a-field">
-                    <label className="a-label">From</label>
-                    <input
-                      className="a-input"
-                      list="calendar-time-values"
-                      placeholder="3:00"
-                      value={calendarForm.timeFrom}
-                      onChange={e => setCalendarForm(f => ({ ...f, timeFrom: formatTimeValue(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="a-field">
-                    <label className="a-label">Until</label>
-                    <input
-                      className="a-input"
-                      list="calendar-time-values"
-                      placeholder="5:00"
-                      value={calendarForm.timeUntil}
-                      onChange={e => setCalendarForm(f => ({ ...f, timeUntil: formatTimeValue(e.target.value) }))}
-                    />
-                    <datalist id="calendar-time-values">
-                      <option value="7:00" />
-                      <option value="7:30" />
-                      <option value="8:00" />
-                      <option value="8:30" />
-                      <option value="9:00" />
-                      <option value="9:30" />
-                      <option value="10:00" />
-                      <option value="10:30" />
-                      <option value="11:00" />
-                      <option value="11:30" />
-                      <option value="12:00" />
-                      <option value="12:30" />
-                      <option value="1:00" />
-                      <option value="1:30" />
-                      <option value="2:00" />
-                      <option value="2:30" />
-                      <option value="3:00" />
-                      <option value="3:30" />
-                      <option value="4:00" />
-                      <option value="4:30" />
-                      <option value="5:00" />
-                      <option value="5:30" />
-                      <option value="6:00" />
-                      <option value="6:30" />
-                      <option value="7:00" />
-                      <option value="7:30" />
-                    </datalist>
-                  </div>
-                </div>
-                <div className="a-row">
-                  <div className="a-field">
-                    <label className="a-label">AM / PM</label>
-                    <ModalSelect
-                      className="a-select"
-                      value={calendarForm.timePeriod}
-                      onChange={nextValue => setCalendarForm(f => ({ ...f, timePeriod: nextValue }))}
-                      options={[
-                        { value: "am", label: "AM" },
-                        { value: "pm", label: "PM" },
-                      ]}
-                    />
-                  </div>
-                  <div className="a-field">
+
+                   <div className="a-field">
                     <label className="a-label">Category</label>
                     <ModalSelect
                       className="a-select"
@@ -2830,7 +2747,67 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                       ]}
                     />
                   </div>
+                
+                  <div className="a-field">
+                    <label className="a-label">Start Date / Time <span style={{color: 'red'}}>*</span></label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        ref={startDatePickerRef}
+                        type="datetime-local"
+                        className="a-input"
+                        value={buildDateTimeValue(calendarForm.startDate, calendarForm.startTime)}
+                        onChange={e => {
+                          const { date, time } = parseDateTimeValue(e.target.value);
+                          setCalendarForm(f => ({ ...f, startDate: date, startTime: time }));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost"
+                        onClick={() => {
+                          const picker = startDatePickerRef.current;
+                          if (!picker) return;
+                          picker.showPicker?.();
+                          picker.focus();
+                        }}
+                        style={{ padding: 8 }}
+                      >
+                        <Calendar size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">End Date / Time</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        ref={endDatePickerRef}
+                        type="datetime-local"
+                        className="a-input"
+                        value={buildDateTimeValue(calendarForm.endDate, calendarForm.endTime)}
+                        onChange={e => {
+                          const { date, time } = parseDateTimeValue(e.target.value);
+                          setCalendarForm(f => ({ ...f, endDate: date, endTime: time }));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="a-btn a-btn-ghost"
+                        onClick={() => {
+                          const picker = endDatePickerRef.current;
+                          if (!picker) return;
+                          picker.showPicker?.();
+                          picker.focus();
+                        }}
+                        style={{ padding: 8 }}
+                      >
+                        <Calendar size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                
+                 
+               
                 <div className="a-row">
                   <div className="a-field">
                     <label className="a-label">
@@ -2852,7 +2829,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     />
                   </div>
                 </div>
-                <div className="a-row">
+               
                   <div className="a-field">
                     <label className="a-label">Attending / Involved</label>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -2904,7 +2881,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                       >Add</button>
                     </div>
                   </div>
-                </div>
+              
                 <div className="a-field">
                   <label className="a-label">Description</label>
                   <textarea
@@ -2945,7 +2922,13 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     <div key={item.id || idx} className="svc-row">
                       <div className="svc-row-info">
                         <div className="svc-row-name">{item.title || "Untitled Event"}</div>
-                        <div className="svc-row-meta">{item.date || "No date"} · {item.category}</div>
+                        <div className="svc-row-meta">
+                          {item.startDate || item.date || "No date"}
+                          {item.endDate && item.endDate !== (item.startDate || item.date)
+                            ? ` → ${item.endDate}`
+                            : ""}
+                          {` · ${item.category}`}
+                        </div>
                       </div>
                       <div className="svc-row-actions">
                         <button className="a-btn a-btn-ghost a-btn-sm" onClick={() => startEditCalendarEvent(idx)}>Edit</button>

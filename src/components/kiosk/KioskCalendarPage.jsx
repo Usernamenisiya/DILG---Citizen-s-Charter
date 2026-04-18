@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import dilgIcon from "../../Dilg.svg";
 import lgrrcLogo from "../../lgrrc_logo.jpg";
 import rictuLogo from "../../assets/images/RICTU_LOGO.png";
@@ -7,12 +7,10 @@ import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { MapPin, ChevronLeft } from "lucide-react";
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
 ];
 const DAYS_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const DEFAULT_ANNOUNCEMENT = "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
-
 const FILTERS = [
   { id: "all", label: "All" },
   { id: "internal", label: "Internal" },
@@ -55,6 +53,21 @@ function formatLongDate(year, month, day) {
   return `${MONTHS[month]} ${day}, ${year}`;
 }
 
+function formatDateString(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return String(value).trim();
+  return `${MONTHS[parsed.getMonth()]} ${parsed.getDate()}, ${parsed.getFullYear()}`;
+}
+
+function formatDateTime(value, time) {
+  const dateText = formatDateString(value);
+  const timeText = String(time || "").trim();
+  if (dateText && timeText) return `${dateText} • ${timeText}`;
+  if (dateText) return dateText;
+  return timeText || "";
+}
+
 function normalizeAttendees(attendees) {
   if (!attendees) return [];
   if (Array.isArray(attendees)) return attendees.filter(Boolean).map(String);
@@ -69,29 +82,56 @@ function renderAttendeesDetail(attendees) {
   return parts.length ? (
     <div className="kcal-attendees-list">
       {parts.map((item, idx) => (
-        <div key={idx} className="kcal-attendees-item">{item}</div>
+        <div key={idx} className="kcal-attendees-item">
+          {item}
+        </div>
       ))}
     </div>
   ) : null;
 }
 
 function EventCard({ event, onClick, delay = 0 }) {
+  const dateTimeSegments = [
+    {
+      date: event.startDate || event.date,
+      time: event.startTime || event.time,
+    },
+    event.endDate || event.endTime
+      ? {
+          date: event.endDate || event.date,
+          time: event.endTime || event.time,
+        }
+      : null,
+  ].filter(Boolean);
+
   return (
     <button
       type="button"
       className="kcal-event-card"
-      style={{ "--ec": CATEGORY_COLORS[event.category], animationDelay: `${delay}s` }}
+      style={{
+        "--ec": CATEGORY_COLORS[event.category],
+        animationDelay: `${delay}s`,
+      }}
       onClick={() => onClick(event.id)}
     >
       <span className="kcal-event-stripe" />
       <span className="kcal-event-body">
         <span className="kcal-event-topline">
           <span className="kcal-event-pill">{event.category}</span>
-          <span className="kcal-event-time">{event.time}</span>
+          <span className="kcal-event-time">
+            {dateTimeSegments.map((segment, index) => (
+              <Fragment key={`${event.id}-date-${index}`}>
+                {index > 0 ? " — " : ""}
+                {formatDateTime(segment.date, segment.time)}
+              </Fragment>
+            ))}
+          </span>
         </span>
         <span className="kcal-event-title">{event.title}</span>
         <span className="kcal-event-meta">
-          {event.office} | <MapPin size={12} style={{ verticalAlign: "text-bottom", marginRight: 4 }} />{event.location}
+          {event.office} |{" "}
+          <MapPin size={12} style={{ verticalAlign: "text-bottom", marginRight: 4 }} />
+          {event.location}
         </span>
       </span>
       <span className="kcal-event-arrow">&gt;</span>
@@ -100,16 +140,41 @@ function EventCard({ event, onClick, delay = 0 }) {
 }
 
 function EventDetail({ event, onBack }) {
+  const dateTimeSegments = [
+    {
+      date: event.startDate || event.date,
+      time: event.startTime || event.time,
+    },
+    event.endDate || event.endTime
+      ? {
+          date: event.endDate || event.date,
+          time: event.endTime || event.time,
+        }
+      : null,
+  ].filter(Boolean);
+
   return (
     <div className="kcal-detail" style={{ "--ec": CATEGORY_COLORS[event.category] }}>
-      <button type="button" className="kcal-back-btn" onClick={onBack}>Back to list</button>
+      <button type="button" className="kcal-back-btn" onClick={onBack}>
+        Back to list
+      </button>
       <div className="kcal-detail-card">
         <div className="kcal-detail-card-stripe" />
         <div className="kcal-detail-card-inner">
           <div className="kcal-detail-tag">{event.category}</div>
           <div className="kcal-detail-title">{event.title}</div>
-          <div className="kcal-detail-time">{event.time}</div>
-          <div className="kcal-detail-loc"><MapPin size={14} style={{ verticalAlign: "text-bottom", marginRight: 6 }} />{event.location}</div>
+          <div className="kcal-detail-time">
+            {dateTimeSegments.map((segment, index) => (
+              <Fragment key={`detail-date-${index}`}>
+                {index > 0 ? " — " : ""}
+                {formatDateTime(segment.date, segment.time)}
+              </Fragment>
+            ))}
+          </div>
+          <div className="kcal-detail-loc">
+            <MapPin size={14} style={{ verticalAlign: "text-bottom", marginRight: 6 }} />
+            {event.location}
+          </div>
         </div>
       </div>
       {event.description && (
@@ -132,15 +197,38 @@ function EventDetail({ event, onBack }) {
   );
 }
 
-export default function KioskCalendarPage({ visible, settings, announcements = [], calendarEvents, onBackToMenu, onLgrrcLogoClick }) {
+export default function KioskCalendarPage({
+  visible,
+  settings,
+  announcements = [],
+  calendarEvents,
+  onBackToMenu,
+  onLgrrcLogoClick,
+}) {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
   const [filter, setFilter] = useState("all");
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [clockTime, setClockTime] = useState("");
+  const [clockDate, setClockDate] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      const n = new Date();
+      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      setClockTime(`${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`);
+      setClockDate(`${days[n.getDay()]}, ${months[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const visibleCells = useMemo(() => getMonthCells(year, month), [year, month]);
+
   const visibleCellsUntilMonthEnd = useMemo(() => {
     let lastMonthCellIndex = -1;
     for (let i = visibleCells.length - 1; i >= 0; i -= 1) {
@@ -150,45 +238,78 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
         break;
       }
     }
-
     if (lastMonthCellIndex === -1) return visibleCells;
     return visibleCells.slice(0, lastMonthCellIndex + 1);
   }, [visibleCells, year, month]);
+
   const selectedKey = selectedDay ? toKey(year, month, selectedDay) : null;
   const isExpanded = selectedDay !== null;
 
-  const isTodayCell = (cell) => {
-    return (
-      cell.day === today.getDate() &&
-      cell.month === today.getMonth() &&
-      cell.year === today.getFullYear()
-    );
-  };
+  const isTodayCell = (cell) =>
+    cell.day === today.getDate() &&
+    cell.month === today.getMonth() &&
+    cell.year === today.getFullYear();
 
   const applyFilter = (events) => {
     if (filter === "all") return events;
     return events.filter((event) => event.category === filter);
   };
 
+  // ─── eventsMap: simplified, no slot tracking needed here anymore ───
   const eventsMap = useMemo(() => {
     if (calendarEvents == null) return {};
     const map = {};
-    calendarEvents.forEach((event) => {
-      const date = String(event?.date || "");
-      const parts = date.split("-").map((v) => Number(v));
-      if (parts.length !== 3) return;
+
+    const parseDateString = (value) => {
+      const raw = String(value || "").trim();
+      const parts = raw.split("-").map((v) => Number(v));
+      if (parts.length !== 3) return null;
       const [yearVal, monthVal, dayVal] = parts;
-      if (!Number.isFinite(yearVal) || !Number.isFinite(monthVal) || !Number.isFinite(dayVal)) return;
-      const key = toKey(yearVal, monthVal - 1, dayVal);
-      if (!map[key]) map[key] = [];
-      map[key].push(event);
+      if (!Number.isFinite(yearVal) || !Number.isFinite(monthVal) || !Number.isFinite(dayVal))
+        return null;
+      return new Date(yearVal, monthVal - 1, dayVal);
+    };
+
+    const processed = (calendarEvents || [])
+      .map((event) => {
+        const start = parseDateString(event.startDate || event.date);
+        let end = parseDateString(event.endDate || event.date);
+        if (!end || end < start) end = start;
+        if (!start) return null;
+        return {
+          ...event,
+          _start: start,
+          _end: end,
+          _startKey: toKey(start.getFullYear(), start.getMonth(), start.getDate()),
+          _endKey: toKey(end.getFullYear(), end.getMonth(), end.getDate()),
+          _duration: end - start,
+        };
+      })
+      .filter(Boolean);
+
+    processed.sort((a, b) => {
+      if (a._startKey !== b._startKey) return a._start - b._start;
+      return b._duration - a._duration;
     });
+
+    // Simple map: each date key -> array of events occurring on that day
+    processed.forEach((event) => {
+      const cursor = new Date(event._start);
+      while (cursor <= event._end) {
+        const key = toKey(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+        if (!map[key]) map[key] = [];
+        map[key].push(event);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+
     return map;
   }, [calendarEvents]);
 
   const selectedEvents = useMemo(() => {
     if (!selectedKey) return [];
-    return applyFilter(eventsMap[selectedKey] || []);
+    const rawEvents = (eventsMap[selectedKey] || []).filter(Boolean);
+    return applyFilter(rawEvents);
   }, [selectedKey, filter, eventsMap]);
 
   const selectedEvent = useMemo(() => {
@@ -226,101 +347,72 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
     setSelectedEventId(null);
   };
 
-  // Announcement ticker
-  const tickerItems = useMemo(() => {
-    const fromList = (announcements || [])
-      .map(a => {
-        const useTitle = a?.tickerDisplay === "title";
-        const candidate = useTitle ? a?.title : a?.message;
-        const fallback = useTitle ? a?.message : a?.title;
-        const baseText = String(candidate || fallback || "").trim();
-        const postedOn = String(a?.postedOn || "").trim();
-        const effectiveUntil = String(a?.effectiveUntil || "").trim();
-        const dateParts = [
-          postedOn ? `Posted: ${postedOn}` : "",
-          effectiveUntil ? `Effective until: ${effectiveUntil}` : "",
-        ].filter(Boolean);
-        if (!baseText) return "";
-        return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
-      })
-      .filter(Boolean);
-    if (fromList.length) return fromList;
-    const fallback = String(settings.announcement || "").trim();
-    return [fallback || DEFAULT_ANNOUNCEMENT];
-  }, [announcements, settings.announcement]);
-
-  const announcementScrollMs = useMemo(() => {
-    const messageLength = tickerItems.join(" ").length;
-    const baseMs = 15000;
-    const msPerCharacter = 14;
-    return Math.max(12000, Math.min(22000, baseMs + (messageLength * msPerCharacter)));
-  }, [tickerItems]);
-
-  const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
-
   return (
     <div className={`calendar-page${visible ? " visible" : ""}`}>
-      {/* ── HEADER: announcement ticker ── */}
-      <div className="idle-header">
-        <div className="idle-ticker">
-          <div className="idle-ticker-badge">
-            <svg viewBox="0 0 24 24" fill="white" width="50" height="50">
-              <path d="M18 3a1 1 0 0 0-1 .26L9.54 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h.57l1.24 3.38A1 1 0 0 0 7.75 19H9a1 1 0 0 0 .94-.66L11.35 15H11l-.01-.01L17 18.74A1 1 0 0 0 18 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-8.5 12H8.3l-1.1-3H10l.1.28zM17 17l-6.5-3.5v-5L17 5v12z"/>
-              <path d="M20.5 8.5a1 1 0 0 0 0 7 4 4 0 0 0 0-7z"/>
-            </svg>
-            <div className="idle-ticker-badge-text">
-              <span>ANNOUNCEMENT</span>
-              <span className="idle-ticker-hours">{officeHours}</span>
-            </div>
+      <header className="header">
+        <div className="header-left">
+          <div className="header-logo">
+            <img src={dilgIcon} alt="DILG Logo" />
           </div>
-          <div className="idle-ticker-track">
-            <div
-              className="idle-ticker-inner"
-              style={{ animationDuration: `${announcementScrollMs}ms` }}
-            >
-              {[0, 1].map(groupIndex => (
-                <div
-                  key={groupIndex}
-                  className="idle-ticker-group"
-                  aria-hidden={groupIndex === 1 ? "true" : undefined}
-                >
-                  {tickerItems.map((item, itemIndex) => (
-                    <Fragment key={`${groupIndex}-${itemIndex}-${item}`}>
-                      <span>{item}</span>
-                      <span className="idle-ticker-sep">◆</span>
-                    </Fragment>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <div className="header-title">
+            {settings.office} - Citizen's Charter Kiosk
+            <span>Department of the Interior and Local Government | {settings.address}</span>
           </div>
         </div>
-      </div>
+        <div className="header-right">
+          <div className="header-clock">
+            {clockTime}
+            <span className="date">{clockDate}</span>
+          </div>
+        </div>
+      </header>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* ── Page content ── */}
       <div className="calendar-page-content">
-        {/* Back button */}
-        <button type="button" className="calendar-page-back-btn" onClick={onBackToMenu}>
+        <button
+          type="button"
+          className="calendar-page-back-btn"
+          onClick={onBackToMenu}
+        >
           <ChevronLeft size={20} /> Back to Menu
         </button>
 
-        {/* Calendar Panel */}
-        <div className={`kcal-page-container${isExpanded ? " kcal-page-container--expanded" : ""}`}>
+        <div
+          className={`kcal-page-container${isExpanded ? " kcal-page-container--expanded" : ""}`}
+        >
+          {/* ── Left panel: calendar grid ── */}
           <div className="kcal-panel-left">
+
+            {/* Toolbar */}
             <div className="kcal-toolbar">
               <span className="kcal-toolbar-spacer" aria-hidden="true" />
               <div className="kcal-month-nav">
-                <button type="button" className="kcal-nav-btn kcal-nav-btn--prev" onClick={prevMonth} aria-label="Previous month">
+                <button
+                  type="button"
+                  className="kcal-nav-btn kcal-nav-btn--prev"
+                  onClick={prevMonth}
+                  aria-label="Previous month"
+                >
                   <span className="kcal-nav-glyph" aria-hidden="true">&larr;</span>
                 </button>
-                <span className="kcal-month-label">{MONTHS[month]} {year}</span>
-                <button type="button" className="kcal-nav-btn kcal-nav-btn--next" onClick={nextMonth} aria-label="Next month">
+                <span className="kcal-month-label">
+                  {MONTHS[month]} {year}
+                </span>
+                <button
+                  type="button"
+                  className="kcal-nav-btn kcal-nav-btn--next"
+                  onClick={nextMonth}
+                  aria-label="Next month"
+                >
                   <span className="kcal-nav-glyph" aria-hidden="true">&rarr;</span>
                 </button>
               </div>
-              <button type="button" className="kcal-today-btn" onClick={goToToday}>Today</button>
+              <button type="button" className="kcal-today-btn" onClick={goToToday}>
+                Today
+              </button>
             </div>
 
+            {/* Filter chips */}
             <div className="kcal-filter-row">
               {FILTERS.map((item) => (
                 <button
@@ -343,67 +435,172 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
               ))}
             </div>
 
+            {/* Day-of-week header */}
             <div className="kcal-grid kcal-grid--header">
               {DAYS_SHORT.map((d) => (
                 <div key={d} className="kcal-dow">{d}</div>
               ))}
             </div>
 
-            <div className="kcal-grid kcal-grid--days">
-              {visibleCellsUntilMonthEnd.map((cell) => {
-                const allCellEvents = eventsMap[cell.key] || [];
-                const filteredCellEvents = applyFilter(allCellEvents);
-                const hasEvent = filteredCellEvents.length > 0;
-                const isActive = cell.year === year && cell.month === month && cell.day === selectedDay;
+            {/* ── iOS-style week rows with pill overlay ── */}
+            <div className="kcal-grid--days">
+              {(() => {
+                const weeks = [];
+                for (let i = 0; i < visibleCellsUntilMonthEnd.length; i += 7) {
+                  weeks.push(visibleCellsUntilMonthEnd.slice(i, i + 7));
+                }
 
-                return (
-                  <button
-                    key={cell.key}
-                    type="button"
-                    className={[
-                      "kcal-day",
-                      cell.inCurrentMonth ? "" : "kcal-day--outside",
-                      hasEvent ? "kcal-day--has-event" : "",
-                      isActive ? "kcal-day--active" : "",
-                      isTodayCell(cell) ? "kcal-day--today" : "",
-                    ].filter(Boolean).join(" ")}
-                    onClick={() => {
-                      if (isActive) {
-                        setSelectedDay(null);
-                        setSelectedEventId(null);
-                        return;
-                      }
-                      setYear(cell.year);
-                      setMonth(cell.month);
-                      setSelectedDay(cell.day);
-                      setSelectedEventId(null);
-                    }}
-                  >
-                    <span className="kcal-day-num">{cell.day}</span>
-                    {hasEvent && (
-                      <span className="kcal-day-titles-row">
-                        {filteredCellEvents.slice(0, 3).map((event) => (
-                          <span key={event.id} className="kcal-day-title" style={{ color: CATEGORY_COLORS[event.category] }}>
-                            {event.title}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                return weeks.map((weekCells, weekIdx) => {
+                  // Gather all events visible in this week row
+                  const weekEventMap = {};
+                  weekCells.forEach((cell) => {
+                    const cellEvents = eventsMap[cell.key] || [];
+                    cellEvents.forEach((ev) => {
+                      if (!ev) return;
+                      if (filter !== "all" && ev.category !== filter) return;
+                      if (!weekEventMap[ev.id]) weekEventMap[ev.id] = { ev, cells: [] };
+                      weekEventMap[ev.id].cells.push(cell);
+                    });
+                  });
+
+                  // Assign vertical slots so pills don't overlap
+                  const slotGrid = {};
+                  const eventSlots = {};
+                  Object.values(weekEventMap).forEach(({ ev, cells }) => {
+                    const cols = cells.map((c) =>
+                      weekCells.findIndex((wc) => wc.key === c.key)
+                    );
+                    let slot = 0;
+                    while (true) {
+                      const conflict = cols.some(
+                        (col) => slotGrid[col] && slotGrid[col][slot]
+                      );
+                      if (!conflict) break;
+                      slot++;
+                    }
+                    cols.forEach((col) => {
+                      if (!slotGrid[col]) slotGrid[col] = [];
+                      slotGrid[col][slot] = ev.id;
+                    });
+                    eventSlots[ev.id] = slot;
+                  });
+
+                  // How tall the pill area needs to be
+                  const maxSlot = Object.keys(eventSlots).length
+                    ? Math.max(...Object.values(eventSlots))
+                    : -1;
+                  const pillAreaHeight = maxSlot >= 0 ? (maxSlot + 1) * 22 + 4 : 0;
+
+                  return (
+                    <div key={weekIdx} className="kcal-week">
+                      {/* Day number cells — clean, no pills inside */}
+                      {weekCells.map((cell) => {
+                        const isActive =
+                          cell.year === year &&
+                          cell.month === month &&
+                          cell.day === selectedDay;
+
+                        return (
+                          <button
+                            key={cell.key}
+                            type="button"
+                            className={[
+                              "kcal-day",
+                              cell.inCurrentMonth ? "" : "kcal-day--outside",
+                              isActive ? "kcal-day--active" : "",
+                              isTodayCell(cell) ? "kcal-day--today" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            style={{ paddingBottom: `${pillAreaHeight + 6}px` }}
+                            onClick={() => {
+                              if (isActive) {
+                                setSelectedDay(null);
+                                setSelectedEventId(null);
+                                return;
+                              }
+                              setYear(cell.year);
+                              setMonth(cell.month);
+                              setSelectedDay(cell.day);
+                              setSelectedEventId(null);
+                            }}
+                          >
+                            <span className="kcal-day-num">{cell.day}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* Pill overlay — absolutely positioned over the entire week row */}
+                      <div className="kcal-pills-layer" aria-hidden="true">
+                        {Object.values(weekEventMap).map(({ ev, cells }) => {
+                          const cols = cells
+                            .map((c) =>
+                              weekCells.findIndex((wc) => wc.key === c.key)
+                            )
+                            .filter((c) => c !== -1)
+                            .sort((a, b) => a - b);
+                          if (!cols.length) return null;
+
+                          const startCol = cols[0];
+                          const endCol = cols[cols.length - 1];
+                          const span = endCol - startCol + 1;
+                          const slot = eventSlots[ev.id] ?? 0;
+
+                          // isStart: event actually starts here (not just week-wrapped)
+                          const isStart =
+                            ev._startKey === cells[0]?.key || startCol === 0;
+                          // isEnd: event actually ends here (not just week-wrapped)
+                          const isEnd =
+                            ev._endKey === cells[cells.length - 1]?.key || endCol === 6;
+
+                          const borderRadius =
+                            isStart && isEnd
+                              ? "4px"
+                              : isStart
+                              ? "4px 0 0 4px"
+                              : isEnd
+                              ? "0 4px 4px 0"
+                              : "0";
+
+                          return (
+                            <span
+                              key={ev.id}
+                              className="kcal-pill"
+                              style={{
+                                left: `calc(${(startCol / 7) * 100}% + 2px)`,
+                                width: `calc(${(span / 7) * 100}% - 4px)`,
+                                bottom: `${4 + slot * 22}px`,
+                                background: CATEGORY_COLORS[ev.category],
+                                borderRadius,
+                              }}
+                            >
+                              {isStart || startCol === 0 ? ev.title : ""}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
+          {/* ── Right panel: event list / detail ── */}
           {isExpanded && (
             <div className="kcal-panel-right">
               {selectedEvent ? (
-                <EventDetail event={selectedEvent} onBack={() => setSelectedEventId(null)} />
+                <EventDetail
+                  event={selectedEvent}
+                  onBack={() => setSelectedEventId(null)}
+                />
               ) : (
                 <>
                   <div className="kcal-panel-right-header">
                     <div className="kcal-panel-right-header-top">
-                      <div className="kcal-panel-date-label">{formatLongDate(year, month, selectedDay)}</div>
+                      <div className="kcal-panel-date-label">
+                        {formatLongDate(year, month, selectedDay)}
+                      </div>
                       <button
                         type="button"
                         className="kcal-panel-collapse-btn"
@@ -416,7 +613,8 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
                       </button>
                     </div>
                     <div className="kcal-panel-count">
-                      {selectedEvents.length} event{selectedEvents.length !== 1 ? "s" : ""} found
+                      {selectedEvents.length} event
+                      {selectedEvents.length !== 1 ? "s" : ""} found
                     </div>
                   </div>
 
@@ -424,12 +622,18 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
                     {selectedEvents.length === 0 && (
                       <div className="kcal-empty-state">
                         <div className="kcal-empty-title">No events scheduled</div>
-                        <div className="kcal-empty-sub">Try another date or switch filters.</div>
+                        <div className="kcal-empty-sub">
+                          Try another date or switch filters.
+                        </div>
                       </div>
                     )}
-
                     {selectedEvents.map((event, index) => (
-                      <EventCard key={event.id} event={event} onClick={setSelectedEventId} delay={index * 0.04} />
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onClick={setSelectedEventId}
+                        delay={index * 0.04}
+                      />
                     ))}
                   </div>
                 </>
@@ -439,21 +643,28 @@ export default function KioskCalendarPage({ visible, settings, announcements = [
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
+      {/* ── Footer ── */}
       <div className="idle-footer idle-footer--transparent">
-        {/* Left: Logos + Dept Name + Tagline */}
         <div className="idle-footer-left">
           <div className="idle-footer-logos">
             <img src={dilgIcon} alt="DILG Seal" className="footer-logo" />
-            <img src={lgrrcLogo} alt="LGRRC Logo" className="footer-logo lgrrc-logo" onClick={onLgrrcLogoClick} />
+            <img
+              src={lgrrcLogo}
+              alt="LGRRC Logo"
+              className="footer-logo lgrrc-logo"
+              onClick={onLgrrcLogoClick}
+            />
           </div>
           <div className="idle-footer-text">
-            <div className="idle-footer-office">Department of the Interior and Local Government - Caraga</div>
+            <div className="idle-footer-office">
+              Department of the Interior and Local Government - Caraga
+            </div>
             <div className="idle-footer-tagline">{settings.tagline}</div>
-            <div className="idle-footer-copyright">Copyright 2026 DILG Caraga. All rights reserved.</div>
+            <div className="idle-footer-copyright">
+              Copyright 2026 DILG Caraga. All rights reserved.
+            </div>
           </div>
         </div>
-        {/* Right: "Powered by" + Partners */}
         <div className="idle-footer-right">
           <div className="idle-footer-powered-by">
             <div className="idle-footer-powered-text">Powered by</div>
