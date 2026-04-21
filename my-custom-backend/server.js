@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const http = require("http");
+const { randomUUID } = require("crypto");
 const { Server } = require("socket.io");
 
 const app = express();
@@ -14,7 +15,15 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-const port = 3333;
+const port = Number(process.env.PORT) || 3333;
+
+const runtimeDataDir = path.resolve(process.env.BACKEND_DATA_DIR || __dirname);
+const seedSourceDir = path.resolve(process.env.BACKEND_SEED_DIR || __dirname);
+const frontendDistDir = path.resolve(process.env.BACKEND_FRONTEND_DIR || path.join(__dirname, "..", "dist"));
+fs.mkdirSync(runtimeDataDir, { recursive: true });
+console.log("[Backend] Runtime data dir:", runtimeDataDir);
+console.log("[Backend] Seed source dir:", seedSourceDir);
+console.log("[Backend] Frontend dist dir:", frontendDistDir);
 
 app.use(cors());
 app.use(express.json());
@@ -43,7 +52,36 @@ app.use((req, res, next) => {
   next();
 });
 
-const uploadsRoot = path.join(__dirname, "uploads");
+const uploadsRoot = path.join(runtimeDataDir, "uploads");
+const seedUploadsRoot = path.join(seedSourceDir, "uploads");
+const dbPath = path.join(runtimeDataDir, "app-data.db");
+const seedDbPath = path.join(seedSourceDir, "app-data.db");
+const bootstrapMarkerPath = path.join(runtimeDataDir, ".bootstrapped");
+const shouldHydrateFromSeed = !fs.existsSync(dbPath);
+
+function migrateSeedUploads() {
+  if (!shouldHydrateFromSeed) {
+    return;
+  }
+
+  if (!fs.existsSync(seedUploadsRoot)) {
+    return;
+  }
+
+  try {
+    fs.cpSync(seedUploadsRoot, uploadsRoot, {
+      recursive: true,
+      force: false,
+      errorOnExist: false,
+    });
+    console.log("[Backend] Upload seed migration completed.");
+  } catch (error) {
+    console.error("[Backend] Upload seed migration failed:", error);
+  }
+}
+
+migrateSeedUploads();
+
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
 const idleVideosUploadDir = path.join(uploadsRoot, "idle-videos");
@@ -53,6 +91,7 @@ fs.mkdirSync(programsUploadDir, { recursive: true });
 fs.mkdirSync(idleVideosUploadDir, { recursive: true });
 fs.mkdirSync(keyOfficialsUploadDir, { recursive: true });
 app.use("/uploads", express.static(uploadsRoot));
+app.use(express.static(frontendDistDir));
 
 const announcementUploadStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, announcementsUploadDir),
@@ -133,9 +172,16 @@ const uploadKeyOfficialsImage = multer({
   },
 });
 
-const dbPath = path.join(__dirname, "app-data.db");
+if (shouldHydrateFromSeed && fs.existsSync(seedDbPath)) {
+  try {
+    fs.copyFileSync(seedDbPath, dbPath);
+    console.log("[Backend] Seeded runtime DB from", seedDbPath);
+  } catch (error) {
+    console.error("[Backend] Failed to seed runtime DB:", error);
+  }
+}
 const db = new Database(dbPath);
-const seedSnapshotPath = path.join(__dirname, "seed-data.json");
+const seedSnapshotPath = path.join(seedSourceDir, "seed-data.json");
 
 let seedSnapshot = null;
 try {
@@ -1021,14 +1067,28 @@ try {
 try {
   const calendarColumns = db.prepare("PRAGMA table_info(calendar_events)").all();
   const hasEndDate = calendarColumns.some(col => col.name === "endDate");
+  const hasStartTime = calendarColumns.some(col => col.name === "startTime");
+  const hasEndTime = calendarColumns.some(col => col.name === "endTime");
+  
   if (!hasEndDate) {
     db.prepare("ALTER TABLE calendar_events ADD COLUMN endDate TEXT").run();
+    console.log("✓ Added 'endDate' to calendar_events");
+  }
+  if (!hasStartTime) {
     db.prepare("ALTER TABLE calendar_events ADD COLUMN startTime TEXT").run();
+    console.log("✓ Added 'startTime' to calendar_events");
+  }
+  if (!hasEndTime) {
     db.prepare("ALTER TABLE calendar_events ADD COLUMN endTime TEXT").run();
-    console.log("✓ Added 'endDate', 'startTime', and 'endTime' to calendar_events");
+    console.log("✓ Added 'endTime' to calendar_events");
+  }
+  
+  if (!hasEndDate || !hasStartTime || !hasEndTime) {
+    console.log("✓ Calendar events schema migration complete");
   }
 } catch (error) {
-  console.error("Calendar events migration error:", error);
+  console.error("Calendar events migration error:", error.message);
+  throw error; // Re-throw to prevent silent failures
 }
 
 try {
@@ -1144,58 +1204,68 @@ try {
 db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
 db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
 
-seedTableFromSnapshot("internal_services");
-seedTableFromSnapshot("external_services");
-seedTableFromSnapshot("issuances");
-seedTableFromSnapshot("issuance_meta");
-seedTableFromSnapshot("kiosk_settings");
-seedTableFromSnapshot("feedback_content");
-seedTableFromSnapshot("organizational_profile");
-seedTableFromSnapshot("office_directory_meta");
-seedTableFromSnapshot("office_directory_entries");
-seedTableFromSnapshot("programs");
-seedTableFromSnapshot("idle_videos");
-upsertDefaultKeyOfficialsRow();
+const shouldRunStartupSeed = shouldHydrateFromSeed && !fs.existsSync(bootstrapMarkerPath);
+if (shouldRunStartupSeed) {
+  try {
+    seedTableFromSnapshot("internal_services");
+    seedTableFromSnapshot("external_services");
+    seedTableFromSnapshot("issuances");
+    seedTableFromSnapshot("issuance_meta");
+    seedTableFromSnapshot("kiosk_settings");
+    seedTableFromSnapshot("feedback_content");
+    seedTableFromSnapshot("organizational_profile");
+    seedTableFromSnapshot("office_directory_meta");
+    seedTableFromSnapshot("office_directory_entries");
+    seedTableFromSnapshot("programs");
+    seedTableFromSnapshot("idle_videos");
+    upsertDefaultKeyOfficialsRow();
 
-try {
-  const insertedIdle = syncMediaTableFromUploads({
-    dirPath: idleVideosUploadDir,
-    urlPrefix: "/uploads/idle-videos",
-    tableName: "idle_videos",
-    insertSql: "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)",
-    fallbackTitle: "Idle Video",
-    buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
-      title,
-      videoUrl,
-      uploadedDate,
-      sortOrder,
-    ],
-  });
+    const insertedIdle = syncMediaTableFromUploads({
+      dirPath: idleVideosUploadDir,
+      urlPrefix: "/uploads/idle-videos",
+      tableName: "idle_videos",
+      insertSql: "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)",
+      fallbackTitle: "Idle Video",
+      buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
+        title,
+        videoUrl,
+        uploadedDate,
+        sortOrder,
+      ],
+    });
 
-  const insertedPrograms = syncMediaTableFromUploads({
-    dirPath: programsUploadDir,
-    urlPrefix: "/uploads/programs",
-    tableName: "programs",
-    insertSql: "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)",
-    fallbackTitle: "Program Video",
-    buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
-      title,
-      "Imported from uploaded file.",
-      videoUrl,
-      "Programs",
-      uploadedDate,
-      sortOrder,
-    ],
-  });
+    const insertedPrograms = syncMediaTableFromUploads({
+      dirPath: programsUploadDir,
+      urlPrefix: "/uploads/programs",
+      tableName: "programs",
+      insertSql: "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)",
+      fallbackTitle: "Program Video",
+      buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
+        title,
+        "Imported from uploaded file.",
+        videoUrl,
+        "Programs",
+        uploadedDate,
+        sortOrder,
+      ],
+    });
 
-  const selectedIdleAssigned = ensureSelectedIdleVideo();
-  if (insertedIdle > 0 || insertedPrograms > 0 || selectedIdleAssigned) {
-    console.log(
-      `Media sync: +${insertedIdle} idle videos, +${insertedPrograms} programs${selectedIdleAssigned ? ", selected default idle video" : ""}.`
-    );
+    const selectedIdleAssigned = ensureSelectedIdleVideo();
+    if (insertedIdle > 0 || insertedPrograms > 0 || selectedIdleAssigned) {
+      console.log(
+        `Media sync: +${insertedIdle} idle videos, +${insertedPrograms} programs${selectedIdleAssigned ? ", selected default idle video" : ""}.`
+      );
+    }
+
+    try {
+      fs.writeFileSync(bootstrapMarkerPath, new Date().toISOString(), "utf8");
+      console.log("[Backend] Bootstrap marker created.");
+    } catch (markerError) {
+      console.error("[Backend] Failed to write bootstrap marker:", markerError);
+    }
+  } catch (error) {
+    console.error("Startup seed error:", error);
   }
-} catch (error) {
-  console.error("Media sync error:", error);
 }
 
 app.get("/api/services/:type", (req, res) => {
@@ -2058,7 +2128,7 @@ app.delete("/api/announcements/:id", (req, res) => {
 app.get("/api/calendar-events", (req, res) => {
   try {
     const events = db
-      .prepare("SELECT id, eventId, title, date, endDate, time, startTime, endTime, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
+      .prepare("SELECT id, eventId, title, date, COALESCE(endDate, date) as endDate, time, COALESCE(startTime, time) as startTime, COALESCE(endTime, '') as endTime, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
       .all();
     res.json(events.map(calendarEventRowToDto));
   } catch (error) {
@@ -2078,29 +2148,44 @@ app.post("/api/calendar-events", (req, res) => {
 
   try {
     const currentMax = db.prepare("SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM calendar_events").get();
-    const eventId = String(body.id || `evt_${Date.now()}`).trim();
     const startTime = String(body.startTime || body.time || "").trim();
     const endDate = String(body.endDate || date).trim();
     const endTime = String(body.endTime || "").trim();
-
-    db.prepare(`
+    const insertEvent = db.prepare(`
       INSERT INTO calendar_events (eventId, title, date, endDate, time, startTime, endTime, location, office, category, description, attendees, sortOrder)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      eventId,
-      title,
-      date,
-      endDate,
-      startTime,
-      startTime,
-      endTime,
-      String(body.location || "").trim(),
-      String(body.office || "").trim(),
-      String(body.category || "internal").trim() || "internal",
-      String(body.description || "").trim(),
-      JSON.stringify(Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : []),
-      Number(currentMax.maxSort || 0) + 1
-    );
+    `);
+    let eventId = String(body.id || "").trim() || `evt_${randomUUID()}`;
+    let inserted = false;
+
+    // Retry ID generation for rare UNIQUE collisions on eventId.
+    for (let attempt = 0; attempt < 3 && !inserted; attempt += 1) {
+      try {
+        insertEvent.run(
+          eventId,
+          title,
+          date,
+          endDate,
+          startTime,
+          startTime,
+          endTime,
+          String(body.location || "").trim(),
+          String(body.office || "").trim(),
+          String(body.category || "internal").trim() || "internal",
+          String(body.description || "").trim(),
+          JSON.stringify(Array.isArray(body.attendees) ? body.attendees.filter(Boolean).map(String) : []),
+          Number(currentMax.maxSort || 0) + 1
+        );
+        inserted = true;
+      } catch (insertError) {
+        const message = String(insertError?.message || "").toLowerCase();
+        const isUniqueIdConflict = message.includes("unique") && message.includes("eventid");
+        if (!isUniqueIdConflict || attempt === 2) {
+          throw insertError;
+        }
+        eventId = `evt_${randomUUID()}`;
+      }
+    }
 
     res.status(201).json({
       id: eventId,
@@ -2119,7 +2204,7 @@ app.post("/api/calendar-events", (req, res) => {
     });
   } catch (error) {
     console.error("Error creating calendar event:", error);
-    res.status(500).json({ error: "Failed to create calendar event." });
+    res.status(500).json({ error: `Failed to create calendar event: ${String(error?.message || "Unknown error")}` });
   }
 });
 
@@ -2270,7 +2355,12 @@ const syncPhilippineHolidaysHandler = async (req, res) => {
     });
 
     const result = tx();
-    const syncedEvents = db
+    const syncedHolidayEvents = db
+      .prepare("SELECT id, eventId, title, date, time, location, office, category, description, attendees, sortOrder FROM calendar_events WHERE category = 'holiday' ORDER BY sortOrder ASC, id ASC")
+      .all()
+      .map(calendarEventRowToDto);
+
+    const allEvents = db
       .prepare("SELECT id, eventId, title, date, time, location, office, category, description, attendees, sortOrder FROM calendar_events ORDER BY sortOrder ASC, id ASC")
       .all()
       .map(calendarEventRowToDto);
@@ -2279,7 +2369,8 @@ const syncPhilippineHolidaysHandler = async (req, res) => {
       message: `Holiday sync complete from Google Calendar for ${year}.`,
       year,
       ...result,
-      events: syncedEvents,
+      events: syncedHolidayEvents,
+      allEvents,
     });
   } catch (error) {
     console.error("Error syncing holidays:", error);
@@ -2325,7 +2416,17 @@ app.post("/api/data/import", (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on http://0.0.0.0:${port}`);
+});
+
+app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, (_req, res, next) => {
+  const indexPath = path.join(frontendDistDir, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+    return;
+  }
+
+  next();
 });
 
 app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8), (req, res) => {
