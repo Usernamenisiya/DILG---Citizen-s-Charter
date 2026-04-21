@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { ServiceIcon } from "../ServiceIcon";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { resolveMediaUrl } from "../../utils/resolveMediaUrl";
+import rightArrowIcon from "../../assets/icons/rightarrow.png";
 
 export default function KioskMainScreen({
   visible,
@@ -580,7 +581,7 @@ export default function KioskMainScreen({
             <button className="back-btn" onClick={() => setCurrentService(null)}>Back to {isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</button>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
               <div className="sc-label">{isInternalSection ? "Internal Services" : isExternalSection ? "External Services" : "Menu"}</div>
-              <div className="sc-sep"><img src="/src/assets/icons/rightarrow.png" alt=">" className="sc-sep-glyph" /></div>
+              <div className="sc-sep"><img src={rightArrowIcon} alt=">" className="sc-sep-glyph" /></div>
               <div className="sc-label sub">{currentService.label}</div>
             </div>
           </>
@@ -1267,7 +1268,9 @@ export default function KioskMainScreen({
                     <div className="svc-meta-label">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
                         <line x1="12" y1="1" x2="12" y2="23"/>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H17"/>
+                        <line x1="8" y1="9" x2="17" y2="9"/>
+                        <line x1="8" y1="12" x2="17" y2="12"/>
                       </svg>
                       Fees
                     </div>
