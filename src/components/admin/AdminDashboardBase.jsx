@@ -306,8 +306,29 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     scrollContainer.scrollTo({ top: targetScroll, behavior: "smooth" });
   };
 
+  const resolveApiUrl = (url) => {
+    const raw = String(url || "").trim();
+    if (!raw) return raw;
+    if (/^https?:\/\//i.test(raw)) return raw;
+
+    const normalizedPath = raw.startsWith("/") ? raw : `/${raw}`;
+    const electronBase = window?.desktop?.isElectron
+      ? String(window.desktop.apiBaseUrl || "").replace(/\/+$/, "")
+      : "";
+    if (electronBase) {
+      return `${electronBase}${normalizedPath}`;
+    }
+
+    const browserOrigin = String(window?.location?.origin || "");
+    if (browserOrigin.startsWith("http://") || browserOrigin.startsWith("https://")) {
+      return `${browserOrigin}${normalizedPath}`;
+    }
+
+    return `http://127.0.0.1:3333${normalizedPath}`;
+  };
+
   const callApi = async (url, options = {}) => {
-    const response = await fetch(url, {
+    const response = await fetch(resolveApiUrl(url), {
       headers: { "Content-Type": "application/json", "X-Admin-Role": role, ...(options.headers || {}) },
       ...options,
     });
@@ -450,7 +471,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
     try {
       const formData = new FormData();
       formData.append("image", file);
-      const response = await fetch("/api/key-officials/upload", {
+      const response = await fetch(resolveApiUrl("/api/key-officials/upload"), {
         method: "POST",
         body: formData,
       });
@@ -1094,7 +1115,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch("/api/announcements/upload", {
+      const response = await fetch(resolveApiUrl("/api/announcements/upload"), {
         method: "POST",
         body: formData,
       });
@@ -1220,10 +1241,10 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       attendees: Array.isArray(calendarForm.attendees)
         ? calendarForm.attendees.filter(Boolean).map(String)
         : parseAttendees(calendarForm.attendees),
-      id: calendarEditingIdx >= 0 && currentCalendarEvents[calendarEditingIdx]?.id
-        ? currentCalendarEvents[calendarEditingIdx].id
-        : `evt_${Date.now()}`,
     };
+    if (calendarEditingIdx >= 0 && currentCalendarEvents[calendarEditingIdx]?.id) {
+      event.id = currentCalendarEvents[calendarEditingIdx].id;
+    }
     try {
       const savedEvent = calendarEditingIdx >= 0
         ? await callApi(`/api/calendar-events/${event.id}`, {
@@ -1302,8 +1323,8 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         });
       }
 
-      const nextEvents = Array.isArray(result?.events)
-        ? result.events
+      const nextEvents = Array.isArray(result?.allEvents)
+        ? result.allEvents
         : await callApi("/api/calendar-events");
 
       onDataChange({
@@ -1315,7 +1336,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
 
       const inserted = Number(result?.inserted || 0);
       const updated = Number(result?.updated || 0);
-      showStatus(setCalendarStatus, "success", `✓ Synced holidays: ${inserted} added, ${updated} updated.`);
+      showStatus(setCalendarStatus, "success", `✓ Synced holidays: ${inserted} added, ${updated} updated. Manual events were kept.`);
     } catch (e) {
       showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
     }
@@ -1341,7 +1362,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch("/api/programs/upload", {
+      const response = await fetch(resolveApiUrl("/api/programs/upload"), {
         method: "POST",
         body: formData,
       });
@@ -1444,7 +1465,7 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       const formData = new FormData();
       pickedFiles.forEach(file => formData.append("files", file));
 
-      const response = await fetch("/api/idle-videos/upload", {
+      const response = await fetch(resolveApiUrl("/api/idle-videos/upload"), {
         method: "POST",
         body: formData,
       });

@@ -5,7 +5,6 @@ import rictuLogo from "../../assets/images/RICTU_LOGO.png";
 import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import touchIcon from "../../assets/icons/touch.svg";
-import fallbackIdleVideo from "../../assets/video/samplevid.mp4";
 import { resolveMediaUrl } from "../../utils/resolveMediaUrl";
 
 const DEFAULT_ANNOUNCEMENT =
@@ -57,8 +56,8 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
   
   const currentPlayingVideo = videoPlaylist[currentPlayingIndex];
   const idleVideoSource = currentPlayingVideo?.videoUrl
-    ? (resolveMediaUrl(currentPlayingVideo.videoUrl) || fallbackIdleVideo)
-    : fallbackIdleVideo;
+    ? resolveMediaUrl(currentPlayingVideo.videoUrl)
+    : null;
 
   useEffect(() => {
     setCurrentPlayingIndex(0);
@@ -74,16 +73,18 @@ export default function KioskIdleScreen({ hiding, settings, announcements = [], 
     <div className={`idle-screen${hiding ? " hiding" : ""}`} onClick={!hiding ? onShowMain : undefined}>
 
       {/* ── VIDEO BACKGROUND ── */}
-      <video
-        key={idleVideoSource}
-        className="idle-video-bg"
-        src={idleVideoSource}
-        autoPlay
-        loop={videoPlaylist.length <= 1}
-        muted
-        playsInline
-        onEnded={handleVideoEnded}
-      />
+      {idleVideoSource && (
+        <video
+          key={idleVideoSource}
+          className="idle-video-bg"
+          src={idleVideoSource}
+          autoPlay
+          loop={videoPlaylist.length <= 1}
+          muted
+          playsInline
+          onEnded={handleVideoEnded}
+        />
+      )}
 
       {/* Dark overlay so content stays readable */}
       <div className="idle-video-overlay" />

@@ -7,11 +7,15 @@ let backendProcess = null;
 
 function startBackendServer() {
   let backendDir;
+  let backendDataDir = null;
+  let frontendDistDir = null;
   if (isDev) {
     backendDir = path.join(__dirname, "..", "my-custom-backend");
   } else {
     // In packaged app, backend is in extraResources
     backendDir = path.join(process.resourcesPath, "my-custom-backend");
+    backendDataDir = path.join(app.getPath("userData"), "my-custom-backend");
+    frontendDistDir = path.join(app.getAppPath(), "dist");
   }
   const backendPath = path.join(backendDir, "server.js");
   console.log("[Electron] Starting backend server at", backendPath);
@@ -19,6 +23,16 @@ function startBackendServer() {
   backendProcess = spawn("node", [backendPath], {
     stdio: "inherit",
     cwd: backendDir,
+    env: {
+      ...process.env,
+      ...(backendDataDir
+        ? {
+          BACKEND_DATA_DIR: backendDataDir,
+          BACKEND_SEED_DIR: backendDir,
+          BACKEND_FRONTEND_DIR: frontendDistDir,
+        }
+        : {}),
+    },
   });
 
   backendProcess.on("error", (err) => {

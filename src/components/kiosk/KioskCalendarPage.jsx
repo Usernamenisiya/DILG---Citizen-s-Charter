@@ -6,6 +6,9 @@ import istmsLogo from "../../assets/images/ISTMS-LOGO.png";
 import csuLogo from "../../assets/images/CSU_LOGO.png";
 import { MapPin, ChevronLeft } from "lucide-react";
 
+const DEFAULT_ANNOUNCEMENT =
+  "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
+
 const MONTHS = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December",
@@ -214,6 +217,37 @@ export default function KioskCalendarPage({
   const [clockTime, setClockTime] = useState("");
   const [clockDate, setClockDate] = useState("");
 
+  const tickerItems = useMemo(() => {
+    const fromList = (announcements || [])
+      .map(a => {
+        const useTitle = a?.tickerDisplay === "title";
+        const candidate = useTitle ? a?.title : a?.message;
+        const fallback = useTitle ? a?.message : a?.title;
+        const baseText = String(candidate || fallback || "").trim();
+        const postedOn = String(a?.postedOn || "").trim();
+        const effectiveUntil = String(a?.effectiveUntil || "").trim();
+        const dateParts = [
+          postedOn ? `Posted: ${postedOn}` : "",
+          effectiveUntil ? `Effective until: ${effectiveUntil}` : "",
+        ].filter(Boolean);
+        if (!baseText) return "";
+        return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
+      })
+      .filter(Boolean);
+    if (fromList.length) return fromList;
+    const fallback = String(settings.announcement || "").trim();
+    return [fallback || DEFAULT_ANNOUNCEMENT];
+  }, [announcements, settings.announcement]);
+
+  const announcementScrollMs = useMemo(() => {
+    const messageLength = tickerItems.join(" ").length;
+    const baseMs = 15000;
+    const msPerCharacter = 14;
+    return Math.max(12000, Math.min(22000, baseMs + (messageLength * msPerCharacter)));
+  }, [tickerItems]);
+
+  const officeHours = String(settings.hours || "Monday to Friday, 8:00 AM - 5:00 PM").trim();
+
   useEffect(() => {
     const tick = () => {
       const n = new Date();
@@ -367,7 +401,42 @@ export default function KioskCalendarPage({
         </div>
       </header>
 
-      {/* ── Page content ── */}
+      {/* ── ANNOUNCEMENT TICKER ── */}
+      <div className="idle-header">
+        <div className="idle-ticker">
+          <div className="idle-ticker-badge">
+            <svg viewBox="0 0 24 24" fill="white" width="50" height="50">
+              <path d="M18 3a1 1 0 0 0-1 .26L9.54 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h.57l1.24 3.38A1 1 0 0 0 7.75 19H9a1 1 0 0 0 .94-.66L11.35 15H11l-.01-.01L17 18.74A1 1 0 0 0 18 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-8.5 12H8.3l-1.1-3H10l.1.28zM17 17l-6.5-3.5v-5L17 5v12z"/>
+              <path d="M20.5 8.5a1 1 0 0 0 0 7 4 4 0 0 0 0-7z"/>
+            </svg>
+            <div className="idle-ticker-badge-text">
+              <span>ANNOUNCEMENT</span>
+              <span className="idle-ticker-hours">{officeHours}</span>
+            </div>
+          </div>
+          <div className="idle-ticker-track">
+            <div
+              className="idle-ticker-inner"
+              style={{ animationDuration: `${announcementScrollMs}ms` }}
+            >
+              {[0, 1].map(groupIndex => (
+                <div
+                  key={groupIndex}
+                  className="idle-ticker-group"
+                  aria-hidden={groupIndex === 1 ? "true" : undefined}
+                >
+                  {tickerItems.map((item, itemIndex) => (
+                    <Fragment key={`${groupIndex}-${itemIndex}-${item}`}>
+                      <span>{item}</span>
+                      <span className="idle-ticker-sep">◆</span>
+                    </Fragment>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="calendar-page-content">
         <button
           type="button"
