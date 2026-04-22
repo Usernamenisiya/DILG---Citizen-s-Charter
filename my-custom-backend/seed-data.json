@@ -876,25 +876,6 @@
       "tickerDisplay": "message"
     }
   ],
-  "programs": [
-    {
-      "id": 1,
-      "title": "INTRODUCTION TO PROGRAMMING",
-      "description": "A step by step guide towards your first programming journey.",
-      "videoUrl": "https://www.youtube.com/embed/zOjov-2OZ0E?start=234",
-      "category": "Programs",
-      "uploadedDate": "2026-04-06",
-      "sortOrder": 1
-    },
-    {
-      "id": 2,
-      "title": "LGUSS Sample Video",
-      "description": "Sample local LGUSS video playback asset.",
-      "videoUrl": "/samplevideo.mp4",
-      "category": "Programs",
-      "uploadedDate": "2026-04-07",
-      "sortOrder": 2
-    }
-  ],
+  "programs": [],
   "idle_videos": []
 }

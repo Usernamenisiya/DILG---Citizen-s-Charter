@@ -95,7 +95,6 @@ export default function AdminAccessOverlay({ appData, onDataChange, onClose }) {
                       setPasswordInput(e.target.value);
                     }}
                     placeholder="Password"
-                    autoFocus
                   />
                   <button
                     type="button"

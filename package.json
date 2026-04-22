@@ -1,10 +1,11 @@
 {
   "name": "dilg-kiosk",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"node my-custom-backend/server.js\" \"vite\"",
+    "backend:dev": "node my-custom-backend/server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -13,7 +14,11 @@
     "electron:dist": "npm run electron:build"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
+    "better-sqlite3": "^12.9.0",
+    "electron-store": "^11.0.2",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.6.2",
+    "googleapis": "^171.4.0",
     "lucide-react": "^0.523.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -49,7 +54,7 @@
   "homepage": "https://github.com/Usernamenisiya/DILG---Citizen-s-Charter#readme",
   "build": {
     "appId": "ph.dilg.caraga.kiosk",
-    "productName": "DILG Citizen Charter Kiosk",
+    "productName": "DILG Citizen Charter Kiosk v3",
     "directories": {
       "output": "release"
     },
@@ -62,6 +67,10 @@
       {
         "from": "my-custom-backend",
         "to": "my-custom-backend"
+      },
+      {
+        "from": "node",
+        "to": "node"
       }
     ],
     "win": {
@@ -72,6 +81,9 @@
       "signAndEditExecutable": false
     },
     "nsis": {
+      "installerIcon": "build/DILG-LOGO.ico",
+      "uninstallerIcon": "build/DILG-LOGO.ico",
+      "installerHeaderIcon": "build/DILG-LOGO.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }

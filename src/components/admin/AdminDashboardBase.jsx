@@ -1320,6 +1320,37 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
       showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
     }
   };
+const syncGoogleCalendar = async () => {
+  try {
+    showStatus(setCalendarStatus, "info", "⟳ Syncing Google Calendar...");
+    const result = await callApi("/api/google-calendar/sync", {
+      method: "POST",
+    });
+
+    const nextEvents = await callApi("/api/calendar-events");
+    onDataChange({
+      ...appData,
+      calendarEvents: Array.isArray(nextEvents) ? nextEvents : [],
+      version: appData.version + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+
+    showStatus(
+      setCalendarStatus,
+      "success",
+      `✓ Google Calendar synced! ${result.inserted} added, ${result.updated} updated.`
+    );
+  } catch (e) {
+    // If not authenticated yet, open auth in browser
+    if (e.message.includes("token") || e.message.includes("auth") || e.message.includes("credentials")) {
+      window.open("http://localhost:3333/api/google-calendar/auth", "_blank");
+      showStatus(setCalendarStatus, "info", "⟳ Please complete Google authentication in the opened tab, then click Sync again.");
+    } else {
+      showStatus(setCalendarStatus, "error", `✗ ${e.message}`);
+    }
+  }
+};
+  
 
   const startEditProgram = idx => {
     const prog = currentPrograms[idx] || {};
@@ -1800,7 +1831,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
         const headingInput = feedbackSectionRefs.current[scrollToFeedbackSectionIdx];
         if (headingInput) {
           scrollToElementInContainer(headingInput);
-          headingInput.focus(); // Focus on the heading input
         }
         setScrollToFeedbackSectionIdx(null); // Reset after scrolling
       }, 50);
@@ -2488,7 +2518,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                     value={announcementForm.message}
                     onChange={e => setAnnouncementForm(f => ({ ...f, message: e.target.value }))}
                     placeholder="Type announcement text..."
-                    autoFocus
                   />
                 </div>
                 <div className="a-field">
@@ -2768,7 +2797,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                           const picker = startDatePickerRef.current;
                           if (!picker) return;
                           picker.showPicker?.();
-                          picker.focus();
                         }}
                         style={{ padding: 8 }}
                       >
@@ -2796,7 +2824,6 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
                           const picker = endDatePickerRef.current;
                           if (!picker) return;
                           picker.showPicker?.();
-                          picker.focus();
                         }}
                         style={{ padding: 8 }}
                       >
@@ -2898,27 +2925,31 @@ export default function AdminDashboard({ role = "super-admin", appData, onDataCh
               </AdminFormModal>
             ) : (
               <>
-                <div style={{ display: "flex", gap: 10, alignItems: "end", marginBottom: 18, flexWrap: "wrap" }}>
-                  <button className="a-btn a-btn-success" onClick={startAddCalendarEvent}>
-                    + Add New Event
-                  </button>
-                  <div className="a-field" style={{ minWidth: 140, marginBottom: 0 }}>
-                    <label className="a-label">Holiday Year</label>
-                    <input
-                      className="a-input"
-                      type="number"
-                      min="2000"
-                      max={String(new Date().getFullYear() + 5)}
-                      value={holidaySyncYear}
-                      onChange={e => setHolidaySyncYear(e.target.value)}
-                    />
-                  </div>
-                  <button className="a-btn a-btn-primary" onClick={syncPhilippineHolidays}>
-                    Sync Google Holidays
-                  </button>
-                </div>
-                <div className="svc-list">
-                  {currentCalendarEvents.map((item, idx) => (
+  <div style={{ display: "flex", gap: 10, alignItems: "end", marginBottom: 18, flexWrap: "wrap" }}>
+    <button className="a-btn a-btn-success" onClick={startAddCalendarEvent}>
+      + Add New Event
+    </button>
+    <div className="a-field" style={{ minWidth: 140, marginBottom: 0 }}>
+      <label className="a-label">Holiday Year</label>
+      <input
+        className="a-input"
+        type="number"
+        min="2000"
+        max={String(new Date().getFullYear() + 5)}
+        value={holidaySyncYear}
+        onChange={e => setHolidaySyncYear(e.target.value)}
+      />
+    </div>
+    <button className="a-btn a-btn-primary" onClick={syncPhilippineHolidays}>
+      Sync Google Holidays
+    </button>
+    <button className="a-btn a-btn-primary" onClick={syncGoogleCalendar}>
+      Sync Google Calendar
+    </button>
+  </div>
+
+  <div className="svc-list">
+    {currentCalendarEvents.map((item, idx) => (
                     <div key={item.id || idx} className="svc-row">
                       <div className="svc-row-info">
                         <div className="svc-row-name">{item.title || "Untitled Event"}</div>

@@ -598,7 +598,6 @@ export default function KioskMainScreen({
                     onChange={e => onServiceSearchChange?.(e.target.value)}
                     placeholder={`Search ${isExternalSection ? "external" : "internal"} services...`}
                     aria-label="Search services"
-                    autoFocus
                   />
                   {!!serviceSearch && (
                     <button

@@ -26,6 +26,9 @@ const CATEGORY_COLORS = {
   holiday: "#B57A00",
 };
 
+const DEFAULT_ANNOUNCEMENT =
+  "Welcome to the DILG Citizens Charter Kiosk. We are committed to providing fast, efficient, and courteous public service.";
+
 function toKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
@@ -211,21 +214,36 @@ export default function KioskCalendarPage({
   const [selectedDay, setSelectedDay] = useState(null);
   const [filter, setFilter] = useState("all");
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const [clockTime, setClockTime] = useState("");
-  const [clockDate, setClockDate] = useState("");
 
-  useEffect(() => {
-    const tick = () => {
-      const n = new Date();
-      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      setClockTime(`${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`);
-      setClockDate(`${days[n.getDay()]}, ${months[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
+  const tickerItems = useMemo(() => {
+    const fromList = (announcements || [])
+      .map((a) => {
+        const useTitle = a?.tickerDisplay === "title";
+        const candidate = useTitle ? a?.title : a?.message;
+        const fallback = useTitle ? a?.message : a?.title;
+        const baseText = String(candidate || fallback || "").trim();
+        const postedOn = String(a?.postedOn || "").trim();
+        const effectiveUntil = String(a?.effectiveUntil || "").trim();
+        const dateParts = [
+          postedOn ? `Posted: ${postedOn}` : "",
+          effectiveUntil ? `Effective until: ${effectiveUntil}` : "",
+        ].filter(Boolean);
+        if (!baseText) return "";
+        return dateParts.length ? `${baseText} (${dateParts.join(" | ")})` : baseText;
+      })
+      .filter(Boolean);
+
+    if (fromList.length) return fromList;
+    const fallback = String(settings.announcement || "").trim();
+    return [fallback || DEFAULT_ANNOUNCEMENT];
+  }, [announcements, settings.announcement]);
+
+  const announcementScrollMs = useMemo(() => {
+    const messageLength = tickerItems.join(" ").length;
+    const baseMs = 15000;
+    const msPerCharacter = 14;
+    return Math.max(12000, Math.min(22000, baseMs + messageLength * msPerCharacter));
+  }, [tickerItems]);
 
   const visibleCells = useMemo(() => getMonthCells(year, month), [year, month]);
 
@@ -349,20 +367,35 @@ export default function KioskCalendarPage({
 
   return (
     <div className={`calendar-page${visible ? " visible" : ""}`}>
-      <header className="header">
-        <div className="header-left">
-          <div className="header-logo">
-            <img src={dilgIcon} alt="DILG Logo" />
+      <header className="calendar-top-header">
+        <div className="calendar-announcement-banner">
+          <div className="calendar-announcement-badge">
+            <svg className="calendar-announcement-icon" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <path d="M18 3a1 1 0 0 0-1 .26L9.54 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h.57l1.24 3.38A1 1 0 0 0 7.75 19H9a1 1 0 0 0 .94-.66L11.35 15H11l-.01-.01L17 18.74A1 1 0 0 0 18 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-8.5 12H8.3l-1.1-3H10l.1.28zM17 17l-6.5-3.5v-5L17 5v12z" />
+              <path d="M20.5 8.5a1 1 0 0 0 0 7 4 4 0 0 0 0-7z" />
+            </svg>
+            <span>Announcement</span>
           </div>
-          <div className="header-title">
-            {settings.office} - Citizen's Charter Kiosk
-            <span>Department of the Interior and Local Government | {settings.address}</span>
-          </div>
-        </div>
-        <div className="header-right">
-          <div className="header-clock">
-            {clockTime}
-            <span className="date">{clockDate}</span>
+          <div className="calendar-announcement-track">
+            <div
+              className="calendar-announcement-inner"
+              style={{ animationDuration: `${announcementScrollMs}ms` }}
+            >
+              {[0, 1].map((groupIndex) => (
+                <div
+                  key={groupIndex}
+                  className="calendar-announcement-group"
+                  aria-hidden={groupIndex === 1 ? "true" : undefined}
+                >
+                  {tickerItems.map((item, itemIndex) => (
+                    <Fragment key={`${groupIndex}-${itemIndex}-${item}`}>
+                      <span>{item}</span>
+                      <span className="calendar-announcement-sep">◆</span>
+                    </Fragment>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </header>

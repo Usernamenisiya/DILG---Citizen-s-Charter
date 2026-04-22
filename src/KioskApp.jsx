@@ -361,9 +361,16 @@ export default function KioskApp() {
   }, []);
 
   useEffect(() => {
-    if (screen === "main" || screen === "menu") startInactivity();
-    else clearInactivity();
-  }, [screen, startInactivity, clearInactivity]);
+    if (screen === "main" || screen === "menu") {
+      if (showCalendarPage) {
+        clearInactivity();
+      } else {
+        startInactivity();
+      }
+    } else {
+      clearInactivity();
+    }
+  }, [screen, showCalendarPage, startInactivity, clearInactivity]);
 
   /* ── Pause inactivity timer when modal or admin overlay is open ── */
   useEffect(() => {

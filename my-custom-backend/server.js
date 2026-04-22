@@ -7,6 +7,7 @@ const multer = require("multer");
 const http = require("http");
 const { Server } = require("socket.io");
 
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -15,6 +16,31 @@ const io = new Server(server, {
   },
 });
 const port = 3333;
+const host = '0.0.0.0'; // Listen on all available network interfaces
+
+const backendDataDir = process.env.BACKEND_DATA_DIR
+  ? path.resolve(process.env.BACKEND_DATA_DIR)
+  : __dirname;
+fs.mkdirSync(backendDataDir, { recursive: true });
+
+const bundledDbPath = path.join(__dirname, "app-data.db");
+const writableDbPath = path.join(backendDataDir, "app-data.db");
+
+function ensureWritableDatabaseSeeded() {
+  try {
+    const writableExists = fs.existsSync(writableDbPath);
+    const writableSize = writableExists ? fs.statSync(writableDbPath).size : 0;
+    const bundledExists = fs.existsSync(bundledDbPath);
+
+    if ((!writableExists || writableSize === 0) && bundledExists && bundledDbPath !== writableDbPath) {
+      fs.copyFileSync(bundledDbPath, writableDbPath);
+    }
+  } catch (error) {
+    console.error("Failed to seed writable database from bundled database:", error);
+  }
+}
+
+ensureWritableDatabaseSeeded();
 
 app.use(cors());
 app.use(express.json());
@@ -30,6 +56,8 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
 // Trigger a generic realtime refresh after successful write requests.
 app.use((req, res, next) => {
   const shouldTrack = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
@@ -43,7 +71,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const uploadsRoot = path.join(__dirname, "uploads");
+const uploadsRoot = path.join(backendDataDir, "uploads");
 const announcementsUploadDir = path.join(uploadsRoot, "announcements");
 const programsUploadDir = path.join(uploadsRoot, "programs");
 const idleVideosUploadDir = path.join(uploadsRoot, "idle-videos");
@@ -133,9 +161,16 @@ const uploadKeyOfficialsImage = multer({
   },
 });
 
-const dbPath = path.join(__dirname, "app-data.db");
+const dbPath = writableDbPath;
 const db = new Database(dbPath);
 const seedSnapshotPath = path.join(__dirname, "seed-data.json");
+
+// Make db accessible in routes
+app.locals.db = db;
+
+// Google Calendar routes
+const googleCalendarRoutes = require('./routes/googleCalendar');
+app.use('/api/google-calendar', googleCalendarRoutes);
 
 let seedSnapshot = null;
 try {
@@ -304,20 +339,41 @@ function deleteUploadedProgramFile(videoUrl) {
   }
 }
 
+function recordDeletedMediaUrl(url) {
+  try {
+    db.prepare(
+      "INSERT OR REPLACE INTO deleted_media_urls (url, deletedAt) VALUES (?, ?)"
+    ).run(String(url || "").trim(), new Date().toISOString());
+  } catch (error) {
+    console.error("Error recording deleted media url:", error);
+  }
+}
+
+function deleteUploadedProgramFile(videoUrl) {
+  const value = String(videoUrl || "").trim();
+  if (!value.startsWith("/uploads/programs/")) return;
+  recordDeletedMediaUrl(value); // <-- add this
+  const fileName = path.basename(value);
+  if (!fileName) return;
+  const absolutePath = path.join(programsUploadDir, fileName);
+  if (!absolutePath.startsWith(programsUploadDir)) return;
+  try {
+    if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
+  } catch (error) {
+    console.error("Error deleting uploaded program file:", error);
+  }
+}
+
 function deleteUploadedIdleVideoFile(videoUrl) {
   const value = String(videoUrl || "").trim();
   if (!value.startsWith("/uploads/idle-videos/")) return;
-
+  recordDeletedMediaUrl(value); // <-- add this
   const fileName = path.basename(value);
   if (!fileName) return;
-
   const absolutePath = path.join(idleVideosUploadDir, fileName);
   if (!absolutePath.startsWith(idleVideosUploadDir)) return;
-
   try {
-    if (fs.existsSync(absolutePath)) {
-      fs.unlinkSync(absolutePath);
-    }
+    if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
   } catch (error) {
     console.error("Error deleting uploaded idle video file:", error);
   }
@@ -366,21 +422,33 @@ function deleteAnnouncementAttachmentFileIfUnused(fileUrl) {
   }
 }
 
-function seedTableFromSnapshot(tableName) {
+function seedTableFromSnapshot(tableName, { force = false } = {}) {
   const rows = seedSnapshot?.[tableName];
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return;
-  }
+  if (!Array.isArray(rows) || rows.length === 0) return;
 
-  const rowCount = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get();
-  if (rowCount.count !== 0) {
-    return;
+  if (!force) {
+    const rowCount = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get();
+    if (rowCount.count !== 0) return;
+  } else {
+    db.prepare(`DELETE FROM ${tableName}`).run();
   }
 
   const columns = Object.keys(rows[0]);
-  if (columns.length === 0) {
-    return;
+  if (columns.length === 0) return;
+
+  // For media tables, filter out rows whose videoUrl was intentionally deleted
+  let filteredRows = rows;
+  if (tableName === "idle_videos" || tableName === "programs") {
+    const deletedUrls = new Set(
+      db.prepare("SELECT url FROM deleted_media_urls").all().map(r => r.url)
+    );
+    filteredRows = rows.filter(row => {
+      const url = String(row.videoUrl || "").trim();
+      return !url || !deletedUrls.has(url);
+    });
   }
+
+  if (filteredRows.length === 0) return;
 
   const insertSql = `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
   const insertRow = db.prepare(insertSql);
@@ -389,8 +457,7 @@ function seedTableFromSnapshot(tableName) {
       insertRow.run(...columns.map((column) => item[column]));
     });
   });
-
-  insertMany(rows);
+  insertMany(filteredRows);
 }
 
 function calendarEventRowToDto(row) {
@@ -413,32 +480,23 @@ function calendarEventRowToDto(row) {
 }
 
 function restoreDatabaseFromSnapshot() {
-  if (!seedSnapshot) {
-    throw new Error("Seed snapshot not available.");
-  }
+  if (!seedSnapshot) throw new Error("Seed snapshot not available.");
 
   const tablesInOrder = [
-    "internal_services",
-    "external_services",
-    "issuances",
-    "issuance_meta",
-    "kiosk_settings",
-    "feedback_content",
-    "organizational_profile",
-    "office_directory_meta",
-    "office_directory_entries",
-    "announcements",
-    "programs",
-    "idle_videos",
-    "calendar_events",
+    "internal_services", "external_services", "issuances", "issuance_meta",
+    "kiosk_settings", "feedback_content", "organizational_profile",
+    "office_directory_meta", "office_directory_entries", "announcements",
+    "programs", "idle_videos", "calendar_events",
   ];
 
   db.transaction(() => {
+    // Clear deletion history so factory reset truly restores everything
+    db.prepare("DELETE FROM deleted_media_urls").run();
+
     tablesInOrder.forEach((tableName) => {
       db.prepare(`DELETE FROM ${tableName}`).run();
     });
-
-    tablesInOrder.forEach((tableName) => seedTableFromSnapshot(tableName));
+    tablesInOrder.forEach((tableName) => seedTableFromSnapshot(tableName, { force: true }));
     db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
     db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
   })();
@@ -787,6 +845,11 @@ function syncMediaTableFromUploads({
   fallbackTitle,
   buildInsertArgs,
 }) {
+  // Load deleted URLs to skip them
+  const deletedUrls = new Set(
+    db.prepare("SELECT url FROM deleted_media_urls").all().map(r => r.url)
+  );
+
   const existingRows = db.prepare(`SELECT videoUrl FROM ${tableName}`).all();
   const existingUrls = new Set(existingRows.map(row => String(row.videoUrl || "").trim()).filter(Boolean));
   let sortOrder = Number(
@@ -805,7 +868,13 @@ function syncMediaTableFromUploads({
   files.forEach((filename) => {
     const fullPath = path.join(dirPath, filename);
     const videoUrl = `${urlPrefix}/${filename}`;
+
     if (existingUrls.has(videoUrl)) return;
+    if (deletedUrls.has(videoUrl)) {
+      // File exists on disk but was intentionally deleted — remove the file too
+      try { fs.unlinkSync(fullPath); } catch {}
+      return;
+    }
 
     sortOrder += 1;
     const title = toDbTitleFromFilename(filename, fallbackTitle);
@@ -1002,6 +1071,10 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     title TEXT NOT NULL,
     imageUrl TEXT NOT NULL,
     updatedAt TEXT
+  );
+  CREATE TABLE IF NOT EXISTS deleted_media_urls (
+    url TEXT PRIMARY KEY,
+    deletedAt TEXT NOT NULL
   );
 `);
 
@@ -2324,8 +2397,8 @@ app.post("/api/data/import", (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Server is running on http://${host}:${port}`);
 });
 
 app.post("/api/announcements/upload", uploadAnnouncementFiles.array("files", 8), (req, res) => {

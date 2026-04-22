@@ -124,7 +124,7 @@ export default function ServiceFormEditor({ serviceType = "internal", service, o
 
       <div className="a-field">
         <label className="a-label">Service Name <span style={{color: 'red'}}>*</span></label>
-        <input className="a-input" value={form.label} onChange={e => set("label", e.target.value)} autoFocus />
+        <input className="a-input" value={form.label} onChange={e => set("label", e.target.value)} />
       </div>
 
       <div className="a-field">

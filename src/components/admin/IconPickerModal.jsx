@@ -73,7 +73,6 @@ export default function IconPickerModal({ open, initialValue = "", onClose, onSe
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search icon names..."
-            autoFocus
           />
           <button
             type="button"

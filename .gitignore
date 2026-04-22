@@ -35,3 +35,7 @@ release-rebuild/
 release-deploy/
 *.exe
 *.blockmap
+
+# Google Calendar OAuth credentials (do not commit)
+my-custom-backend/credentials.json
+my-custom-backend/token.json
