@@ -360,19 +360,19 @@ export default function KioskApp() {
     bar.style.transform  = "scaleX(1)";
   }, []);
 
-  useEffect(() => {
-    if (screen === "main" || screen === "menu") startInactivity();
-    else clearInactivity();
-  }, [screen, startInactivity, clearInactivity]);
+  const isInactivityPaused =
+    showCalendarPage || modalSection !== null || showAdmin || mainScreenModalOpen;
 
-  /* ── Pause inactivity timer when modal or admin overlay is open ── */
+  /* ── Pause inactivity timer when calendar, modal, or admin overlay is open ── */
   useEffect(() => {
-    if (modalSection !== null || showAdmin || mainScreenModalOpen || showCalendarPage) {
+    if (isInactivityPaused) {
       clearInactivity();
     } else if (screen === "main" || screen === "menu") {
       startInactivity();
+    } else {
+      clearInactivity();
     }
-  }, [modalSection, showAdmin, mainScreenModalOpen, showCalendarPage, screen, startInactivity, clearInactivity]);
+  }, [isInactivityPaused, screen, startInactivity, clearInactivity]);
 
   const handleUserAction = useCallback(() => {
     if (screen === "main" || screen === "menu") startInactivity();

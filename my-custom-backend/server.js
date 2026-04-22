@@ -181,14 +181,7 @@ if (shouldHydrateFromSeed && fs.existsSync(seedDbPath)) {
   }
 }
 const db = new Database(dbPath);
-const seedSnapshotPath = path.join(seedSourceDir, "seed-data.json");
 
-let seedSnapshot = null;
-try {
-  seedSnapshot = JSON.parse(fs.readFileSync(seedSnapshotPath, "utf8"));
-} catch {
-  seedSnapshot = null;
-}
 
 function safeJsonParse(text, fallback) {
   try {
@@ -197,6 +190,8 @@ function safeJsonParse(text, fallback) {
     return fallback;
   }
 }
+
+
 
 function getAnnouncementsPayload() {
   const announcements = db
@@ -637,8 +632,7 @@ function importKioskDataToDatabase(payload, options = {}) {
       });
     };
 
-    insertServiceTable("internal_services", data.services);
-    insertServiceTable("external_services", data.externalServices);
+
 
     db.prepare("DELETE FROM announcements").run();
     const insertAnnouncement = db.prepare(
@@ -1204,69 +1198,7 @@ try {
 db.prepare("UPDATE kiosk_settings SET superAdminPin = COALESCE(NULLIF(superAdminPin, ''), '0000') WHERE id = 1").run();
 db.prepare("UPDATE kiosk_settings SET adminPin = '1111' WHERE id = 1 AND (adminPin IS NULL OR adminPin = '' OR adminPin = '0000')").run();
 
-const shouldRunStartupSeed = shouldHydrateFromSeed && !fs.existsSync(bootstrapMarkerPath);
-if (shouldRunStartupSeed) {
-  try {
-    seedTableFromSnapshot("internal_services");
-    seedTableFromSnapshot("external_services");
-    seedTableFromSnapshot("issuances");
-    seedTableFromSnapshot("issuance_meta");
-    seedTableFromSnapshot("kiosk_settings");
-    seedTableFromSnapshot("feedback_content");
-    seedTableFromSnapshot("organizational_profile");
-    seedTableFromSnapshot("office_directory_meta");
-    seedTableFromSnapshot("office_directory_entries");
-    seedTableFromSnapshot("programs");
-    seedTableFromSnapshot("idle_videos");
-    upsertDefaultKeyOfficialsRow();
 
-    const insertedIdle = syncMediaTableFromUploads({
-      dirPath: idleVideosUploadDir,
-      urlPrefix: "/uploads/idle-videos",
-      tableName: "idle_videos",
-      insertSql: "INSERT INTO idle_videos (title, videoUrl, uploadedDate, sortOrder) VALUES (?, ?, ?, ?)",
-      fallbackTitle: "Idle Video",
-      buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
-        title,
-        videoUrl,
-        uploadedDate,
-        sortOrder,
-      ],
-    });
-
-    const insertedPrograms = syncMediaTableFromUploads({
-      dirPath: programsUploadDir,
-      urlPrefix: "/uploads/programs",
-      tableName: "programs",
-      insertSql: "INSERT INTO programs (title, description, videoUrl, category, uploadedDate, sortOrder) VALUES (?, ?, ?, ?, ?, ?)",
-      fallbackTitle: "Program Video",
-      buildInsertArgs: ({ title, videoUrl, uploadedDate, sortOrder }) => [
-        title,
-        "Imported from uploaded file.",
-        videoUrl,
-        "Programs",
-        uploadedDate,
-        sortOrder,
-      ],
-    });
-
-    const selectedIdleAssigned = ensureSelectedIdleVideo();
-    if (insertedIdle > 0 || insertedPrograms > 0 || selectedIdleAssigned) {
-      console.log(
-        `Media sync: +${insertedIdle} idle videos, +${insertedPrograms} programs${selectedIdleAssigned ? ", selected default idle video" : ""}.`
-      );
-    }
-
-    try {
-      fs.writeFileSync(bootstrapMarkerPath, new Date().toISOString(), "utf8");
-      console.log("[Backend] Bootstrap marker created.");
-    } catch (markerError) {
-      console.error("[Backend] Failed to write bootstrap marker:", markerError);
-    }
-  } catch (error) {
-    console.error("Startup seed error:", error);
-  }
-}
 
 app.get("/api/services/:type", (req, res) => {
   const type = req.params.type;

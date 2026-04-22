@@ -30,6 +30,21 @@ If you update the database on your machine and want to refresh the committed sna
 
 This project is now configured to run as an Electron desktop app.
 
+## Standalone Web Kiosk (No Electron)
+
+If you want to run the kiosk without opening the Electron launcher, use:
+
+```bash
+npm run standalone
+```
+
+This command:
+- starts the backend server from `my-custom-backend/server.js`
+- serves the built frontend at `http://127.0.0.1:3333`
+- auto-opens the kiosk URL in your browser
+
+To stop it, close the terminal running the command.
+
 ### Run in desktop dev mode
 
 ```bash
