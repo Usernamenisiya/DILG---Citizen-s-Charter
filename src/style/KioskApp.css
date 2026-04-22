@@ -1641,7 +1641,7 @@ body { font-family: var(--fb); background: #0a1628; overflow: hidden; }
 }
 
 .kcal-day--today .kcal-day-num {
-  background: #C9282D;
+  background: #11b342;
   color: #fff;
 }
 

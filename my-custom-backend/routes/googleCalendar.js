@@ -12,10 +12,10 @@ const COLOR_CATEGORY_MAP = {
   '5': 'external',   // Banana
   '6': 'holiday',    // Tangerine
   '7': 'internal',   // Peacock
-  '8': 'deadlines',  // Graphite
+  '8': 'deadline',   // Graphite ← fixed
   '9': 'internal',   // Blueberry
   '10': 'external',  // Basil
-  '11': 'deadlines', // Tomato
+  '11': 'deadline',  // Tomato  ← fixed
 };
 
 // Step 1: Redirect to Google Auth

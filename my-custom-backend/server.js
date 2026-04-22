@@ -1103,6 +1103,15 @@ try {
 } catch (error) {
   console.error("Calendar events migration error:", error);
 }
+// Migration: normalize "deadlines" to "deadline" in calendar_events
+try {
+  db.prepare(`
+    UPDATE calendar_events SET category = 'deadline' WHERE category = 'deadlines'
+  `).run();
+  console.log("✓ Normalized 'deadlines' category to 'deadline'");
+} catch (error) {
+  console.error("Deadline category normalization error:", error);
+}
 
 try {
   const announcementColumns = db.prepare("PRAGMA table_info(announcements)").all();
