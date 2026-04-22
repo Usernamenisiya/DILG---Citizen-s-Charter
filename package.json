@@ -4,7 +4,9 @@
   "version": "3.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"node my-custom-backend/server.js\" \"vite\"",
+    "dev": "vite",
+    "dev:backend": "npm run start --prefix my-custom-backend",
+    "dev:all": "concurrently -k \"npm run dev:backend\" \"npm run dev\"",
     "backend:dev": "node my-custom-backend/server.js",
     "build": "vite build",
     "lint": "eslint .",
